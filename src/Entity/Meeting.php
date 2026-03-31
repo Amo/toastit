@@ -9,6 +9,10 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 class Meeting
 {
+    public const STATUS_SCHEDULED = 'scheduled';
+    public const STATUS_LIVE = 'live';
+    public const STATUS_CLOSED = 'closed';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -36,6 +40,15 @@ class Meeting
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $videoLink = null;
+
+    #[ORM\Column(length: 16)]
+    private string $status = self::STATUS_SCHEDULED;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $startedAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $closedAt = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
@@ -133,6 +146,40 @@ class Meeting
         return $this;
     }
 
+    public function getRecurrenceDisplay(): ?string
+    {
+        $recurrence = trim((string) $this->recurrence);
+
+        if ('' === $recurrence) {
+            return null;
+        }
+
+        if (!preg_match('/^P(?P<quantity>[1-9]|10)(?P<unit>[DWMY])$/', $recurrence, $matches)) {
+            return $this->recurrence;
+        }
+
+        $quantity = (int) $matches['quantity'];
+        $unit = $matches['unit'];
+
+        if (1 === $quantity) {
+            return match ($unit) {
+                'D' => 'Chaque jour',
+                'W' => 'Chaque semaine',
+                'M' => 'Chaque mois',
+                'Y' => 'Chaque annee',
+                default => $this->recurrence,
+            };
+        }
+
+        return match ($unit) {
+            'D' => sprintf('Tous les %d jours', $quantity),
+            'W' => sprintf('Toutes les %d semaines', $quantity),
+            'M' => sprintf('Tous les %d mois', $quantity),
+            'Y' => sprintf('Tous les %d ans', $quantity),
+            default => $this->recurrence,
+        };
+    }
+
     public function getVideoLink(): ?string
     {
         return $this->videoLink;
@@ -143,6 +190,52 @@ class Meeting
         $this->videoLink = $videoLink;
 
         return $this;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): self
+    {
+        $this->status = $status;
+
+        return $this;
+    }
+
+    public function getStartedAt(): ?\DateTimeImmutable
+    {
+        return $this->startedAt;
+    }
+
+    public function setStartedAt(?\DateTimeImmutable $startedAt): self
+    {
+        $this->startedAt = $startedAt;
+
+        return $this;
+    }
+
+    public function getClosedAt(): ?\DateTimeImmutable
+    {
+        return $this->closedAt;
+    }
+
+    public function setClosedAt(?\DateTimeImmutable $closedAt): self
+    {
+        $this->closedAt = $closedAt;
+
+        return $this;
+    }
+
+    public function isLive(): bool
+    {
+        return self::STATUS_LIVE === $this->status;
+    }
+
+    public function isClosed(): bool
+    {
+        return self::STATUS_CLOSED === $this->status;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

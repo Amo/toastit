@@ -30,7 +30,7 @@ final class PinController extends AbstractController
     ) {
     }
 
-    #[Route('/pin/setup', name: 'app_pin_setup', methods: ['GET', 'POST'])]
+    #[Route('/pin/setup', name: 'app_pin_setup', methods: ['POST'])]
     public function setup(Request $request): Response
     {
         $user = $this->getAuthenticatedUser();
@@ -59,10 +59,10 @@ final class PinController extends AbstractController
             return $this->redirectToRoute('app_dashboard');
         }
 
-        return $this->render('pin/setup.html.twig');
+        throw new \LogicException('GET handled by SPA shell.');
     }
 
-    #[Route('/pin/unlock', name: 'app_pin_unlock', methods: ['GET', 'POST'])]
+    #[Route('/pin/unlock', name: 'app_pin_unlock', methods: ['POST'])]
     public function unlock(Request $request): Response
     {
         $user = $this->getAuthenticatedUser();
@@ -79,9 +79,7 @@ final class PinController extends AbstractController
             return $this->redirectToRoute('app_dashboard');
         }
 
-        return $this->render('pin/unlock.html.twig', [
-            'email' => $user->getEmail(),
-        ]);
+        throw new \LogicException('GET handled by SPA shell.');
     }
 
     #[Route('/pin/forgot', name: 'app_pin_forgot', methods: ['POST'])]

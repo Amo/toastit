@@ -36,7 +36,7 @@ final class AuthController extends AbstractController
         if ('' === $email || false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->addFlash('error', 'Merci de renseigner une adresse email valide.');
 
-            return $this->redirectToRoute('app_home', ['email' => $email]);
+            return $this->redirect('/?email='.rawurlencode($email));
         }
 
         $limiter = $this->authRequestLimiter->create(sprintf('request:%s:%s', mb_strtolower($email), $request->getClientIp() ?? 'ipless'));
@@ -44,7 +44,7 @@ final class AuthController extends AbstractController
         if (!$limiter->consume()->isAccepted()) {
             $this->addFlash('error', 'Trop de demandes de connexion. Reessayez dans quelques minutes.');
 
-            return $this->redirectToRoute('app_home', ['email' => $email]);
+            return $this->redirect('/?email='.rawurlencode($email));
         }
 
         $user = $this->loginChallengeManager->getOrCreateUser($email);
@@ -64,7 +64,7 @@ final class AuthController extends AbstractController
         ]);
     }
 
-    #[Route('/connexion/verifier', name: 'app_auth_verify', methods: ['GET', 'POST'])]
+    #[Route('/connexion/verifier', name: 'app_auth_verify', methods: ['POST'])]
     public function verify(Request $request): Response
     {
         if ('POST' === $request->getMethod()) {
@@ -95,10 +95,7 @@ final class AuthController extends AbstractController
             return $this->redirectToRoute('app_pin_unlock');
         }
 
-        return $this->render('auth/verify.html.twig', [
-            'email' => $request->query->getString('email'),
-            'purpose' => $request->query->getString('purpose', LoginChallenge::PURPOSE_LOGIN),
-        ]);
+        throw new \LogicException('GET handled by SPA shell.');
     }
 
     #[Route('/connexion/magic/{selector}/{token}', name: 'app_auth_magic', methods: ['GET'])]
@@ -109,7 +106,7 @@ final class AuthController extends AbstractController
         if (null === $challenge) {
             $this->addFlash('error', 'Lien magique invalide ou expire.');
 
-            return $this->redirectToRoute('app_home');
+            return $this->redirect('/');
         }
 
         $this->security->login($challenge->getUser(), OtpLoginAuthenticator::class, 'main');

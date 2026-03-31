@@ -12,6 +12,12 @@ security:
         dev:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: app_users
+            custom_authenticators:
+                - App\Security\ApiTokenAuthenticator
         main:
             lazy: true
             provider: app_users
@@ -19,9 +25,11 @@ security:
                 - App\Security\OtpLoginAuthenticator
             logout:
                 path: app_logout
-                target: app_home
+                target: /
 
     access_control:
+        - { path: ^/api/auth, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: ROLE_USER }
         - { path: ^/app, roles: ROLE_USER }
         - { path: ^/pin, roles: ROLE_USER }
 

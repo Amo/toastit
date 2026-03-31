@@ -6,17 +6,18 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class PinFlowTest extends WebTestCase
 {
+    use MailpitTestTrait;
+
     public function testOtpAndPinSetupUnlockProtectedApp(): void
     {
         $client = static::createClient();
-        $mailDirectory = dirname(__DIR__, 2).'/var/storage/mails';
-        array_map('unlink', glob($mailDirectory.'/*.json') ?: []);
+        $this->clearMailpit();
 
         $email = sprintf('pin-%s@example.com', time());
 
         $client->request('POST', '/connexion', ['email' => $email]);
-        $payload = json_decode((string) file_get_contents((glob($mailDirectory.'/*.json') ?: [])[0]), true, 512, JSON_THROW_ON_ERROR);
-        preg_match('/\n([A-Z0-9]{6})\n\nCe code expire/', $payload['text'], $match);
+        $payload = $this->fetchSingleMailpitMessage();
+        preg_match('/\R([A-Z0-9]{6})\R\RCe code expire/', $payload['Text'], $match);
         $code = $match[1];
 
         $client->request('POST', '/connexion/verifier', [
@@ -34,6 +35,6 @@ final class PinFlowTest extends WebTestCase
 
         $client->request('GET', '/app');
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('h1', 'Vos equipes et meetings.');
+        self::assertSelectorExists('[data-vue-root]');
     }
 }

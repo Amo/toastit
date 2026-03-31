@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use App\Entity\User;
+use App\Security\JwtTokenManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -16,10 +16,11 @@ final class ProfileController extends AbstractController
     public function __construct(
         private readonly Security $security,
         private readonly EntityManagerInterface $entityManager,
+        private readonly JwtTokenManager $jwtTokenManager,
     ) {
     }
 
-    #[Route('/app/profile', name: 'app_profile', methods: ['GET', 'POST'])]
+    #[Route('/app/profile', name: 'app_profile', methods: ['POST'])]
     public function profile(Request $request): Response
     {
         $user = $this->getUserOrFail();
@@ -35,12 +36,10 @@ final class ProfileController extends AbstractController
             return $this->redirectToRoute('app_profile');
         }
 
-        return $this->render('app/profile.html.twig', [
-            'user' => $user,
-        ]);
+        throw new \LogicException('GET handled by SPA shell.');
     }
 
-    private function getUserOrFail(): User
+    private function getUserOrFail(): \App\Entity\User
     {
         $user = $this->security->getUser();
 

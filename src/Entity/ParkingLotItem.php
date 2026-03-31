@@ -11,6 +11,9 @@ class ParkingLotItem
 {
     public const STATUS_OPEN = 'open';
     public const STATUS_VETOED = 'vetoed';
+    public const DISCUSSION_PENDING = 'pending';
+    public const DISCUSSION_TREATED = 'treated';
+    public const DISCUSSION_POSTPONED = 'postponed';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -37,6 +40,31 @@ class ParkingLotItem
 
     #[ORM\Column(length: 16)]
     private string $status = self::STATUS_OPEN;
+
+    #[ORM\Column]
+    private bool $isBoosted = false;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $boostRank = null;
+
+    #[ORM\Column(length: 16)]
+    private string $discussionStatus = self::DISCUSSION_PENDING;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $discussionNotes = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $followUp = null;
+
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $followUpItems = [];
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $owner = null;
+
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $dueAt = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
@@ -128,6 +156,140 @@ class ParkingLotItem
         return $this;
     }
 
+    public function isVetoed(): bool
+    {
+        return self::STATUS_VETOED === $this->status;
+    }
+
+    public function isBoosted(): bool
+    {
+        return $this->isBoosted;
+    }
+
+    public function setIsBoosted(bool $isBoosted): self
+    {
+        $this->isBoosted = $isBoosted;
+
+        if (!$isBoosted) {
+            $this->boostRank = null;
+        }
+
+        return $this;
+    }
+
+    public function getBoostRank(): ?int
+    {
+        return $this->boostRank;
+    }
+
+    public function setBoostRank(?int $boostRank): self
+    {
+        $this->boostRank = $boostRank;
+
+        return $this;
+    }
+
+    public function getDiscussionStatus(): string
+    {
+        return $this->discussionStatus;
+    }
+
+    public function setDiscussionStatus(string $discussionStatus): self
+    {
+        $this->discussionStatus = $discussionStatus;
+
+        return $this;
+    }
+
+    public function getDiscussionNotes(): ?string
+    {
+        return $this->discussionNotes;
+    }
+
+    public function setDiscussionNotes(?string $discussionNotes): self
+    {
+        $this->discussionNotes = $discussionNotes;
+
+        return $this;
+    }
+
+    public function getFollowUp(): ?string
+    {
+        return $this->followUp;
+    }
+
+    public function setFollowUp(?string $followUp): self
+    {
+        $this->followUp = $followUp;
+
+        return $this;
+    }
+
+    /**
+     * @return list<array{title: string, ownerId: ?int, dueOn: ?string}>
+     */
+    public function getFollowUpItems(): array
+    {
+        return array_values(array_filter(
+            array_map(
+                static function (mixed $item): ?array {
+                    if (!is_array($item)) {
+                        return null;
+                    }
+
+                    $title = trim((string) ($item['title'] ?? ''));
+                    if ('' === $title) {
+                        return null;
+                    }
+
+                    $ownerId = isset($item['ownerId']) && is_numeric($item['ownerId']) ? (int) $item['ownerId'] : null;
+                    $dueOn = isset($item['dueOn']) ? trim((string) $item['dueOn']) : null;
+
+                    return [
+                        'title' => $title,
+                        'ownerId' => $ownerId,
+                        'dueOn' => '' !== (string) $dueOn ? $dueOn : null,
+                    ];
+                },
+                $this->followUpItems
+            )
+        ));
+    }
+
+    /**
+     * @param list<array{title: string, ownerId: ?int, dueOn: ?string}> $followUpItems
+     */
+    public function setFollowUpItems(array $followUpItems): self
+    {
+        $this->followUpItems = $followUpItems;
+
+        return $this;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    public function setOwner(?User $owner): self
+    {
+        $this->owner = $owner;
+
+        return $this;
+    }
+
+    public function getDueAt(): ?\DateTimeImmutable
+    {
+        return $this->dueAt;
+    }
+
+    public function setDueAt(?\DateTimeImmutable $dueAt): self
+    {
+        $this->dueAt = $dueAt;
+
+        return $this;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -145,6 +307,13 @@ class ParkingLotItem
             $this->votes->add($vote);
             $vote->setItem($this);
         }
+
+        return $this;
+    }
+
+    public function removeVote(Vote $vote): self
+    {
+        $this->votes->removeElement($vote);
 
         return $this;
     }

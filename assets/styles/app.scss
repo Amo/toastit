@@ -1111,6 +1111,177 @@ body {
     color: var(--toastit-muted);
 }
 
+.toastit-live-header {
+    display: grid;
+    gap: 0.55rem;
+    margin-bottom: 0.25rem;
+}
+
+.toastit-live-header__head {
+    display: grid;
+    gap: 0.85rem;
+    align-items: start;
+}
+
+.toastit-live-header__meta {
+    margin: 0;
+    color: var(--toastit-muted);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.toastit-live-stepper {
+    display: grid;
+    gap: 1.35rem;
+    margin-bottom: 0.5rem;
+}
+
+.toastit-live-stepper__rail {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid var(--toastit-panel-border);
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.toastit-live-stepper__summary {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.toastit-live-stepper__stack {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.toastit-live-stepper__card {
+    width: 100%;
+    border: 1px solid var(--toastit-panel-border);
+    border-radius: 1.35rem;
+    background: rgba(255, 255, 255, 0.8);
+    overflow: hidden;
+}
+
+.toastit-live-stepper__card.is-open {
+    border-color: rgba(216, 159, 16, 0.35);
+    background: #fff7e7;
+    box-shadow: 0 18px 42px rgba(98, 64, 29, 0.08);
+}
+
+.toastit-live-stepper__card-toggle {
+    width: 100%;
+    padding: 1.15rem 1.2rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.toastit-live-stepper__card-toggle:hover,
+.toastit-live-stepper__card-toggle:focus-visible {
+    background: rgba(255, 247, 231, 0.7);
+}
+
+.toastit-live-stepper__dot-index {
+    width: 2rem;
+    height: 2rem;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(244, 197, 66, 0.2);
+    color: var(--toastit-primary-strong);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.toastit-live-stepper__card-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.6rem;
+}
+
+.toastit-live-stepper__card-head {
+    display: grid;
+    gap: 1rem;
+}
+
+.toastit-live-stepper__chevron {
+    display: inline-grid;
+    place-items: center;
+    color: var(--toastit-primary-strong);
+    transition: transform 140ms ease;
+}
+
+.toastit-live-stepper__chevron.is-open {
+    transform: rotate(180deg);
+}
+
+.toastit-live-stepper__body {
+    display: grid;
+    gap: 1.25rem;
+    padding: 0 1.2rem 1.35rem;
+}
+
+.toastit-live-stepper__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.toastit-live-stepper__meta-copy {
+    color: var(--toastit-muted);
+    font-size: 0.95rem;
+}
+
+.toastit-live-stepper__description {
+    margin: 0;
+    color: var(--bulma-text-strong);
+    font-size: 1.02rem;
+    line-height: 1.75;
+}
+
+.toastit-live-stepper__memory {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+    background: #fff7e7;
+}
+
+.toastit-live-stepper__memory p {
+    margin: 0;
+    line-height: 1.65;
+}
+
+.toastit-live-stepper__follow-up-row {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid var(--toastit-panel-border);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.toastit-live-stepper__nav {
+    display: grid;
+    gap: 1rem;
+    padding-top: 0.25rem;
+}
+
+.toastit-live-stepper__aside {
+    display: grid;
+    gap: 0.65rem;
+    padding: 1rem 1.1rem;
+    border: 1px dashed rgba(123, 84, 42, 0.22);
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.72);
+}
+
 .toastit-icon-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -1209,6 +1380,25 @@ body {
 
     .toastit-fa-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .toastit-live-stepper__rail {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+    }
+
+    .toastit-live-header__head {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .toastit-live-stepper__card-head {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+    }
+
+    .toastit-live-stepper__nav {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
     }
 
     .toastit-drawer,
