@@ -7,6 +7,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    app.mailer_from: '%env(MAILER_FROM)%'
 
 services:
     # default configuration for services in *this* file
@@ -19,5 +20,17 @@ services:
     App\:
         resource: '../src/'
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    App\Mailer\LocalFilesystemTransport:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+        tags:
+            - { name: 'mailer.transport_factory' }
+
+    App\Mailer\TransactionalMailer:
+        arguments:
+            $defaultFrom: '%app.mailer_from%'
+
+    App\Controller\AuthController:
+        bind:
+            Symfony\Component\RateLimiter\RateLimiterFactory $authRequestLimiter: '@limiter.auth_request'
+            Symfony\Component\RateLimiter\RateLimiterFactory $authVerifyLimiter: '@limiter.auth_verify'

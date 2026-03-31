@@ -144,6 +144,37 @@ body {
         inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
+.toastit-code-field {
+    margin-bottom: 0;
+}
+
+.toastit-code-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--toastit-code-length, 4), 3.6rem);
+    gap: 0.6rem;
+    justify-content: center;
+}
+
+.toastit-code-input.input {
+    width: 3.6rem;
+    height: 3.6rem;
+    aspect-ratio: 1 / 1;
+    padding-inline: 0;
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 1rem;
+    border-color: rgba(123, 84, 42, 0.16);
+    background: rgba(255, 253, 249, 0.96);
+}
+
+.toastit-code-input.input:focus {
+    box-shadow:
+        0 0 0 0.2rem rgba(244, 197, 66, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
 .toastit-arrow-button.button {
     min-width: calc(var(--bulma-control-height) * 1.1);
     min-height: var(--bulma-control-height);

@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Creer votre PIN{% endblock %}
+
+{% block body %}
+    <main class="toastit-shell">
+        {% embed 'components/ui/_panel.html.twig' %}
+            {% block panel_content %}
+                {% include 'components/ui/_section_heading.html.twig' with {
+                    eyebrow: 'PIN',
+                    title_tag: 'h1',
+                    title: 'Definissez votre code PIN a 4 chiffres.',
+                    lead: 'Ce PIN sera demande a chaque nouvelle session et lorsque la session se reverrouille.'
+                } only %}
+
+                <div class="toastit-stack">
+                    {% for message in app.flashes('error') %}
+                        {% include 'components/ui/_alert.html.twig' with { tone: 'error', message: message } only %}
+                    {% endfor %}
+
+                    <form method="post" class="toastit-stack">
+                        {% include 'components/forms/_segmented_code_input.html.twig' with {
+                            id: 'pin',
+                            name: 'pin',
+                            label: 'PIN',
+                            length: 4,
+                            mode: 'numeric',
+                            autocomplete: 'off',
+                            next_group_id: 'pin-confirmation'
+                        } only %}
+                        {% include 'components/forms/_segmented_code_input.html.twig' with {
+                            id: 'pin-confirmation',
+                            name: 'pin_confirmation',
+                            label: 'Confirmation',
+                            length: 4,
+                            mode: 'numeric',
+                            autocomplete: 'off',
+                            auto_submit: true
+                        } only %}
+                        {% include 'components/ui/_button.html.twig' with {
+                            variant: 'primary',
+                            type: 'submit',
+                            label: 'Enregistrer le PIN'
+                        } only %}
+                    </form>
+                </div>
+            {% endblock %}
+        {% endembed %}
+    </main>
+{% endblock %}

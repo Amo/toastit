@@ -1,0 +1,38 @@
+{% set field_id = id %}
+{% set field_name = name %}
+{% set field_label = label %}
+{% set field_length = length %}
+{% set field_mode = mode|default('alnum') %}
+{% set autocomplete_value = autocomplete|default('one-time-code') %}
+{% set auto_submit_value = auto_submit|default(false) ? 'true' : 'false' %}
+{% set next_group = next_group_id|default('') %}
+{% set input_type = field_mode == 'numeric' ? 'tel' : 'text' %}
+
+<div
+    class="field toastit-code-field"
+    data-code-input
+    data-code-id="{{ field_id }}"
+    data-code-length="{{ field_length }}"
+    data-code-mode="{{ field_mode }}"
+    data-auto-submit="{{ auto_submit_value }}"
+    data-next-group="{{ next_group }}"
+>
+    <label class="label" for="{{ field_id }}-0">{{ field_label }}</label>
+    <input type="hidden" name="{{ field_name }}" value="" data-code-value>
+    <div class="toastit-code-grid" role="group" aria-label="{{ field_label }}" style="--toastit-code-length: {{ field_length }};">
+        {% for index in 0..field_length - 1 %}
+            <input
+                id="{{ field_id }}-{{ index }}"
+                class="input toastit-code-input"
+                type="{{ input_type }}"
+                inputmode="{{ field_mode == 'numeric' ? 'numeric' : 'text' }}"
+                autocomplete="{{ loop.first ? autocomplete_value : 'off' }}"
+                maxlength="1"
+                pattern="{{ field_mode == 'numeric' ? '[0-9]' : '[A-Za-z0-9]' }}"
+                data-code-char
+                data-code-index="{{ index }}"
+                {% if loop.first %}autofocus{% endif %}
+            >
+        {% endfor %}
+    </div>
+</div>

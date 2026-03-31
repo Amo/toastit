@@ -1,0 +1,16 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block email_body %}
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Connexion a Toastit</h1>
+    <p style="margin:0 0 24px;font-size:16px;line-height:1.6;">
+        Utilisez le bouton ci-dessous pour vous connecter directement. Si le bouton ne fonctionne pas, saisissez le code de secours dans l'application.
+    </p>
+    <p style="margin:0 0 24px;">
+        <a href="{{ magic_link }}" style="display:inline-block;padding:14px 22px;background:#f4c542;border-radius:999px;color:#1f1209;font-weight:700;text-decoration:none;">
+            Se connecter
+        </a>
+    </p>
+    <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">Code OTP de secours</p>
+    <p style="margin:0 0 24px;font-size:32px;font-weight:700;letter-spacing:0.12em;">{{ challenge.code }}</p>
+    <p style="margin:0;font-size:14px;color:#6b7280;">Ce code expire dans 10 minutes et ne peut etre utilise qu'une seule fois.</p>
+{% endblock %}

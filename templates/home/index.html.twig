@@ -39,10 +39,28 @@
                         } only %}
                     {% endfor %}
 
-                    {% include 'components/forms/_email_login_inline.html.twig' with {
-                        action: path('app_login_email'),
-                        email: payload.email
-                    } only %}
+                    {% if app.user %}
+                        {% include 'components/ui/_alert.html.twig' with {
+                            tone: 'notice',
+                            message: 'Vous etes deja connecte.'
+                        } only %}
+
+                        <div class="buttons">
+                            <a class="button is-primary" href="{{ path('app_dashboard') }}">Ouvrir l'application</a>
+                            <form method="post" action="{{ path('app_logout') }}">
+                                {% include 'components/ui/_button.html.twig' with {
+                                    variant: 'notice',
+                                    type: 'submit',
+                                    label: 'Se deconnecter'
+                                } only %}
+                            </form>
+                        </div>
+                    {% else %}
+                        {% include 'components/forms/_email_login_inline.html.twig' with {
+                            action: path('app_login_email'),
+                            email: payload.email
+                        } only %}
+                    {% endif %}
                 </div>
             {% endblock %}
         {% endembed %}

@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Toastit App{% endblock %}
+
+{% block body %}
+    <main class="toastit-shell">
+        {% embed 'components/ui/_panel.html.twig' %}
+            {% block panel_content %}
+                {% include 'components/ui/_section_heading.html.twig' with {
+                    eyebrow: 'Application',
+                    title_tag: 'h1',
+                    title: 'Session deverrouillee.',
+                    lead: 'Le flux OTP + PIN est actif. Cette page est volontairement minimale pour servir de premiere destination protegee.'
+                } only %}
+
+                <div class="buttons">
+                    <a class="button toastit-button-secondary" href="/design-system">Retour au design system</a>
+                    <form method="post" action="{{ path('app_logout') }}">
+                        {% include 'components/ui/_button.html.twig' with {
+                            variant: 'notice',
+                            type: 'submit',
+                            label: 'Se deconnecter'
+                        } only %}
+                    </form>
+                </div>
+            {% endblock %}
+        {% endembed %}
+    </main>
+{% endblock %}

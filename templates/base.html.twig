@@ -8,6 +8,7 @@
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
         {% block stylesheets %}
         <link rel="stylesheet" href="/styles/app.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
         {% endblock %}
 
         {% block javascripts %}
@@ -22,5 +23,135 @@
     </head>
     <body>
         {% block body %}{% endblock %}
+        <script>
+            (() => {
+                const sanitize = (value, mode) => {
+                    const normalized = value.toUpperCase().replace(/\s+/g, '');
+                    const pattern = mode === 'numeric' ? /[0-9]/g : /[A-Z0-9]/g;
+
+                    return (normalized.match(pattern) || []).join('');
+                };
+
+                const getState = (group) => {
+                    const inputs = [...group.querySelectorAll('[data-code-char]')];
+                    const hidden = group.querySelector('[data-code-value]');
+                    const value = inputs.map((input) => input.value).join('');
+
+                    hidden.value = value;
+
+                    return {
+                        inputs,
+                        value,
+                        complete: value.length === inputs.length && inputs.every((input) => input.value.length === 1),
+                    };
+                };
+
+                const focusGroupStart = (group) => {
+                    if (!group) {
+                        return;
+                    }
+
+                    const inputs = [...group.querySelectorAll('[data-code-char]')];
+                    const target = inputs.find((input) => input.value === '') || inputs[0];
+                    target?.focus();
+                };
+
+                const maybeSubmitGroup = (group) => {
+                    const state = getState(group);
+
+                    if (!state.complete) {
+                        return;
+                    }
+
+                    const nextGroupId = group.dataset.nextGroup;
+                    if (nextGroupId) {
+                        focusGroupStart(document.querySelector(`[data-code-id="${nextGroupId}"]`));
+                        return;
+                    }
+
+                    if (group.dataset.autoSubmit !== 'true') {
+                        return;
+                    }
+
+                    const form = group.closest('form');
+                    const groups = [...form.querySelectorAll('[data-code-input]')];
+                    const allComplete = groups.every((candidate) => getState(candidate).complete);
+
+                    if (allComplete) {
+                        form.requestSubmit();
+                    }
+                };
+
+                const initGroup = (group) => {
+                    const mode = group.dataset.codeMode || 'alnum';
+                    const inputs = [...group.querySelectorAll('[data-code-char]')];
+
+                    inputs.forEach((input, index) => {
+                        input.addEventListener('input', () => {
+                            const sanitized = sanitize(input.value, mode);
+
+                            if (sanitized.length > 1) {
+                                const chars = sanitized.slice(0, inputs.length - index).split('');
+                                chars.forEach((char, offset) => {
+                                    const target = inputs[index + offset];
+                                    if (target) {
+                                        target.value = char;
+                                    }
+                                });
+                            } else {
+                                input.value = sanitized;
+                            }
+
+                            if (input.value !== '' && index < inputs.length - 1) {
+                                inputs[index + 1].focus();
+                            }
+
+                            maybeSubmitGroup(group);
+                        });
+
+                        input.addEventListener('keydown', (event) => {
+                            if (event.key === 'Backspace' && input.value === '' && index > 0) {
+                                const previous = inputs[index - 1];
+                                previous.value = '';
+                                previous.focus();
+                                getState(group);
+                                event.preventDefault();
+                            }
+
+                            if (event.key === 'ArrowLeft' && index > 0) {
+                                inputs[index - 1].focus();
+                                event.preventDefault();
+                            }
+
+                            if (event.key === 'ArrowRight' && index < inputs.length - 1) {
+                                inputs[index + 1].focus();
+                                event.preventDefault();
+                            }
+                        });
+
+                        input.addEventListener('paste', (event) => {
+                            event.preventDefault();
+                            const pasted = sanitize(event.clipboardData?.getData('text') || '', mode);
+
+                            if (!pasted) {
+                                return;
+                            }
+
+                            pasted.slice(0, inputs.length).split('').forEach((char, pastedIndex) => {
+                                inputs[pastedIndex].value = char;
+                            });
+
+                            maybeSubmitGroup(group);
+                        });
+                    });
+
+                    getState(group);
+                };
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.querySelectorAll('[data-code-input]').forEach(initGroup);
+                });
+            })();
+        </script>
     </body>
 </html>

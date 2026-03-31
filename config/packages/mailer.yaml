@@ -1,0 +1,8 @@
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+
+when@dev:
+    framework:
+        mailer:
+            dsn: 'local://default'
