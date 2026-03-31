@@ -1,0 +1,17 @@
+{
+  "name": "toastit",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:css": "sass --no-source-map --style=compressed assets/styles/app.scss public/styles/app.css",
+    "watch:css": "sass --watch --no-source-map assets/styles/app.scss public/styles/app.css"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bulma": "^1.0.4",
+    "sass": "^1.98.0"
+  }
+}
