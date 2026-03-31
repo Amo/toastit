@@ -4,7 +4,7 @@
 
 {% block body %}
     <main class="toastit-shell">
-        {% embed 'components/ui/_panel.html.twig' %}
+        {% embed 'components/ui/_panel.html.twig' with { class: 'toastit-panel--narrow' } %}
             {% block panel_content %}
                 {% include 'components/ui/_section_heading.html.twig' with {
                     eyebrow: 'Deverrouillage',

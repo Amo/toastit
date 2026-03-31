@@ -11,10 +11,11 @@ final class AuthFlowTest extends WebTestCase
         $client = static::createClient();
         $mailDirectory = dirname(__DIR__, 2).'/var/storage/mails';
         array_map('unlink', glob($mailDirectory.'/*.json') ?: []);
+        $email = sprintf('integration-%s@example.com', time());
 
-        $client->request('POST', '/connexion', ['email' => 'integration@example.com']);
+        $client->request('POST', '/connexion', ['email' => $email]);
 
-        self::assertResponseRedirects('/connexion/verifier?email=integration@example.com&purpose=login');
+        self::assertResponseRedirects('/connexion/verifier?email='.$email.'&purpose=login');
 
         $files = glob($mailDirectory.'/*.json') ?: [];
         self::assertCount(1, $files);

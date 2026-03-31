@@ -46,6 +46,156 @@ body {
     background: var(--toastit-paper);
 }
 
+[x-cloak] {
+    display: none !important;
+}
+
+.toastit-app-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--toastit-paper);
+}
+
+.toastit-app-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 1px solid rgba(123, 84, 42, 0.1);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+}
+
+.toastit-app-header__inner {
+    width: min(100%, 82rem);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "brand user"
+        "nav nav";
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 0.85rem 1rem 0.9rem;
+}
+
+.toastit-app-brand {
+    grid-area: brand;
+}
+
+.toastit-app-brand__link {
+    color: #1f1209;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.toastit-app-nav {
+    grid-area: nav;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+    scrollbar-width: none;
+}
+
+.toastit-app-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.toastit-app-nav__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    color: var(--toastit-muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.toastit-app-nav__link.is-active {
+    background: #fff3dd;
+    color: #1f1209;
+}
+
+.toastit-app-user {
+    grid-area: user;
+    position: relative;
+    justify-self: end;
+}
+
+.toastit-app-user__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 2.75rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgba(123, 84, 42, 0.12);
+    border-radius: 999px;
+    background: #fff;
+    color: #1f1209;
+    cursor: pointer;
+}
+
+.toastit-app-user__icon,
+.toastit-app-user__chevron {
+    display: inline-grid;
+    place-items: center;
+    color: var(--toastit-primary-strong);
+}
+
+.toastit-app-user__label {
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.toastit-app-user__menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    width: min(18rem, calc(100vw - 2rem));
+    padding: 0.9rem;
+    border: 1px solid rgba(123, 84, 42, 0.12);
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 18px 36px rgba(31, 18, 9, 0.08);
+}
+
+.toastit-app-user__menu-meta {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 0.85rem;
+}
+
+.toastit-app-user__menu-meta span {
+    color: var(--toastit-muted);
+    font-size: 0.9rem;
+}
+
+.toastit-app-user__menu-link {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0.85rem;
+    color: #1f1209;
+    font-weight: 600;
+}
+
+.toastit-app-content {
+    flex: 1;
+    padding: 1rem;
+}
+
+.toastit-app-container {
+    width: min(100%, 82rem);
+    margin: 0 auto;
+}
+
 .is-sr-only {
     position: absolute;
     width: 1px;
@@ -66,12 +216,17 @@ body {
 }
 
 .toastit-panel {
-    width: min(100%, 35rem);
+    width: 100%;
     padding: 1.25rem;
     border: 1px solid var(--toastit-panel-border);
     border-radius: 1.75rem;
     background: var(--toastit-panel);
     backdrop-filter: blur(16px);
+}
+
+.toastit-panel--narrow {
+    width: min(100%, 35rem);
+    margin-inline: auto;
 }
 
 .toastit-stack > * + * {
@@ -104,6 +259,10 @@ body {
     color: var(--toastit-muted);
     font-size: 1rem;
     line-height: 1.65;
+}
+
+.toastit-page-stack {
+    width: min(100%, 72rem);
 }
 
 .toastit-panel .message {
@@ -142,6 +301,93 @@ body {
     box-shadow:
         0 0 0 0.2rem rgba(244, 197, 66, 0.18),
         inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.toastit-textarea.textarea {
+    border-radius: 1rem;
+    border-color: rgba(123, 84, 42, 0.16);
+    background: rgba(255, 253, 249, 0.96);
+}
+
+.toastit-textarea.textarea:focus {
+    box-shadow:
+        0 0 0 0.2rem rgba(244, 197, 66, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.toastit-inline-create__head {
+    position: relative;
+    padding-right: 3rem;
+    margin-bottom: 1rem;
+}
+
+.toastit-inline-create__toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.toastit-inline-create__row {
+    align-items: stretch;
+    margin-bottom: 0;
+}
+
+.toastit-inline-create__row .control {
+    display: flex;
+}
+
+.toastit-inline-create__row .button {
+    min-height: 3.6rem;
+    height: 3.6rem;
+}
+
+.toastit-two-columns {
+    display: grid;
+    gap: 1rem;
+}
+
+.toastit-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.toastit-team-groups {
+    display: grid;
+    gap: 1rem;
+}
+
+.toastit-team-group {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.toastit-team-group__head {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.toastit-list-item {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(123, 84, 42, 0.12);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.56);
+}
+
+.toastit-list-item--with-action {
+    align-items: center;
+}
+
+.toastit-list-item__title {
+    margin: 0;
+    font-weight: 700;
+}
+
+.toastit-list-item__meta {
+    margin: 0;
+    color: var(--toastit-muted);
+    font-size: 0.92rem;
 }
 
 .toastit-code-field {
@@ -245,6 +491,28 @@ body {
         padding: 1.5rem;
     }
 
+    .toastit-app-header__inner {
+        grid-template-columns: auto 1fr auto;
+        grid-template-areas: "brand nav user";
+        gap: 1rem;
+        padding: 0.95rem 1.5rem;
+    }
+
+    .toastit-app-content {
+        padding: 1.5rem;
+    }
+
+    .toastit-app-nav {
+        justify-content: center;
+        overflow: visible;
+        padding-bottom: 0;
+    }
+
+    .toastit-app-nav__link {
+        min-height: 2.75rem;
+        padding-inline: 1rem;
+    }
+
     .toastit-panel {
         padding: 1.8rem;
         border-radius: 2rem;
@@ -256,6 +524,20 @@ body {
 
     .toastit-lead {
         font-size: 1.05rem;
+    }
+
+    .toastit-two-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+    }
+
+    .toastit-list-item--with-action {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .toastit-table__group-head {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
     }
 }
 
@@ -616,6 +898,8 @@ body {
 
 .toastit-table-wrap {
     overflow-x: auto;
+    overflow-y: visible;
+    position: relative;
 }
 
 .toastit-table.table {
@@ -639,6 +923,40 @@ body {
     vertical-align: middle;
 }
 
+.toastit-table__meta {
+    margin: 0.2rem 0 0;
+    color: var(--toastit-muted);
+    font-size: 0.92rem;
+}
+
+.toastit-table__group-row td {
+    padding-top: 1.1rem;
+    background: #fffdf8;
+}
+
+.toastit-table__group-head {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.toastit-table__nested-row td:first-child {
+    padding-left: 2rem;
+}
+
+.toastit-table__nested-content {
+    position: relative;
+}
+
+.toastit-table__nested-content::before {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    top: 0.75rem;
+    width: 0.45rem;
+    height: 1px;
+    background: rgba(123, 84, 42, 0.18);
+}
+
 .toastit-table__check {
     width: 3rem;
 }
@@ -647,6 +965,13 @@ body {
     margin: 0;
     font-weight: 700;
     line-height: 1.35;
+}
+
+.toastit-table__description {
+    margin: 0.35rem 0 0;
+    color: var(--toastit-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
 }
 
 .toastit-table__author {
@@ -669,6 +994,49 @@ body {
     letter-spacing: 0.04em;
 }
 
+.toastit-avatar--tooltip {
+    cursor: help;
+}
+
+.toastit-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.toastit-tooltip__bubble {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.55rem);
+    transform: translateX(-50%);
+    min-width: max-content;
+    max-width: 16rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 0.65rem;
+    background: #1f1209;
+    color: #ffffff;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    z-index: 20;
+}
+
+.toastit-tooltip:hover .toastit-tooltip__bubble,
+.toastit-tooltip:focus-within .toastit-tooltip__bubble {
+    opacity: 1;
+}
+
+.toastit-avatar-image {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    object-fit: cover;
+    background: #f3f5f7;
+}
+
 .toastit-table__date {
     white-space: nowrap;
     color: var(--toastit-muted);
@@ -684,6 +1052,57 @@ body {
 .toastit-stepper.button {
     min-width: 2.15rem;
     font-weight: 800;
+}
+
+.toastit-table__actions {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+}
+
+.toastit-overflow {
+    position: relative;
+    display: inline-flex;
+}
+
+.toastit-overflow__menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.3rem);
+    display: block;
+    min-width: 10rem;
+    padding: 0.35rem;
+    border: 1px solid rgba(123, 84, 42, 0.12);
+    border-radius: 0.85rem;
+    background: #ffffff;
+    box-shadow: 0 14px 30px rgba(31, 18, 9, 0.08);
+    z-index: 40;
+}
+
+.toastit-overflow__item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.7rem;
+    border: 0;
+    border-radius: 0.65rem;
+    background: transparent;
+    color: #1f1209;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.toastit-overflow__item:hover,
+.toastit-overflow__item:focus-visible {
+    background: #f7f8fa;
+}
+
+.toastit-overflow__item--danger {
+    color: #b42318;
 }
 
 .toastit-table__empty {

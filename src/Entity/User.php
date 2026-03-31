@@ -20,6 +20,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 180)]
     private string $email = '';
 
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $firstName = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $lastName = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -57,6 +63,59 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getFirstName(): ?string
+    {
+        return $this->firstName;
+    }
+
+    public function setFirstName(?string $firstName): self
+    {
+        $this->firstName = null !== $firstName ? trim($firstName) : null;
+
+        return $this;
+    }
+
+    public function getLastName(): ?string
+    {
+        return $this->lastName;
+    }
+
+    public function setLastName(?string $lastName): self
+    {
+        $this->lastName = null !== $lastName ? trim($lastName) : null;
+
+        return $this;
+    }
+
+    public function getDisplayName(): string
+    {
+        $fullName = trim(sprintf('%s %s', $this->firstName ?? '', $this->lastName ?? ''));
+
+        return '' !== $fullName ? $fullName : $this->email;
+    }
+
+    public function getInitials(): string
+    {
+        $firstInitial = $this->firstName ? mb_strtoupper(mb_substr($this->firstName, 0, 1)) : '';
+        $lastInitial = $this->lastName ? mb_strtoupper(mb_substr($this->lastName, 0, 1)) : '';
+        $initials = $firstInitial.$lastInitial;
+
+        if ('' !== $initials) {
+            return $initials;
+        }
+
+        return mb_strtoupper(mb_substr($this->email, 0, 2));
+    }
+
+    public function getGravatarUrl(int $size = 80): string
+    {
+        return sprintf(
+            'https://www.gravatar.com/avatar/%s?d=404&s=%d',
+            md5(mb_strtolower(trim($this->email))),
+            $size
+        );
     }
 
     public function setCreatedAt(\DateTimeImmutable $createdAt): self

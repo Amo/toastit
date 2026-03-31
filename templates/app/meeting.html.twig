@@ -1,0 +1,309 @@
+{% extends 'app/layout.html.twig' %}
+
+{% block title %}{{ meeting.title }}{% endblock %}
+
+{% set app_section = 'workspace' %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('toastitMeeting', () => ({
+                relocateOpen: false,
+                relocateAction: '',
+                relocateTarget: '',
+                relocateItemId: '',
+                relocateItemTitle: '',
+                addTopicDetails: false
+            }));
+        });
+    </script>
+{% endblock %}
+
+{% block app_content %}
+    <div class="toastit-stack toastit-page-stack" x-data="toastitMeeting()">
+        {% include 'components/ui/_section_heading.html.twig' with {
+            eyebrow: 'Meeting',
+            title_tag: 'h1',
+            title: meeting.title,
+            lead: 'Parking lot du meeting, votes de priorisation et contexte de reunion.'
+        } only %}
+
+        <div class="buttons">
+            {% if team %}
+                <a class="button toastit-button-secondary" href="{{ path('app_team_show', { id: team.id }) }}">Retour a l'equipe</a>
+            {% else %}
+                <a class="button toastit-button-secondary" href="{{ path('app_dashboard') }}">Retour au dashboard</a>
+            {% endif %}
+        </div>
+
+        {% for message in app.flashes('error') %}
+            {% include 'components/ui/_alert.html.twig' with { tone: 'error', message: message } only %}
+        {% endfor %}
+        {% for message in app.flashes('success') %}
+            {% include 'components/ui/_alert.html.twig' with { tone: 'success', message: message } only %}
+        {% endfor %}
+
+        {% embed 'components/ui/_panel.html.twig' %}
+            {% block panel_content %}
+                <h2 class="title is-5">Details du meeting</h2>
+                <div class="toastit-list">
+                    <article class="toastit-list-item">
+                        <div>
+                            <p class="toastit-list-item__title">{{ meeting.title }}</p>
+                            <p class="toastit-list-item__meta">{{ meeting.scheduledAt|date('d/m/Y H:i') }}{% if meeting.videoLink %} · {{ meeting.videoLink }}{% endif %}</p>
+                        </div>
+                        {% if meeting.isRecurring %}
+                            <span class="tag toastit-button-secondary">{{ meeting.recurrence ?: 'recurrent' }}</span>
+                        {% endif %}
+                    </article>
+                </div>
+            {% endblock %}
+        {% endembed %}
+
+        {% embed 'components/ui/_panel.html.twig' %}
+            {% block panel_content %}
+                <h2 class="title is-5">Participants</h2>
+                <div class="toastit-list">
+                    <article class="toastit-list-item">
+                        <div class="toastit-table__author">
+                            <img class="toastit-avatar-image" src="{{ meeting.organizer.gravatarUrl(80) }}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-grid';">
+                            <span class="toastit-avatar" style="display:none">{{ meeting.organizer.initials }}</span>
+                            <span>{{ meeting.organizer.displayName }} · Organisateur</span>
+                        </div>
+                    </article>
+                    {% for attendee in meeting.attendees %}
+                        <article class="toastit-list-item">
+                            <div class="toastit-table__author">
+                                <img class="toastit-avatar-image" src="{{ attendee.user.gravatarUrl(80) }}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-grid';">
+                                <span class="toastit-avatar" style="display:none">{{ attendee.user.initials }}</span>
+                                <span>{{ attendee.user.displayName }}</span>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+                <form method="post" action="{{ path('app_meeting_invite', { id: meeting.id }) }}" class="toastit-stack mt-4">
+                    <div class="field has-addons">
+                        <div class="control is-expanded">
+                            <input class="input toastit-input" name="email" type="email" placeholder="Invite by email" required>
+                        </div>
+                        <div class="control">
+                            {% include 'components/ui/_button.html.twig' with {
+                                variant: 'primary',
+                                type: 'submit',
+                                label: 'Invite'
+                            } only %}
+                        </div>
+                    </div>
+                </form>
+            {% endblock %}
+        {% endembed %}
+
+        {% embed 'components/ui/_panel.html.twig' %}
+            {% block panel_content %}
+                <div class="toastit-inline-create__head">
+                    <h2 class="title is-5 mb-0">Add a topic</h2>
+                    <button class="toastit-icon-close toastit-inline-create__toggle" type="button" aria-label="Afficher la description optionnelle" @click="addTopicDetails = !addTopicDetails">
+                        {% include 'components/ui/_icon.html.twig' with { name: 'plus' } only %}
+                    </button>
+                </div>
+                <form method="post" action="{{ path('app_meeting_item_create', { id: meeting.id }) }}" class="toastit-stack">
+                    <div class="field has-addons toastit-inline-create__row">
+                        <div class="control is-expanded">
+                            <input id="item-title" class="input toastit-input" name="title" type="text" required>
+                        </div>
+                        <div class="control">
+                            {% include 'components/ui/_button.html.twig' with {
+                                variant: 'primary',
+                                type: 'submit',
+                                label: 'Add'
+                            } only %}
+                        </div>
+                    </div>
+                    <div class="field" x-cloak x-show="addTopicDetails">
+                        <div class="control">
+                            <textarea id="item-description" class="textarea toastit-textarea" name="description" rows="4" placeholder="Short description"></textarea>
+                        </div>
+                    </div>
+                </form>
+            {% endblock %}
+        {% endembed %}
+
+        {% embed 'components/ui/_panel.html.twig' %}
+            {% block panel_content %}
+                <h2 class="title is-5">Parking lot</h2>
+                {% if meeting.parkingLotItems is empty %}
+                    <p class="toastit-lead">Aucun sujet partage pour ce meeting.</p>
+                {% else %}
+                    <div class="toastit-table-wrap">
+                        <table class="table is-fullwidth toastit-table">
+                            <thead>
+                                <tr>
+                                    <th>Titre</th>
+                                    <th>Auteur</th>
+                                    <th>Date</th>
+                                    <th>Votes</th>
+                                    <th class="has-text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in meeting.parkingLotItems %}
+                                    {% set has_voted = false %}
+                                    {% for vote in item.votes %}
+                                        {% if vote.user.id == current_user_id %}
+                                            {% set has_voted = true %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <tr x-data="{
+                                        voted: {{ has_voted ? 'true' : 'false' }},
+                                        voteCount: {{ item.getVoteCount() }},
+                                        menuOpen: false,
+                                        async toggleVote() {
+                                            const response = await fetch('/app/items/{{ item.id }}/vote', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'X-Requested-With': 'XMLHttpRequest',
+                                                    'Accept': 'application/json'
+                                                }
+                                            });
+
+                                            if (!response.ok) {
+                                                window.location.reload();
+                                                return;
+                                            }
+
+                                            const payload = await response.json();
+                                            this.voted = payload.voted;
+                                            this.voteCount = payload.voteCount;
+                                        }
+                                    }">
+                                        <td>
+                                            <p class="toastit-table__title">{{ item.title }}</p>
+                                            {% if item.description %}
+                                                <p class="toastit-table__description">{{ item.description }}</p>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="toastit-tooltip">
+                                                <span class="toastit-avatar toastit-avatar--tooltip" tabindex="0">{{ item.author.initials }}</span>
+                                                <span class="toastit-tooltip__bubble">{{ item.author.email }}</span>
+                                            </span>
+                                        </td>
+                                        <td class="toastit-table__date">{{ item.createdAt|date('d/m/Y H:i') }}</td>
+                                        <td>
+                                            <span class="tag is-light toastit-counter" x-text="voteCount">{{ item.getVoteCount() }}</span>
+                                        </td>
+                                        <td class="has-text-right">
+                                            <div class="toastit-table__actions">
+                                                <button
+                                                    class="button toastit-stepper"
+                                                    :class="voted ? 'toastit-button-notice' : 'is-primary'"
+                                                    type="button"
+                                                    @click="toggleVote()"
+                                                    :aria-label="voted ? 'Retirer mon vote' : 'Voter'"
+                                                >
+                                                    <span x-cloak x-show="!voted">
+                                                        {% include 'components/ui/_icon.html.twig' with { name: 'plus' } only %}
+                                                    </span>
+                                                    <span x-cloak x-show="voted">
+                                                        {% include 'components/ui/_icon.html.twig' with { name: 'minus' } only %}
+                                                    </span>
+                                                </button>
+                                                <div class="toastit-overflow" @keydown.escape.window="menuOpen = false">
+                                                    <button
+                                                        class="button toastit-stepper toastit-button-secondary"
+                                                        type="button"
+                                                        aria-label="Plus d actions"
+                                                        @click="menuOpen = !menuOpen"
+                                                    >
+                                                        {% include 'components/ui/_icon.html.twig' with { name: 'ellipsis' } only %}
+                                                    </button>
+                                                    <div class="toastit-overflow__menu" x-cloak x-show="menuOpen" x-transition.origin.top.right @click.outside="menuOpen = false">
+                                                        <button
+                                                            class="toastit-overflow__item"
+                                                            type="button"
+                                                            @click="menuOpen = false; relocateOpen = true; relocateAction = 'copy'; relocateItemId = '{{ item.id }}'; relocateItemTitle = '{{ item.title|e('js') }}'; relocateTarget = '';"
+                                                        >
+                                                            {% include 'components/ui/_icon.html.twig' with { name: 'copy', container_class: 'icon' } only %}
+                                                            <span>Copier</span>
+                                                        </button>
+                                                        <button
+                                                            class="toastit-overflow__item"
+                                                            type="button"
+                                                            @click="menuOpen = false; relocateOpen = true; relocateAction = 'move'; relocateItemId = '{{ item.id }}'; relocateItemTitle = '{{ item.title|e('js') }}'; relocateTarget = '';"
+                                                        >
+                                                            {% include 'components/ui/_icon.html.twig' with { name: 'right-left', container_class: 'icon' } only %}
+                                                            <span>Transferer</span>
+                                                        </button>
+                                                        {% if item.author.id == current_user_id %}
+                                                            <form method="post" action="{{ path('app_item_delete', { id: item.id }) }}">
+                                                                <button class="toastit-overflow__item toastit-overflow__item--danger" type="submit">
+                                                                    {% include 'components/ui/_icon.html.twig' with { name: 'trash', container_class: 'icon' } only %}
+                                                                    <span>Supprimer</span>
+                                                                </button>
+                                                            </form>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            {% endblock %}
+        {% endembed %}
+
+        {% if team %}
+            <div class="toastit-focus-backdrop" x-cloak x-show="relocateOpen" x-transition.opacity @click="relocateOpen = false"></div>
+            <div class="toastit-focus-modal" x-cloak x-show="relocateOpen" x-transition.scale.origin.center>
+                <div class="toastit-focus-modal__card">
+                    <div class="toastit-sheet__header">
+                        <div>
+                            <h2 class="title is-5 mb-2" x-text="relocateAction === 'copy' ? 'Copier le sujet' : 'Transferer le sujet'"></h2>
+                            <p class="toastit-sheet__description">
+                                <span x-text="relocateItemTitle"></span>
+                            </p>
+                        </div>
+                        <button class="toastit-icon-close" type="button" aria-label="Close relocate modal" @click="relocateOpen = false">
+                            {% include 'components/ui/_icon.html.twig' with { name: 'xmark' } only %}
+                        </button>
+                    </div>
+                    <form method="post" x-bind:action="'/app/items/' + relocateItemId + '/relocate'" class="toastit-stack">
+                        <input type="hidden" name="mode" x-bind:value="relocateAction">
+                        <div class="field">
+                            <label class="label" for="target-meeting">Meeting cible</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select id="target-meeting" name="target_meeting_id" x-model="relocateTarget" required>
+                                        <option value="">Selectionnez un meeting</option>
+                                        {% for siblingMeeting in team.meetings %}
+                                            {% if siblingMeeting.id != meeting.id %}
+                                                <option value="{{ siblingMeeting.id }}">{{ siblingMeeting.title }} · {{ siblingMeeting.scheduledAt|date('d/m/Y H:i') }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="buttons mb-0">
+                            {% include 'components/ui/_button.html.twig' with {
+                                variant: 'primary',
+                                type: 'submit',
+                                label: 'Valider'
+                            } only %}
+                            {% include 'components/ui/_button.html.twig' with {
+                                variant: 'notice',
+                                type: 'button',
+                                label: 'Annuler',
+                                extra_attrs: '@click="relocateOpen = false"'
+                            } only %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

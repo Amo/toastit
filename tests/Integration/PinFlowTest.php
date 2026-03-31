@@ -34,6 +34,6 @@ final class PinFlowTest extends WebTestCase
 
         $client->request('GET', '/app');
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('h1', 'Session deverrouillee.');
+        self::assertSelectorTextContains('h1', 'Vos equipes et meetings.');
     }
 }
