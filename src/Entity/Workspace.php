@@ -43,6 +43,9 @@ class Workspace
     #[ORM\Column(name: 'permalink_background_url', length: 1024, nullable: true)]
     private ?string $permalinkBackgroundUrl = null;
 
+    #[ORM\Column(name: 'is_solo_workspace', options: ['default' => false])]
+    private bool $isSoloWorkspace = false;
+
     #[ORM\Column(name: 'meeting_mode', length: 16, options: ['default' => self::MEETING_MODE_IDLE])]
     private string $meetingMode = self::MEETING_MODE_IDLE;
 
@@ -61,11 +64,17 @@ class Workspace
     #[ORM\OrderBy(['createdAt' => 'DESC'])]
     private Collection $items;
 
+    /** @var Collection<int, ToastingSession> */
+    #[ORM\OneToMany(mappedBy: 'workspace', targetEntity: ToastingSession::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['startedAt' => 'DESC'])]
+    private Collection $toastingSessions;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->memberships = new ArrayCollection();
         $this->items = new ArrayCollection();
+        $this->toastingSessions = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -154,8 +163,32 @@ class Workspace
         return $this->meetingMode;
     }
 
+    public function isSoloWorkspace(): bool
+    {
+        return $this->isSoloWorkspace;
+    }
+
+    public function setIsSoloWorkspace(bool $isSoloWorkspace): self
+    {
+        $this->isSoloWorkspace = $isSoloWorkspace;
+
+        if ($isSoloWorkspace) {
+            $this->meetingMode = self::MEETING_MODE_IDLE;
+            $this->meetingStartedAt = null;
+            $this->meetingEndedAt = null;
+        }
+
+        return $this;
+    }
+
     public function setMeetingMode(string $meetingMode): self
     {
+        if ($this->isSoloWorkspace) {
+            $this->meetingMode = self::MEETING_MODE_IDLE;
+
+            return $this;
+        }
+
         $this->meetingMode = $meetingMode;
 
         return $this;
@@ -190,19 +223,68 @@ class Workspace
         return self::MEETING_MODE_LIVE === $this->meetingMode;
     }
 
-    public function startMeetingMode(?\DateTimeImmutable $startedAt = null): self
+    public function getActiveToastingSession(): ?ToastingSession
     {
+        foreach ($this->toastingSessions as $session) {
+            if ($session->isActive()) {
+                return $session;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return Collection<int, ToastingSession> */
+    public function getToastingSessions(): Collection
+    {
+        return $this->toastingSessions;
+    }
+
+    public function addToastingSession(ToastingSession $session): self
+    {
+        if (!$this->toastingSessions->contains($session)) {
+            $this->toastingSessions->add($session);
+            $session->setWorkspace($this);
+        }
+
+        return $this;
+    }
+
+    public function startMeetingMode(User $startedBy, ?\DateTimeImmutable $startedAt = null): self
+    {
+        if ($this->isSoloWorkspace) {
+            return $this;
+        }
+
+        if ($this->isMeetingLive() && null !== $this->getActiveToastingSession()) {
+            return $this;
+        }
+
+        $session = (new ToastingSession())
+            ->setStartedBy($startedBy)
+            ->setStartedAt($startedAt ?? new \DateTimeImmutable());
+
+        $this->addToastingSession($session);
+
         $this->meetingMode = self::MEETING_MODE_LIVE;
-        $this->meetingStartedAt = $startedAt ?? new \DateTimeImmutable();
+        $this->meetingStartedAt = $session->getStartedAt();
         $this->meetingEndedAt = null;
 
         return $this;
     }
 
-    public function stopMeetingMode(?\DateTimeImmutable $endedAt = null): self
+    public function stopMeetingMode(?User $endedBy = null, ?\DateTimeImmutable $endedAt = null): self
     {
+        $endedAt ??= new \DateTimeImmutable();
+
+        if (null !== $session = $this->getActiveToastingSession()) {
+            $session
+                ->setEndedAt($endedAt)
+                ->setEndedBy($endedBy);
+        }
+
         $this->meetingMode = self::MEETING_MODE_IDLE;
-        $this->meetingEndedAt = $endedAt ?? new \DateTimeImmutable();
+        $this->meetingEndedAt = $endedAt;
 
         return $this;
     }

@@ -31,9 +31,16 @@ final class UpdateSettingsController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'missing_name'], 400);
         }
 
+        $isSoloWorkspace = (bool) ($payload['isSoloWorkspace'] ?? false);
+
+        if ($isSoloWorkspace && $workspace->isMeetingLive()) {
+            $workspace->stopMeetingMode($this->workspaceAccess->getUserOrFail());
+        }
+
         $workspace->setName($name);
         $workspace->setDefaultDuePreset((string) ($payload['defaultDuePreset'] ?? Workspace::DEFAULT_DUE_NEXT_WEEK));
         $workspace->setPermalinkBackgroundUrl(isset($payload['permalinkBackgroundUrl']) ? (string) $payload['permalinkBackgroundUrl'] : null);
+        $workspace->setIsSoloWorkspace($isSoloWorkspace);
 
         $this->entityManager->flush();
 
@@ -42,6 +49,7 @@ final class UpdateSettingsController extends AbstractController
             'name' => $workspace->getName(),
             'defaultDuePreset' => $workspace->getDefaultDuePreset(),
             'permalinkBackgroundUrl' => $workspace->getPermalinkBackgroundUrl(),
+            'isSoloWorkspace' => $workspace->isSoloWorkspace(),
         ]);
     }
 }

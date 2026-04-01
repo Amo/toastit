@@ -38,6 +38,7 @@ final class UserProvisioner
         $workspace = (new Workspace())
             ->setName('My Toasts')
             ->setIsDefault(true)
+            ->setIsSoloWorkspace(true)
             ->setOrganizer($user);
 
         $membership = (new WorkspaceMember())

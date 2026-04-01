@@ -7,6 +7,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 final class StartMeetingModeController extends AbstractController
 {
@@ -21,7 +22,12 @@ final class StartMeetingModeController extends AbstractController
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $this->workspaceAccess->assertOwner($workspace);
-        $workspace->startMeetingMode();
+
+        if ($workspace->isSoloWorkspace()) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $workspace->startMeetingMode($this->workspaceAccess->getUserOrFail());
         $this->entityManager->flush();
 
         return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);

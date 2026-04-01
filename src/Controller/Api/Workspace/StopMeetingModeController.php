@@ -7,6 +7,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 final class StopMeetingModeController extends AbstractController
 {
@@ -21,7 +22,12 @@ final class StopMeetingModeController extends AbstractController
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $this->workspaceAccess->assertOwner($workspace);
-        $workspace->stopMeetingMode();
+
+        if ($workspace->isSoloWorkspace()) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $workspace->stopMeetingMode($this->workspaceAccess->getUserOrFail());
         $this->entityManager->flush();
 
         return $this->json(['ok' => true]);

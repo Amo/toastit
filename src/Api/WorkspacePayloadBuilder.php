@@ -6,6 +6,7 @@ use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Meeting\MeetingAgendaBuilder;
+use App\Repository\WorkspaceRepository;
 use App\Workspace\WorkspaceWorkflow;
 
 final class WorkspacePayloadBuilder
@@ -13,6 +14,7 @@ final class WorkspacePayloadBuilder
     public function __construct(
         private readonly MeetingAgendaBuilder $agendaBuilder,
         private readonly WorkspaceWorkflow $workspaceWorkflow,
+        private readonly WorkspaceRepository $workspaceRepository,
     ) {
     }
 
@@ -35,12 +37,24 @@ final class WorkspacePayloadBuilder
                 'isDefault' => $workspace->isDefault(),
                 'defaultDuePreset' => $workspace->getDefaultDuePreset(),
                 'permalinkBackgroundUrl' => $workspace->getPermalinkBackgroundUrl(),
+                'isSoloWorkspace' => $workspace->isSoloWorkspace(),
                 'meetingMode' => $workspace->getMeetingMode(),
                 'meetingStartedAt' => $workspace->getMeetingStartedAt()?->format(\DateTimeInterface::ATOM),
                 'meetingEndedAt' => $workspace->getMeetingEndedAt()?->format(\DateTimeInterface::ATOM),
                 'currentUserIsOwner' => $workspace->isOwnedBy($currentUser),
                 'ownerCount' => $workspace->getOwnerCount(),
             ],
+            'otherWorkspaces' => array_map(
+                static fn (Workspace $candidate): array => [
+                    'id' => $candidate->getId(),
+                    'name' => $candidate->getName(),
+                    'isSoloWorkspace' => $candidate->isSoloWorkspace(),
+                ],
+                array_values(array_filter(
+                    $this->workspaceRepository->findForUser($currentUser),
+                    static fn (Workspace $candidate): bool => $candidate->getId() !== $workspace->getId(),
+                ))
+            ),
             'memberships' => array_map(static function ($membership): array {
                 return [
                     'id' => $membership->getId(),

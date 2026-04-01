@@ -21,12 +21,14 @@ const currentToastTab = ref('active');
 const isManageModalOpen = ref(false);
 const isCreateToastModalOpen = ref(false);
 const selectedToastModalId = ref(null);
-const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', permalinkBackgroundUrl: '' });
+const selectedTargetWorkspaceId = ref('');
+const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', permalinkBackgroundUrl: '', isSoloWorkspace: false });
 const commentDrafts = ref({});
 
 const workspace = computed(() => payload.value?.workspace ?? null);
 const currentUser = computed(() => payload.value?.currentUser ?? null);
 const standaloneMode = computed(() => null !== props.standaloneToastId && '' !== String(props.standaloneToastId));
+const otherWorkspaces = computed(() => payload.value?.otherWorkspaces ?? []);
 const members = computed(() => payload.value?.memberships ?? []);
 const participants = computed(() => payload.value?.participants ?? []);
 const agendaItems = computed(() => payload.value?.agendaItems ?? []);
@@ -48,6 +50,7 @@ const memberCount = computed(() => members.value.length);
 const ownerCount = computed(() => members.value.filter((membership) => membership.isOwner).length);
 const workspaceUrl = computed(() => workspace.value ? `/app/workspaces/${workspace.value.id}` : props.dashboardUrl);
 const permalinkUrl = computed(() => selectedToastModal.value ? `/app/toasts/${selectedToastModal.value.id}` : null);
+const isSoloWorkspace = computed(() => workspace.value?.isSoloWorkspace === true);
 const standaloneBackgroundStyle = computed(() => {
   const backgroundUrl = workspace.value?.permalinkBackgroundUrl;
 
@@ -69,7 +72,7 @@ const duePresetOptions = [
   { value: 'first_monday_next_month', label: 'First Monday next month' },
 ];
 const displayToastStatus = (item) => {
-  if (item.status === 'vetoed') return 'Vetoed';
+  if (item.status === 'vetoed') return 'Declined';
   if (item.discussionStatus === 'treated') return 'Toasted';
   return 'Open';
 };
@@ -175,6 +178,28 @@ const resetItemForm = () => {
   };
 };
 
+const openTopActiveToast = () => {
+  const firstItem = agendaItems.value[0];
+
+  if (!firstItem) {
+    selectedToastModalId.value = null;
+    return;
+  }
+
+  openToastModal(firstItem);
+};
+
+const openNextActiveToastAtIndex = (index) => {
+  const nextItem = agendaItems.value[index] ?? null;
+
+  if (!nextItem) {
+    selectedToastModalId.value = null;
+    return;
+  }
+
+  openToastModal(nextItem);
+};
+
 const fetchWorkspace = async () => {
   isLoading.value = true;
   errorMessage.value = '';
@@ -198,7 +223,9 @@ const fetchWorkspace = async () => {
     name: payload.value.workspace?.name ?? '',
     defaultDuePreset: payload.value.workspace?.defaultDuePreset ?? 'next_week',
     permalinkBackgroundUrl: payload.value.workspace?.permalinkBackgroundUrl ?? '',
+    isSoloWorkspace: payload.value.workspace?.isSoloWorkspace ?? false,
   };
+  selectedTargetWorkspaceId.value = payload.value.otherWorkspaces?.[0]?.id ? String(payload.value.otherWorkspaces[0].id) : '';
   const preferredToastId = Number(props.standaloneToastId ?? payload.value.selectedToastId ?? selectedToastModalId.value ?? 0);
   if (preferredToastId) {
     selectedToastModalId.value = preferredToastId;
@@ -259,6 +286,7 @@ const startMeetingMode = async () => {
     headers: authorizedHeaders(),
   });
   await fetchWorkspace();
+  openTopActiveToast();
   isSaving.value = false;
 };
 
@@ -291,6 +319,7 @@ const closeCreateToastModal = () => {
 
 const openToastModal = (item) => {
   selectedToastModalId.value = item.id;
+  selectedTargetWorkspaceId.value = otherWorkspaces.value[0]?.id ? String(otherWorkspaces.value[0].id) : '';
 
   if (standaloneMode.value) {
     router.push(`/app/toasts/${item.id}`);
@@ -308,7 +337,7 @@ const closeToastModal = () => {
 
 const relatedToastStatusLabel = (item) => {
   if (!item) return '';
-  if (item.status === 'vetoed') return 'Vetoed';
+  if (item.status === 'vetoed') return 'Declined';
   if (item.discussionStatus === 'treated') return 'Toasted';
   return 'Active';
 };
@@ -452,6 +481,73 @@ const toggleVeto = async (itemId) => {
   await fetchWorkspace();
 };
 
+const toastItem = async (itemId) => {
+  if (!isSoloWorkspace.value) return;
+
+  const response = await fetch(`/api/items/${itemId}/toast`, {
+    method: 'POST',
+    headers: authorizedHeaders(),
+  });
+
+  if (!response.ok) {
+    errorMessage.value = 'Unable to toast this item.';
+    return;
+  }
+
+  await fetchWorkspace();
+};
+
+const copyToast = async (targetWorkspaceId = null) => {
+  if (!selectedToastModal.value) return;
+
+  const response = await fetch(`/api/items/${selectedToastModal.value.id}/copy`, {
+    method: 'POST',
+    headers: authorizedHeaders(true),
+    body: JSON.stringify({
+      targetWorkspaceId: targetWorkspaceId ?? null,
+    }),
+  });
+
+  if (!response.ok) {
+    errorMessage.value = 'Unable to copy toast.';
+    return;
+  }
+
+  const result = await response.json();
+
+  if (result.workspaceId === workspace.value?.id) {
+    await fetchWorkspace();
+    if (standaloneMode.value) {
+      window.location.href = `/app/toasts/${result.toastId}`;
+      return;
+    }
+    selectedToastModalId.value = result.toastId;
+    return;
+  }
+
+  window.location.href = `/app/toasts/${result.toastId}`;
+};
+
+const transferToast = async () => {
+  if (!selectedToastModal.value || !selectedTargetWorkspaceId.value) return;
+
+  const response = await fetch(`/api/items/${selectedToastModal.value.id}/transfer`, {
+    method: 'POST',
+    headers: authorizedHeaders(true),
+    body: JSON.stringify({
+      targetWorkspaceId: Number(selectedTargetWorkspaceId.value),
+    }),
+  });
+
+  if (!response.ok) {
+    errorMessage.value = 'Unable to transfer toast.';
+    return;
+  }
+
+  const result = await response.json();
+  window.location.href = `/app/toasts/${result.toastId}`;
+};
+
 const updateItemField = (itemId, key, value) => {
   if (!payload.value) return;
 
@@ -489,6 +585,7 @@ const removeFollowUpDraft = (itemId, index) => {
 const saveDiscussion = async () => {
   if (!selectedToastModal.value) return;
   isSaving.value = true;
+  const currentToastIndex = agendaItems.value.findIndex((item) => item.id === selectedToastModal.value.id);
 
   const response = await fetch(`/api/items/${selectedToastModal.value.id}/discussion`, {
     method: 'POST',
@@ -508,6 +605,7 @@ const saveDiscussion = async () => {
   }
 
   await fetchWorkspace();
+  openNextActiveToastAtIndex(currentToastIndex >= 0 ? currentToastIndex : 0);
   isSaving.value = false;
 };
 
@@ -537,10 +635,11 @@ watch(() => props.apiUrl, fetchWorkspace);
           <div>
             <div class="flex flex-wrap items-center gap-3">
               <h1 class="inline-flex items-center gap-3 text-4xl font-semibold tracking-tight text-stone-950">
-                <i v-if="isToastingMode" class="fa-solid fa-gear animate-spin text-amber-600 [animation-duration:4s]" aria-hidden="true"></i>
+                <i v-if="isToastingMode && !isSoloWorkspace" class="fa-solid fa-gear animate-spin text-amber-600 [animation-duration:4s]" aria-hidden="true"></i>
                 <span>{{ workspace.name }}</span>
               </h1>
               <span v-if="workspace.isDefault" class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Default workspace</span>
+              <span v-if="isSoloWorkspace" class="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-700">Solo workspace</span>
             </div>
             <div class="mt-3 flex flex-wrap gap-3 text-sm text-stone-500">
               <span class="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">{{ newToastCount }} new toast<span v-if="newToastCount > 1">s</span></span>
@@ -552,19 +651,22 @@ watch(() => props.apiUrl, fetchWorkspace);
           <div v-if="workspace.currentUserIsOwner" class="flex flex-wrap items-center justify-end gap-3">
             <button
               type="button"
-              class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 shadow-sm transition hover:border-stone-300 hover:text-stone-950"
+              class="inline-grid h-12 w-12 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition hover:border-stone-300 hover:text-stone-950"
               @click="openManageModal"
             >
-              Manage workspace
+              <i class="fa-solid fa-gear" aria-hidden="true"></i>
+              <span class="sr-only">Manage workspace</span>
             </button>
             <button
+              v-if="!isSoloWorkspace"
               type="button"
-              class="rounded-full px-5 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-60"
+              class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-60"
               :class="workspace.meetingMode === 'live' ? 'bg-stone-900 text-white hover:bg-stone-800' : 'bg-amber-500 text-stone-950 hover:bg-amber-400'"
               :disabled="isSaving"
               @click="workspace.meetingMode === 'live' ? stopMeetingMode() : startMeetingMode()"
             >
-              {{ workspace.meetingMode === 'live' ? 'Stop toasting mode' : 'Start toasting mode' }}
+              <i v-if="workspace.meetingMode !== 'live'" class="fa-solid fa-bolt" aria-hidden="true"></i>
+              <span>{{ workspace.meetingMode === 'live' ? 'Stop toasting mode' : 'Start toasting mode' }}</span>
             </button>
           </div>
         </div>
@@ -574,12 +676,12 @@ watch(() => props.apiUrl, fetchWorkspace);
         <div class="tw-toastit-card p-6 space-y-4">
             <div class="flex items-center justify-between gap-4">
               <h2 class="text-lg font-semibold text-stone-950">Toasts</h2>
-              <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="workspace.meetingMode === 'live' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-700'">
+              <span v-if="!isSoloWorkspace" class="rounded-full px-3 py-1 text-xs font-semibold" :class="workspace.meetingMode === 'live' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-700'">
                 {{ workspace.meetingMode === 'live' ? 'Toasting' : 'Idle' }}
               </span>
             </div>
             <p class="text-sm leading-6 text-stone-600">
-              {{ isToastingMode ? 'Review each toast in sequence, capture the decision, and create the next follow-ups.' : 'Capture ideas, prioritize them together, then toast them into clear owners, deadlines, and follow-ups.' }}
+              {{ isSoloWorkspace ? 'Capture personal to-dos, follow your backlog, and mark them toasted when done.' : (isToastingMode ? 'Review each toast in sequence, capture the decision, and create the next follow-ups.' : 'Capture ideas, prioritize them together, then toast them into clear owners, deadlines, and follow-ups.') }}
             </p>
 
             <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
@@ -609,7 +711,7 @@ watch(() => props.apiUrl, fetchWorkspace);
                 :class="currentToastTab === 'vetoed' ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'"
                 @click="currentToastTab = 'vetoed'"
               >
-                Vetoed
+                Declined
               </button>
               <button
                 type="button"
@@ -642,6 +744,7 @@ watch(() => props.apiUrl, fetchWorkspace);
                   </div>
                   <div class="flex items-center gap-2">
                     <button
+                      v-if="!isSoloWorkspace"
                       type="button"
                       class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
                       :class="item.currentUserHasVoted ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700'"
@@ -651,8 +754,18 @@ watch(() => props.apiUrl, fetchWorkspace);
                       <span>{{ item.voteCount }}</span>
                       <i class="fa-solid fa-thumbs-up text-[0.7rem]" aria-hidden="true"></i>
                     </button>
+                    <button
+                      v-if="workspace.currentUserIsOwner && isSoloWorkspace"
+                      type="button"
+                      class="inline-grid h-8 w-8 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                      @click.stop="toastItem(item.id)"
+                    >
+                      <i class="fa-solid fa-check text-xs" aria-hidden="true"></i>
+                      <span class="sr-only">Mark as toasted</span>
+                    </button>
                     <template v-if="workspace.currentUserIsOwner && !isToastingMode">
                       <button
+                        v-if="!isSoloWorkspace"
                         type="button"
                         class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
                         :class="item.isBoosted ? 'border-amber-500 bg-amber-500 text-stone-950' : 'border-stone-200 bg-white text-stone-600 hover:border-amber-200 hover:text-amber-700'"
@@ -668,7 +781,7 @@ watch(() => props.apiUrl, fetchWorkspace);
                         @click.stop="toggleVeto(item.id)"
                       >
                         <i class="fa-solid fa-ban text-xs" aria-hidden="true"></i>
-                        <span class="sr-only">{{ item.status === 'vetoed' ? 'Restore toast' : 'Veto toast' }}</span>
+                        <span class="sr-only">{{ item.status === 'vetoed' ? 'Restore toast' : 'Decline toast' }}</span>
                       </button>
                     </template>
                   </div>
@@ -691,13 +804,13 @@ watch(() => props.apiUrl, fetchWorkspace);
                     <p v-if="item.description" class="text-sm text-stone-500">{{ truncateDescription(item.description) }}</p>
                   </div>
                   <div class="shrink-0 text-right">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Vetoed</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Declined</p>
                     <p class="mt-2 text-sm font-medium text-stone-700">{{ item.statusChangedAtDisplay }}</p>
                   </div>
                 </button>
               </article>
             </div>
-            <div v-else-if="currentToastTab === 'vetoed'" class="text-sm text-stone-500">No vetoed toasts.</div>
+            <div v-else-if="currentToastTab === 'vetoed'" class="text-sm text-stone-500">No declined toasts.</div>
 
             <div v-else-if="currentToastTab === 'resolved' && resolvedItems.length" class="space-y-3">
               <article
@@ -740,24 +853,11 @@ watch(() => props.apiUrl, fetchWorkspace);
             </button>
           </div>
 
-          <div class="grid gap-6 overflow-y-auto px-6 py-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <div class="overflow-y-auto px-6 py-6">
             <div class="space-y-4">
-              <div class="rounded-[1.25rem] border border-stone-200 bg-stone-50 p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Workspace</p>
-                <div class="mt-4 space-y-3 text-sm text-stone-700">
-                  <p><span class="font-semibold text-stone-900">Mode:</span> {{ isToastingMode ? 'Toasting' : 'Idle' }}</p>
-                  <p><span class="font-semibold text-stone-900">Members:</span> {{ memberCount }}</p>
-                  <p><span class="font-semibold text-stone-900">Owners:</span> {{ ownerCount }}</p>
-                  <p><span class="font-semibold text-stone-900">New toasts:</span> {{ newToastCount }}</p>
-                  <p><span class="font-semibold text-stone-900">Toasted toasts:</span> {{ toastedToastCount }}</p>
-                </div>
-              </div>
               <div v-if="workspace.isDefault" class="rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 This is the default workspace for this account.
               </div>
-            </div>
-
-              <div class="space-y-4">
               <div>
                 <h3 class="text-lg font-semibold text-stone-950">Members</h3>
                 <p class="mt-1 text-sm leading-6 text-stone-600">Invite the right people so every toast stays in the right context, with the right collaborators.</p>
@@ -777,6 +877,10 @@ watch(() => props.apiUrl, fetchWorkspace);
                 <label class="grid gap-2 text-sm font-medium text-stone-700">
                   <span>Permalink background image URL</span>
                   <input v-model="workspaceSettingsForm.permalinkBackgroundUrl" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" type="url" placeholder="https://example.com/background.jpg">
+                </label>
+                <label class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700">
+                  <span>Solo workspace</span>
+                  <input v-model="workspaceSettingsForm.isSoloWorkspace" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-400">
                 </label>
                 <div class="flex justify-end">
                   <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="saveWorkspaceSettings">Save settings</button>
@@ -945,6 +1049,15 @@ watch(() => props.apiUrl, fetchWorkspace);
                 <span>{{ selectedToastModal.voteCount }}</span>
                 <i class="fa-solid fa-thumbs-up text-[0.7rem]" aria-hidden="true"></i>
               </button>
+              <button
+                v-if="workspace.currentUserIsOwner && isSoloWorkspace && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
+                type="button"
+                class="inline-grid h-8 w-8 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                @click="toastItem(selectedToastModal.id)"
+              >
+                <i class="fa-solid fa-check text-xs" aria-hidden="true"></i>
+                <span class="sr-only">Mark as toasted</span>
+              </button>
               <template v-if="workspace.currentUserIsOwner && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && !isToastingMode">
                 <button
                   type="button"
@@ -962,7 +1075,7 @@ watch(() => props.apiUrl, fetchWorkspace);
                   @click="toggleVeto(selectedToastModal.id)"
                 >
                   <i class="fa-solid fa-ban text-xs" aria-hidden="true"></i>
-                  <span class="sr-only">{{ selectedToastModal.status === 'vetoed' ? 'Restore toast' : 'Veto toast' }}</span>
+                  <span class="sr-only">{{ selectedToastModal.status === 'vetoed' ? 'Restore toast' : 'Decline toast' }}</span>
                 </button>
               </template>
               <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeToastModal">
@@ -978,6 +1091,37 @@ watch(() => props.apiUrl, fetchWorkspace);
                 <p v-if="selectedToastModal.description" class="text-lg leading-8 text-stone-700" v-html="renderToastDescription(selectedToastModal.description)"></p>
                 <p v-else class="text-lg text-stone-500">No description</p>
               </div>
+
+              <section v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && otherWorkspaces.length" class="space-y-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Move or copy</p>
+                <div class="flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
+                  <select v-model="selectedTargetWorkspaceId" class="min-w-[14rem] rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+                    <option value="" disabled>Select workspace</option>
+                    <option v-for="candidate in otherWorkspaces" :key="candidate.id" :value="String(candidate.id)">{{ candidate.name }}</option>
+                  </select>
+                  <button type="button" class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" :disabled="!selectedTargetWorkspaceId" @click="copyToast(Number(selectedTargetWorkspaceId))">
+                    Copy
+                  </button>
+                  <button
+                    v-if="workspace.currentUserIsOwner"
+                    type="button"
+                    class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+                    :disabled="!selectedTargetWorkspaceId"
+                    @click="transferToast"
+                  >
+                    Transfer
+                  </button>
+                </div>
+              </section>
+
+              <section v-if="selectedToastModal.status === 'vetoed' || selectedToastModal.discussionStatus === 'treated'" class="space-y-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Action</p>
+                <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
+                  <button type="button" class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="copyToast()">
+                    Copy as new
+                  </button>
+                </div>
+              </section>
 
               <div v-if="selectedToastModal.previousItem" class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Created from</p>
