@@ -2,7 +2,7 @@
 
 namespace App\Repository;
 
-use App\Entity\ParkingLotItem;
+use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Vote;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -18,7 +18,7 @@ class VoteRepository extends ServiceEntityRepository
         parent::__construct($registry, Vote::class);
     }
 
-    public function findOneForItemAndUser(ParkingLotItem $item, User $user): ?Vote
+    public function findOneForItemAndUser(Toast $item, User $user): ?Vote
     {
         return $this->findOneBy([
             'item' => $item,

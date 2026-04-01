@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Controller\Api\Meeting;
+namespace App\Controller\Api\Workspace;
 
-use App\Api\MeetingPayloadBuilder;
+use App\Api\WorkspacePayloadBuilder;
 use App\Workspace\WorkspaceAccess;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -12,16 +12,16 @@ final class GetController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccess $workspaceAccess,
-        private readonly MeetingPayloadBuilder $meetingPayloadBuilder,
+        private readonly WorkspacePayloadBuilder $workspacePayloadBuilder,
     ) {
     }
 
-    #[Route('/api/meetings/{id}', name: 'api_meeting_get', methods: ['GET'])]
+    #[Route('/api/workspaces/{id}', name: 'api_workspace_get', methods: ['GET'])]
     public function __invoke(int $id): JsonResponse
     {
-        $meeting = $this->workspaceAccess->getMeetingOrFail($id);
+        $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $currentUser = $this->workspaceAccess->getUserOrFail();
 
-        return $this->json($this->meetingPayloadBuilder->build($meeting, $currentUser));
+        return $this->json($this->workspacePayloadBuilder->build($workspace, $currentUser));
     }
 }

@@ -2,9 +2,9 @@
 
 namespace App\Controller\Api\Item;
 
-use App\Entity\ParkingLotItem;
-use App\Workspace\MeetingWorkflow;
+use App\Entity\Toast;
 use App\Workspace\WorkspaceAccess;
+use App\Workspace\WorkspaceWorkflow;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,7 +15,7 @@ final class UpdateDiscussionController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccess $workspaceAccess,
-        private readonly MeetingWorkflow $meetingWorkflow,
+        private readonly WorkspaceWorkflow $workspaceWorkflow,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -24,24 +24,24 @@ final class UpdateDiscussionController extends AbstractController
     public function __invoke(int $id, Request $request): JsonResponse
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
-        $meeting = $item->getMeeting();
-        $this->workspaceAccess->assertOrganizer($meeting);
-        $this->workspaceAccess->assertMeetingEditable($meeting);
+        $workspace = $item->getWorkspace();
+        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertMeetingModeActive($workspace);
 
         $payload = $request->toArray();
         $discussionStatus = trim((string) ($payload['discussionStatus'] ?? ''));
         $allowedStatuses = [
-            ParkingLotItem::DISCUSSION_PENDING,
-            ParkingLotItem::DISCUSSION_TREATED,
-            ParkingLotItem::DISCUSSION_POSTPONED,
+            Toast::DISCUSSION_PENDING,
+            Toast::DISCUSSION_TREATED,
+            Toast::DISCUSSION_POSTPONED,
         ];
 
         if (!in_array($discussionStatus, $allowedStatuses, true)) {
-            $discussionStatus = ParkingLotItem::DISCUSSION_PENDING;
+            $discussionStatus = Toast::DISCUSSION_PENDING;
         }
 
         $ownerId = is_numeric($payload['ownerId'] ?? null) ? (int) $payload['ownerId'] : 0;
-        $owner = $this->meetingWorkflow->findMeetingInviteeById($meeting, $ownerId);
+        $owner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, $ownerId);
         $dueAt = null;
 
         if (!empty($payload['dueOn'])) {
@@ -61,7 +61,7 @@ final class UpdateDiscussionController extends AbstractController
             }
 
             $followUpOwnerId = is_numeric($followUpItem['ownerId'] ?? null) ? (int) $followUpItem['ownerId'] : 0;
-            $followUpOwner = $this->meetingWorkflow->findMeetingInviteeById($meeting, $followUpOwnerId);
+            $followUpOwner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, $followUpOwnerId);
             $followUpDueOn = trim((string) ($followUpItem['dueOn'] ?? ''));
 
             if ('' !== $followUpDueOn) {
@@ -82,10 +82,28 @@ final class UpdateDiscussionController extends AbstractController
         $item
             ->setDiscussionStatus($discussionStatus)
             ->setDiscussionNotes(trim((string) ($payload['discussionNotes'] ?? '')) ?: null)
-            ->setFollowUp(0 !== count($followUpItems) ? implode("\n", array_map(static fn (array $followUpItem): string => $followUpItem['title'], $followUpItems)) : null)
-            ->setFollowUpItems($followUpItems)
             ->setOwner($owner)
             ->setDueAt($dueAt);
+
+        foreach ($followUpItems as $followUpItem) {
+            $followUpOwner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, (int) ($followUpItem['ownerId'] ?? 0));
+            $followUpDueAt = !empty($followUpItem['dueOn']) ? new \DateTimeImmutable((string) $followUpItem['dueOn']) : null;
+
+            if ($this->workspaceWorkflow->hasFollowUp($item, $followUpItem['title'], $followUpOwner, $followUpDueAt)) {
+                continue;
+            }
+
+            $nextItem = (new Toast())
+                ->setWorkspace($workspace)
+                ->setAuthor($this->workspaceAccess->getUserOrFail())
+                ->setTitle($followUpItem['title'])
+                ->setOwner($followUpOwner)
+                ->setDueAt($followUpDueAt)
+                ->setPreviousItem($item)
+                ->setDescription(sprintf('Suivi cree depuis "%s".', $item->getTitle()));
+
+            $this->entityManager->persist($nextItem);
+        }
 
         $this->entityManager->flush();
 

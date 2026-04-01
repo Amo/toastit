@@ -5,17 +5,18 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-#[ORM\UniqueConstraint(name: 'uniq_meeting_attendee', columns: ['meeting_id', 'user_id'])]
-class MeetingAttendee
+#[ORM\Table(name: 'team_member')]
+#[ORM\UniqueConstraint(name: 'uniq_workspace_member', columns: ['team_id', 'user_id'])]
+class WorkspaceMember
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Meeting::class, inversedBy: 'attendees')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private Meeting $meeting;
+    #[ORM\ManyToOne(targetEntity: Workspace::class, inversedBy: 'memberships')]
+    #[ORM\JoinColumn(name: 'team_id', nullable: false, onDelete: 'CASCADE')]
+    private Workspace $workspace;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -34,14 +35,14 @@ class MeetingAttendee
         return $this->id;
     }
 
-    public function getMeeting(): Meeting
+    public function getWorkspace(): Workspace
     {
-        return $this->meeting;
+        return $this->workspace;
     }
 
-    public function setMeeting(Meeting $meeting): self
+    public function setWorkspace(Workspace $workspace): self
     {
-        $this->meeting = $meeting;
+        $this->workspace = $workspace;
 
         return $this;
     }

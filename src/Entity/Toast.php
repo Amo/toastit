@@ -7,7 +7,8 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-class ParkingLotItem
+#[ORM\Table(name: 'parking_lot_item')]
+class Toast
 {
     public const STATUS_OPEN = 'open';
     public const STATUS_VETOED = 'vetoed';
@@ -20,13 +21,9 @@ class ParkingLotItem
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Team::class, inversedBy: 'items')]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
-    private ?Team $team = null;
-
-    #[ORM\ManyToOne(targetEntity: Meeting::class, inversedBy: 'parkingLotItems')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private Meeting $meeting;
+    #[ORM\ManyToOne(targetEntity: Workspace::class, inversedBy: 'items')]
+    #[ORM\JoinColumn(name: 'team_id', nullable: false, onDelete: 'CASCADE')]
+    private Workspace $workspace;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -69,6 +66,14 @@ class ParkingLotItem
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'followUpChildren')]
+    #[ORM\JoinColumn(name: 'previous_item_id', nullable: true, onDelete: 'SET NULL')]
+    private ?self $previousItem = null;
+
+    /** @var Collection<int, self> */
+    #[ORM\OneToMany(mappedBy: 'previousItem', targetEntity: self::class)]
+    private Collection $followUpChildren;
+
     /** @var Collection<int, Vote> */
     #[ORM\OneToMany(mappedBy: 'item', targetEntity: Vote::class, cascade: ['remove'], orphanRemoval: true)]
     private Collection $votes;
@@ -77,6 +82,7 @@ class ParkingLotItem
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->votes = new ArrayCollection();
+        $this->followUpChildren = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -84,26 +90,14 @@ class ParkingLotItem
         return $this->id;
     }
 
-    public function getTeam(): ?Team
+    public function getWorkspace(): Workspace
     {
-        return $this->team;
+        return $this->workspace;
     }
 
-    public function setTeam(?Team $team): self
+    public function setWorkspace(Workspace $workspace): self
     {
-        $this->team = $team;
-
-        return $this;
-    }
-
-    public function getMeeting(): Meeting
-    {
-        return $this->meeting;
-    }
-
-    public function setMeeting(Meeting $meeting): self
-    {
-        $this->meeting = $meeting;
+        $this->workspace = $workspace;
 
         return $this;
     }
@@ -293,6 +287,24 @@ class ParkingLotItem
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getPreviousItem(): ?self
+    {
+        return $this->previousItem;
+    }
+
+    public function setPreviousItem(?self $previousItem): self
+    {
+        $this->previousItem = $previousItem;
+
+        return $this;
+    }
+
+    /** @return Collection<int, self> */
+    public function getFollowUpChildren(): Collection
+    {
+        return $this->followUpChildren;
     }
 
     /** @return Collection<int, Vote> */

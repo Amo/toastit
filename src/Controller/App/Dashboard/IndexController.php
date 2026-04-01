@@ -2,12 +2,8 @@
 
 namespace App\Controller\App\Dashboard;
 
-use App\Entity\Team;
-use App\Entity\TeamMember;
-use App\Api\DashboardPayloadBuilder;
-use App\Security\JwtTokenManager;
-use App\Repository\MeetingRepository;
-use App\Repository\TeamRepository;
+use App\Entity\Workspace;
+use App\Entity\WorkspaceMember;
 use App\Workspace\WorkspaceAccess;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,10 +15,6 @@ final class IndexController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccess $workspaceAccess,
-        private readonly TeamRepository $teamRepository,
-        private readonly MeetingRepository $meetingRepository,
-        private readonly DashboardPayloadBuilder $dashboardPayloadBuilder,
-        private readonly JwtTokenManager $jwtTokenManager,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -36,24 +28,24 @@ final class IndexController extends AbstractController
             $name = trim($request->request->getString('name'));
 
             if ('' === $name) {
-                $this->addFlash('error', 'Le nom de l\'equipe est requis.');
+                $this->addFlash('error', 'Le nom du workspace est requis.');
 
                 return $this->redirectToRoute('app_dashboard');
             }
 
-            $team = (new Team())
+            $workspace = (new Workspace())
                 ->setName($name)
                 ->setOrganizer($user);
 
-            $membership = (new TeamMember())
+            $membership = (new WorkspaceMember())
                 ->setUser($user);
 
-            $team->addMembership($membership);
-            $this->entityManager->persist($team);
+            $workspace->addMembership($membership);
+            $this->entityManager->persist($workspace);
             $this->entityManager->persist($membership);
             $this->entityManager->flush();
 
-            return $this->redirectToRoute('app_team_show', ['id' => $team->getId()]);
+            return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
         }
 
         throw new \LogicException('GET handled by SPA shell.');

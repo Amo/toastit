@@ -13,9 +13,9 @@ class Vote
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: ParkingLotItem::class, inversedBy: 'votes')]
+    #[ORM\ManyToOne(targetEntity: Toast::class, inversedBy: 'votes')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private ParkingLotItem $item;
+    private Toast $item;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -34,12 +34,12 @@ class Vote
         return $this->id;
     }
 
-    public function getItem(): ParkingLotItem
+    public function getItem(): Toast
     {
         return $this->item;
     }
 
-    public function setItem(ParkingLotItem $item): self
+    public function setItem(Toast $item): self
     {
         $this->item = $item;
 

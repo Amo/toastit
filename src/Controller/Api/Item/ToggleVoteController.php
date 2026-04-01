@@ -24,7 +24,6 @@ final class ToggleVoteController extends AbstractController
     {
         $user = $this->workspaceAccess->getUserOrFail();
         $item = $this->workspaceAccess->getItemOrFail($id);
-        $this->workspaceAccess->assertMeetingEditable($item->getMeeting());
 
         $existingVote = $this->voteRepository->findOneForItemAndUser($item, $user);
         $voted = true;

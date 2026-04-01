@@ -2,9 +2,9 @@
 
 namespace App\Controller\App\Item;
 
-use App\Entity\ParkingLotItem;
-use App\Workspace\MeetingWorkflow;
+use App\Entity\Toast;
 use App\Workspace\WorkspaceAccess;
+use App\Workspace\WorkspaceWorkflow;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,7 +16,7 @@ final class ToggleBoostController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccess $workspaceAccess,
-        private readonly MeetingWorkflow $meetingWorkflow,
+        private readonly WorkspaceWorkflow $workspaceWorkflow,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -25,17 +25,17 @@ final class ToggleBoostController extends AbstractController
     public function __invoke(int $id, Request $request): Response
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
-        $meeting = $item->getMeeting();
-        $this->workspaceAccess->assertOrganizer($meeting);
-        $this->workspaceAccess->assertMeetingEditable($meeting);
+        $workspace = $item->getWorkspace();
+        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertMeetingModeActive($workspace);
 
         if ($item->isBoosted()) {
             $item->setIsBoosted(false);
         } else {
             $item
-                ->setStatus(ParkingLotItem::STATUS_OPEN)
+                ->setStatus(Toast::STATUS_OPEN)
                 ->setIsBoosted(true)
-                ->setBoostRank($this->meetingWorkflow->nextBoostRank($meeting));
+                ->setBoostRank($this->workspaceWorkflow->nextBoostRank($workspace));
         }
 
         $this->entityManager->flush();
@@ -48,6 +48,6 @@ final class ToggleBoostController extends AbstractController
             ]);
         }
 
-        return $this->redirectToRoute('app_meeting_show', ['id' => $item->getMeeting()->getId()]);
+        return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
     }
 }

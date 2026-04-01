@@ -2,7 +2,7 @@
 
 namespace App\Controller\App\Item;
 
-use App\Entity\ParkingLotItem;
+use App\Entity\Toast;
 use App\Workspace\WorkspaceAccess;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,15 +23,15 @@ final class ToggleVetoController extends AbstractController
     public function __invoke(int $id, Request $request): Response
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
-        $meeting = $item->getMeeting();
-        $this->workspaceAccess->assertOrganizer($meeting);
-        $this->workspaceAccess->assertMeetingEditable($meeting);
+        $workspace = $item->getWorkspace();
+        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertMeetingModeActive($workspace);
 
         if ($item->isVetoed()) {
-            $item->setStatus(ParkingLotItem::STATUS_OPEN);
+            $item->setStatus(Toast::STATUS_OPEN);
         } else {
             $item
-                ->setStatus(ParkingLotItem::STATUS_VETOED)
+                ->setStatus(Toast::STATUS_VETOED)
                 ->setIsBoosted(false);
         }
 
@@ -44,6 +44,6 @@ final class ToggleVetoController extends AbstractController
             ]);
         }
 
-        return $this->redirectToRoute('app_meeting_show', ['id' => $item->getMeeting()->getId()]);
+        return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
     }
 }

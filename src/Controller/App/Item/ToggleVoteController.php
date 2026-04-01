@@ -26,7 +26,6 @@ final class ToggleVoteController extends AbstractController
     {
         $user = $this->workspaceAccess->getUserOrFail();
         $item = $this->workspaceAccess->getItemOrFail($id);
-        $this->workspaceAccess->assertMeetingEditable($item->getMeeting());
 
         $existingVote = $this->voteRepository->findOneForItemAndUser($item, $user);
         $voted = true;
@@ -54,6 +53,6 @@ final class ToggleVoteController extends AbstractController
             ]);
         }
 
-        return $this->redirectToRoute('app_meeting_show', ['id' => $item->getMeeting()->getId()]);
+        return $this->redirectToRoute('app_workspace_show', ['id' => $item->getWorkspace()->getId()]);
     }
 }

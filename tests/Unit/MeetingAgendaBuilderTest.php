@@ -2,55 +2,66 @@
 
 namespace App\Tests\Unit;
 
-use App\Entity\Meeting;
-use App\Entity\ParkingLotItem;
+use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Vote;
+use App\Entity\Workspace;
 use App\Meeting\MeetingAgendaBuilder;
 use PHPUnit\Framework\TestCase;
 
 final class MeetingAgendaBuilderTest extends TestCase
 {
-    public function testBuildOrdersBoostedItemsFirstAndSeparatesVetoedItems(): void
+    public function testBuildOrdersBoostedItemsFirstSeparatesVetoedAndResolvedItems(): void
     {
-        $meeting = (new Meeting())
+        $workspace = (new Workspace())
             ->setOrganizer((new User())->setEmail('owner@example.com'))
-            ->setTitle('Weekly sync');
+            ->setName('Weekly sync');
 
-        $normal = (new ParkingLotItem())
-            ->setMeeting($meeting)
+        $normal = (new Toast())
+            ->setWorkspace($workspace)
             ->setAuthor((new User())->setEmail('normal@example.com'))
             ->setTitle('Normal');
 
-        $boosted = (new ParkingLotItem())
-            ->setMeeting($meeting)
+        $boosted = (new Toast())
+            ->setWorkspace($workspace)
             ->setAuthor((new User())->setEmail('boosted@example.com'))
             ->setTitle('Boosted')
             ->setIsBoosted(true)
             ->setBoostRank(1);
 
-        $vetoed = (new ParkingLotItem())
-            ->setMeeting($meeting)
+        $vetoed = (new Toast())
+            ->setWorkspace($workspace)
             ->setAuthor((new User())->setEmail('vetoed@example.com'))
             ->setTitle('Vetoed')
-            ->setStatus(ParkingLotItem::STATUS_VETOED);
+            ->setStatus(Toast::STATUS_VETOED);
+
+        $resolved = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor((new User())->setEmail('resolved@example.com'))
+            ->setTitle('Resolved')
+            ->setDiscussionStatus(Toast::DISCUSSION_TREATED);
 
         $normal->addVote((new Vote())->setItem($normal)->setUser((new User())->setEmail('vote-1@example.com')));
         $normal->addVote((new Vote())->setItem($normal)->setUser((new User())->setEmail('vote-2@example.com')));
 
-        $meeting->getParkingLotItems()->add($normal);
-        $meeting->getParkingLotItems()->add($boosted);
-        $meeting->getParkingLotItems()->add($vetoed);
+        $workspace->getItems()->add($normal);
+        $workspace->getItems()->add($boosted);
+        $workspace->getItems()->add($vetoed);
+        $workspace->getItems()->add($resolved);
 
-        $agenda = (new MeetingAgendaBuilder())->build($meeting);
+        $agenda = (new MeetingAgendaBuilder())->build($workspace);
 
         self::assertSame(['Boosted', 'Normal'], array_map(
-            static fn (ParkingLotItem $item): string => $item->getTitle(),
+            static fn (Toast $item): string => $item->getTitle(),
             $agenda->activeItems
         ));
         self::assertSame(['Vetoed'], array_map(
-            static fn (ParkingLotItem $item): string => $item->getTitle(),
+            static fn (Toast $item): string => $item->getTitle(),
             $agenda->vetoedItems
+        ));
+        self::assertSame(['Resolved'], array_map(
+            static fn (Toast $item): string => $item->getTitle(),
+            $agenda->resolvedItems
         ));
     }
 }

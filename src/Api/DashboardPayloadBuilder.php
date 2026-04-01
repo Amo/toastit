@@ -2,58 +2,46 @@
 
 namespace App\Api;
 
-use App\Entity\Meeting;
-use App\Entity\Team;
 use App\Entity\User;
-use App\Repository\MeetingRepository;
-use App\Repository\TeamRepository;
+use App\Entity\Workspace;
+use App\Repository\WorkspaceRepository;
 
 final class DashboardPayloadBuilder
 {
     public function __construct(
-        private readonly TeamRepository $teamRepository,
-        private readonly MeetingRepository $meetingRepository,
+        private readonly WorkspaceRepository $workspaceRepository,
     ) {
     }
 
     public function build(User $user): array
     {
-        $adHocMeetings = array_map(fn (Meeting $meeting): array => $this->buildMeetingSummary($meeting), $this->meetingRepository->findAdHocForUser($user));
-
         return [
-            'teams' => array_map(fn (Team $team): array => $this->buildTeamSummary($team), $this->teamRepository->findForUser($user)),
-            'adHocMeetings' => array_values(array_filter($adHocMeetings, static fn (array $meeting): bool => 'closed' !== $meeting['status'])),
-            'archivedAdHocMeetings' => array_values(array_filter($adHocMeetings, static fn (array $meeting): bool => 'closed' === $meeting['status'])),
+            'workspaces' => array_map(fn (Workspace $workspace): array => $this->buildWorkspaceSummary($workspace), $this->workspaceRepository->findForUser($user)),
         ];
     }
 
-    private function buildTeamSummary(Team $team): array
+    private function buildWorkspaceSummary(Workspace $workspace): array
     {
-        $meetings = array_map(fn (Meeting $meeting): array => $this->buildMeetingSummary($meeting), $team->getMeetings()->toArray());
+        $openItems = 0;
+        $resolvedItems = 0;
+
+        foreach ($workspace->getItems() as $item) {
+            if (\App\Entity\Toast::DISCUSSION_TREATED === $item->getDiscussionStatus()) {
+                ++$resolvedItems;
+                continue;
+            }
+
+            ++$openItems;
+        }
 
         return [
-            'id' => $team->getId(),
-            'name' => $team->getName(),
-            'meetingCount' => $team->getMeetings()->count(),
-            'itemCount' => $team->getItems()->count(),
-            'meetings' => array_values(array_filter($meetings, static fn (array $meeting): bool => 'closed' !== $meeting['status'])),
-            'archivedMeetings' => array_values(array_filter($meetings, static fn (array $meeting): bool => 'closed' === $meeting['status'])),
-        ];
-    }
-
-    private function buildMeetingSummary(Meeting $meeting): array
-    {
-        return [
-            'id' => $meeting->getId(),
-            'title' => $meeting->getTitle(),
-            'scheduledAt' => $meeting->getScheduledAt()->format(\DateTimeInterface::ATOM),
-            'scheduledAtDisplay' => $meeting->getScheduledAt()->format('d/m/Y H:i'),
-            'videoLink' => $meeting->getVideoLink(),
-            'isRecurring' => $meeting->isRecurring(),
-            'recurrence' => $meeting->getRecurrence(),
-            'recurrenceDisplay' => $meeting->getRecurrenceDisplay(),
-            'status' => $meeting->getStatus(),
-            'teamId' => $meeting->getTeam()?->getId(),
+            'id' => $workspace->getId(),
+            'name' => $workspace->getName(),
+            'meetingMode' => $workspace->getMeetingMode(),
+            'meetingStartedAt' => $workspace->getMeetingStartedAt()?->format(\DateTimeInterface::ATOM),
+            'memberCount' => $workspace->getMemberships()->count() + 1,
+            'openItemCount' => $openItems,
+            'resolvedItemCount' => $resolvedItems,
         ];
     }
 }

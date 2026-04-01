@@ -2,8 +2,8 @@
 
 namespace App\Controller\Api\Dashboard;
 
-use App\Entity\Team;
-use App\Entity\TeamMember;
+use App\Entity\Workspace;
+use App\Entity\WorkspaceMember;
 use App\Workspace\WorkspaceAccess;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,7 +19,7 @@ final class CreateTeamController extends AbstractController
     ) {
     }
 
-    #[Route('/api/teams', name: 'api_team_create', methods: ['POST'])]
+    #[Route('/api/workspaces', name: 'api_workspace_create', methods: ['POST'])]
     public function __invoke(Request $request): JsonResponse
     {
         $payload = $request->toArray();
@@ -30,17 +30,17 @@ final class CreateTeamController extends AbstractController
         }
 
         $user = $this->workspaceAccess->getUserOrFail();
-        $team = (new Team())
+        $workspace = (new Workspace())
             ->setName($name)
             ->setOrganizer($user);
-        $membership = (new TeamMember())
+        $membership = (new WorkspaceMember())
             ->setUser($user);
 
-        $team->addMembership($membership);
-        $this->entityManager->persist($team);
+        $workspace->addMembership($membership);
+        $this->entityManager->persist($workspace);
         $this->entityManager->persist($membership);
         $this->entityManager->flush();
 
-        return $this->json(['ok' => true, 'teamId' => $team->getId()]);
+        return $this->json(['ok' => true, 'workspaceId' => $workspace->getId()]);
     }
 }

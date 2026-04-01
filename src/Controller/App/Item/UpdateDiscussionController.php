@@ -2,9 +2,9 @@
 
 namespace App\Controller\App\Item;
 
-use App\Entity\ParkingLotItem;
-use App\Workspace\MeetingWorkflow;
+use App\Entity\Toast;
 use App\Workspace\WorkspaceAccess;
+use App\Workspace\WorkspaceWorkflow;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -15,7 +15,7 @@ final class UpdateDiscussionController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccess $workspaceAccess,
-        private readonly MeetingWorkflow $meetingWorkflow,
+        private readonly WorkspaceWorkflow $workspaceWorkflow,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -24,24 +24,24 @@ final class UpdateDiscussionController extends AbstractController
     public function __invoke(int $id, Request $request): RedirectResponse
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
-        $meeting = $item->getMeeting();
-        $this->workspaceAccess->assertOrganizer($meeting);
-        $this->workspaceAccess->assertMeetingEditable($meeting);
+        $workspace = $item->getWorkspace();
+        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertMeetingModeActive($workspace);
 
         $discussionStatus = trim($request->request->getString('discussion_status'));
         $allowedStatuses = [
-            ParkingLotItem::DISCUSSION_PENDING,
-            ParkingLotItem::DISCUSSION_TREATED,
-            ParkingLotItem::DISCUSSION_POSTPONED,
+            Toast::DISCUSSION_PENDING,
+            Toast::DISCUSSION_TREATED,
+            Toast::DISCUSSION_POSTPONED,
         ];
 
         if (!in_array($discussionStatus, $allowedStatuses, true)) {
-            $discussionStatus = ParkingLotItem::DISCUSSION_PENDING;
+            $discussionStatus = Toast::DISCUSSION_PENDING;
         }
 
         $ownerIdRaw = trim($request->request->getString('owner_id'));
         $ownerId = ctype_digit($ownerIdRaw) ? (int) $ownerIdRaw : 0;
-        $owner = $this->meetingWorkflow->findMeetingInviteeById($meeting, $ownerId);
+        $owner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, $ownerId);
         $dueAtRaw = trim($request->request->getString('due_at'));
         $dueAt = null;
 
@@ -51,7 +51,7 @@ final class UpdateDiscussionController extends AbstractController
             } catch (\Exception) {
                 $this->addFlash('error', 'La date d echeance est invalide.');
 
-                return $this->redirectToRoute('app_meeting_show', ['id' => $meeting->getId()]);
+                return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
             }
         }
 
@@ -69,7 +69,7 @@ final class UpdateDiscussionController extends AbstractController
 
             $followUpOwnerRaw = trim((string) ($followUpOwnerIds[$index] ?? ''));
             $followUpOwnerId = ctype_digit($followUpOwnerRaw) ? (int) $followUpOwnerRaw : 0;
-            $followUpOwner = $this->meetingWorkflow->findMeetingInviteeById($meeting, $followUpOwnerId);
+            $followUpOwner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, $followUpOwnerId);
             $followUpDueOnRaw = trim((string) ($followUpDueOn[$index] ?? ''));
 
             if ('' !== $followUpDueOnRaw) {
@@ -78,7 +78,7 @@ final class UpdateDiscussionController extends AbstractController
                 } catch (\Exception) {
                     $this->addFlash('error', 'Une date de suivi est invalide.');
 
-                    return $this->redirectToRoute('app_meeting_show', ['id' => $meeting->getId()]);
+                    return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
                 }
             }
 
@@ -92,14 +92,32 @@ final class UpdateDiscussionController extends AbstractController
         $item
             ->setDiscussionStatus($discussionStatus)
             ->setDiscussionNotes(trim($request->request->getString('discussion_notes')) ?: null)
-            ->setFollowUp(0 !== count($followUpItems) ? implode("\n", array_map(static fn (array $followUpItem): string => $followUpItem['title'], $followUpItems)) : null)
-            ->setFollowUpItems($followUpItems)
             ->setOwner($owner)
             ->setDueAt($dueAt);
 
-        $this->entityManager->flush();
-        $this->addFlash('success', sprintf('Le suivi du sujet "%s" a ete mis a jour.', $item->getTitle()));
+        foreach ($followUpItems as $followUpItem) {
+            $followUpOwner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, (int) ($followUpItem['ownerId'] ?? 0));
+            $followUpDueAt = !empty($followUpItem['dueOn']) ? new \DateTimeImmutable((string) $followUpItem['dueOn']) : null;
 
-        return $this->redirectToRoute('app_meeting_show', ['id' => $meeting->getId()]);
+            if ($this->workspaceWorkflow->hasFollowUp($item, $followUpItem['title'], $followUpOwner, $followUpDueAt)) {
+                continue;
+            }
+
+            $nextItem = (new Toast())
+                ->setWorkspace($workspace)
+                ->setAuthor($this->workspaceAccess->getUserOrFail())
+                ->setTitle($followUpItem['title'])
+                ->setOwner($followUpOwner)
+                ->setDueAt($followUpDueAt)
+                ->setPreviousItem($item)
+                ->setDescription(sprintf('Suivi cree depuis "%s".', $item->getTitle()));
+
+            $this->entityManager->persist($nextItem);
+        }
+
+        $this->entityManager->flush();
+        $this->addFlash('success', sprintf('Le suivi du toast "%s" a ete mis a jour.', $item->getTitle()));
+
+        return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
     }
 }

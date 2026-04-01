@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Controller\App\Meeting;
+namespace App\Controller\App\Workspace;
 
-use App\Entity\ParkingLotItem;
+use App\Entity\Toast;
 use App\Workspace\WorkspaceAccess;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,22 +18,20 @@ final class CreateItemController extends AbstractController
     ) {
     }
 
-    #[Route('/app/meetings/{id}/items', name: 'app_meeting_item_create', methods: ['POST'])]
+    #[Route('/app/workspaces/{id}/items', name: 'app_workspace_item_create', methods: ['POST'])]
     public function __invoke(int $id, Request $request): RedirectResponse
     {
-        $meeting = $this->workspaceAccess->getMeetingOrFail($id);
-        $this->workspaceAccess->assertMeetingEditable($meeting);
+        $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $title = trim($request->request->getString('title'));
 
         if ('' === $title) {
-            $this->addFlash('error', 'Le titre du sujet est requis.');
+            $this->addFlash('error', 'Le titre du toast est requis.');
 
-            return $this->redirectToRoute('app_meeting_show', ['id' => $meeting->getId()]);
+            return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
         }
 
-        $item = (new ParkingLotItem())
-            ->setTeam($meeting->getTeam())
-            ->setMeeting($meeting)
+        $item = (new Toast())
+            ->setWorkspace($workspace)
             ->setAuthor($this->workspaceAccess->getUserOrFail())
             ->setTitle($title)
             ->setDescription(trim($request->request->getString('description')) ?: null);
@@ -41,6 +39,6 @@ final class CreateItemController extends AbstractController
         $this->entityManager->persist($item);
         $this->entityManager->flush();
 
-        return $this->redirectToRoute('app_meeting_show', ['id' => $meeting->getId()]);
+        return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
     }
 }

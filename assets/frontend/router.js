@@ -8,9 +8,7 @@ export const createSpaRouter = () => createRouter({
     { path: '/pin/setup', name: 'pin-setup' },
     { path: '/pin/unlock', name: 'pin-unlock' },
     { path: '/app', name: 'dashboard' },
-    { path: '/app/teams/:id', name: 'team' },
-    { path: '/app/teams/:id/archives', name: 'team-archives' },
-    { path: '/app/meetings/:id', name: 'meeting' },
+    { path: '/app/workspaces/:id', name: 'workspace' },
     { path: '/app/profile', name: 'profile' },
   ],
 });

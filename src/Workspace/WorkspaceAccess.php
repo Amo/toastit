@@ -2,11 +2,10 @@
 
 namespace App\Workspace;
 
-use App\Entity\Meeting;
-use App\Entity\ParkingLotItem;
-use App\Entity\Team;
+use App\Entity\Toast;
 use App\Entity\User;
-use App\Repository\TeamRepository;
+use App\Entity\Workspace;
+use App\Repository\WorkspaceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -15,7 +14,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final class WorkspaceAccess
 {
     public function __construct(
-        private readonly TeamRepository $teamRepository,
+        private readonly WorkspaceRepository $workspaceRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly Security $security,
     ) {
@@ -32,73 +31,40 @@ final class WorkspaceAccess
         return $user;
     }
 
-    public function getTeamOrFail(int $teamId): Team
+    public function getWorkspaceOrFail(int $workspaceId): Workspace
     {
-        $team = $this->teamRepository->findOneForUser($teamId, $this->getUserOrFail());
+        $workspace = $this->workspaceRepository->findOneForUser($workspaceId, $this->getUserOrFail());
 
-        if (!$team instanceof Team) {
+        if (!$workspace instanceof Workspace) {
             throw new NotFoundHttpException();
         }
 
-        return $team;
+        return $workspace;
     }
 
-    public function getMeetingOrFail(int $meetingId): Meeting
+    public function getItemOrFail(int $itemId): Toast
     {
-        $meeting = $this->entityManager->getRepository(Meeting::class)->find($meetingId);
+        $item = $this->entityManager->getRepository(Toast::class)->find($itemId);
 
-        if (!$meeting instanceof Meeting) {
+        if (!$item instanceof Toast) {
             throw new NotFoundHttpException();
         }
 
-        if (null !== $meeting->getTeam()) {
-            $team = $this->getTeamOrFail($meeting->getTeam()->getId());
-
-            if ($meeting->getTeam()->getId() !== $team->getId()) {
-                throw new NotFoundHttpException();
-            }
-
-            return $meeting;
-        }
-
-        $user = $this->getUserOrFail();
-
-        if ($meeting->getOrganizer()->getId() === $user->getId()) {
-            return $meeting;
-        }
-
-        foreach ($meeting->getAttendees() as $attendee) {
-            if ($attendee->getUser()->getId() === $user->getId()) {
-                return $meeting;
-            }
-        }
-
-        throw new NotFoundHttpException();
-    }
-
-    public function getItemOrFail(int $itemId): ParkingLotItem
-    {
-        $item = $this->entityManager->getRepository(ParkingLotItem::class)->find($itemId);
-
-        if (!$item instanceof ParkingLotItem) {
-            throw new NotFoundHttpException();
-        }
-
-        $this->getMeetingOrFail($item->getMeeting()->getId());
+        $this->getWorkspaceOrFail($item->getWorkspace()->getId());
 
         return $item;
     }
 
-    public function assertOrganizer(Meeting $meeting): void
+    public function assertOrganizer(Workspace $workspace): void
     {
-        if ($meeting->getOrganizer()->getId() !== $this->getUserOrFail()->getId()) {
+        if ($workspace->getOrganizer()->getId() !== $this->getUserOrFail()->getId()) {
             throw new AccessDeniedHttpException();
         }
     }
 
-    public function assertMeetingEditable(Meeting $meeting): void
+    public function assertMeetingModeActive(Workspace $workspace): void
     {
-        if ($meeting->isClosed()) {
+        if (!$workspace->isMeetingLive()) {
             throw new AccessDeniedHttpException();
         }
     }

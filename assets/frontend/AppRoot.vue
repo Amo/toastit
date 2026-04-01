@@ -7,9 +7,7 @@ import AuthVerifyPage from './components/AuthVerifyPage.vue';
 import PinSetupPage from './components/PinSetupPage.vue';
 import PinUnlockPage from './components/PinUnlockPage.vue';
 import DashboardPage from './components/DashboardPage.vue';
-import TeamPage from './components/TeamPage.vue';
-import TeamArchivesPage from './components/TeamArchivesPage.vue';
-import MeetingLiveApp from './components/MeetingLiveApp.vue';
+import WorkspacePage from './components/WorkspacePage.vue';
 import ProfilePage from './components/ProfilePage.vue';
 import { useSpaContext } from './spaContext';
 
@@ -68,7 +66,7 @@ const routeName = computed(() => route.name);
   </AppShell>
 
   <AppShell
-    v-else-if="routeName === 'team'"
+    v-else-if="routeName === 'workspace'"
     current-section="workspace"
     :dashboard-url="spa.urls.dashboardUrl"
     :profile-url="spa.urls.profileUrl"
@@ -76,36 +74,7 @@ const routeName = computed(() => route.name);
     :user="spa.user"
     content-html=""
   >
-    <TeamPage :api-url="`/api/teams/${route.params.id}`" :dashboard-url="spa.urls.dashboardUrl" :access-token="spa.accessToken" />
-  </AppShell>
-
-  <AppShell
-    v-else-if="routeName === 'team-archives'"
-    current-section="workspace"
-    :dashboard-url="spa.urls.dashboardUrl"
-    :profile-url="spa.urls.profileUrl"
-    :logout-url="spa.urls.logoutUrl"
-    :user="spa.user"
-    content-html=""
-  >
-    <TeamArchivesPage
-      :api-url="`/api/teams/${route.params.id}`"
-      :team-url="`/app/teams/${route.params.id}`"
-      :dashboard-url="spa.urls.dashboardUrl"
-      :access-token="spa.accessToken"
-    />
-  </AppShell>
-
-  <AppShell
-    v-else-if="routeName === 'meeting'"
-    current-section="workspace"
-    :dashboard-url="spa.urls.dashboardUrl"
-    :profile-url="spa.urls.profileUrl"
-    :logout-url="spa.urls.logoutUrl"
-    :user="spa.user"
-    content-html=""
-  >
-    <MeetingLiveApp :api-url="`/api/meetings/${route.params.id}`" :access-token="spa.accessToken" />
+    <WorkspacePage :api-url="`/api/workspaces/${route.params.id}`" :dashboard-url="spa.urls.dashboardUrl" :access-token="spa.accessToken" />
   </AppShell>
 
   <AppShell

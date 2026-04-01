@@ -2,17 +2,23 @@
 
 namespace App\Meeting;
 
-use App\Entity\Meeting;
-use App\Entity\ParkingLotItem;
+use App\Entity\Toast;
+use App\Entity\Workspace;
 
 final class MeetingAgendaBuilder
 {
-    public function build(Meeting $meeting): MeetingAgenda
+    public function build(Workspace $workspace): MeetingAgenda
     {
         $activeItems = [];
         $vetoedItems = [];
+        $resolvedItems = [];
 
-        foreach ($meeting->getParkingLotItems() as $item) {
+        foreach ($workspace->getItems() as $item) {
+            if (Toast::DISCUSSION_TREATED === $item->getDiscussionStatus()) {
+                $resolvedItems[] = $item;
+                continue;
+            }
+
             if ($item->isVetoed()) {
                 $vetoedItems[] = $item;
                 continue;
@@ -23,11 +29,12 @@ final class MeetingAgendaBuilder
 
         usort($activeItems, $this->compareItems(...));
         usort($vetoedItems, $this->compareVetoedItems(...));
+        usort($resolvedItems, $this->compareResolvedItems(...));
 
-        return new MeetingAgenda($activeItems, $vetoedItems);
+        return new MeetingAgenda($activeItems, $vetoedItems, $resolvedItems);
     }
 
-    private function compareItems(ParkingLotItem $left, ParkingLotItem $right): int
+    private function compareItems(Toast $left, Toast $right): int
     {
         if ($left->isBoosted() !== $right->isBoosted()) {
             return $left->isBoosted() ? -1 : 1;
@@ -48,10 +55,16 @@ final class MeetingAgendaBuilder
             ?: $this->compareId($left, $right);
     }
 
-    private function compareVetoedItems(ParkingLotItem $left, ParkingLotItem $right): int
+    private function compareVetoedItems(Toast $left, Toast $right): int
     {
         return $this->compareCreatedAt($left, $right)
             ?: $this->compareId($left, $right);
+    }
+
+    private function compareResolvedItems(Toast $left, Toast $right): int
+    {
+        return $right->getCreatedAt() <=> $left->getCreatedAt()
+            ?: (($right->getId() ?? 0) <=> ($left->getId() ?? 0));
     }
 
     private function compareNullableInt(?int $left, ?int $right): int
@@ -59,12 +72,12 @@ final class MeetingAgendaBuilder
         return ($left ?? PHP_INT_MAX) <=> ($right ?? PHP_INT_MAX);
     }
 
-    private function compareCreatedAt(ParkingLotItem $left, ParkingLotItem $right): int
+    private function compareCreatedAt(Toast $left, Toast $right): int
     {
         return $left->getCreatedAt() <=> $right->getCreatedAt();
     }
 
-    private function compareId(ParkingLotItem $left, ParkingLotItem $right): int
+    private function compareId(Toast $left, Toast $right): int
     {
         return ($left->getId() ?? PHP_INT_MAX) <=> ($right->getId() ?? PHP_INT_MAX);
     }
