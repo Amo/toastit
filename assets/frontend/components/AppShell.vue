@@ -40,7 +40,7 @@ onMounted(async () => {
               @click="userMenuOpen = !userMenuOpen"
             >
               <i class="fa-solid fa-circle-user" aria-hidden="true"></i>
-              <span>Compte</span>
+              <span>Account</span>
             </button>
           </div>
 
@@ -58,7 +58,7 @@ onMounted(async () => {
                 class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition"
                 :class="currentSection === 'profile' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-100'"
               >
-                Profil
+                Profile
               </a>
             </nav>
 
@@ -71,20 +71,20 @@ onMounted(async () => {
                 <span class="inline-grid h-9 w-9 place-items-center rounded-full bg-stone-100 text-sm font-semibold text-stone-700">
                   {{ user?.displayName?.slice(0, 2)?.toUpperCase() ?? 'CO' }}
                 </span>
-                <span class="max-w-[12rem] truncate">{{ user?.displayName ?? 'Compte' }}</span>
+                <span class="max-w-[12rem] truncate">{{ user?.displayName ?? 'Account' }}</span>
                 <i class="fa-solid fa-chevron-down text-xs text-stone-400" aria-hidden="true"></i>
               </button>
 
               <div v-if="userMenuOpen" class="absolute right-0 top-[calc(100%+0.75rem)] w-72 rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl shadow-stone-200/60">
                 <div class="space-y-1 pb-4">
-                  <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Compte' }}</p>
-                  <p class="text-sm text-stone-500">{{ user?.isRoot ? 'ROOT user' : 'Utilisateur' }}</p>
+                  <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
+                  <p class="text-sm text-stone-500">{{ user?.isRoot ? 'ROOT user' : 'User' }}</p>
                 </div>
                 <div class="space-y-2">
-                  <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Mon profil</a>
+                  <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
                   <form method="post" :action="logoutUrl">
                     <button class="flex w-full items-center justify-center rounded-2xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800" type="submit">
-                      Se deconnecter
+                      Sign out
                     </button>
                   </form>
                 </div>
@@ -93,12 +93,12 @@ onMounted(async () => {
 
             <div v-if="userMenuOpen" class="grid gap-3 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm lg:hidden">
               <div class="space-y-1">
-                <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Compte' }}</p>
-                <p class="text-sm text-stone-500">{{ user?.isRoot ? 'ROOT user' : 'Utilisateur' }}</p>
+                <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
+                <p class="text-sm text-stone-500">{{ user?.isRoot ? 'ROOT user' : 'User' }}</p>
               </div>
-              <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Mon profil</a>
+              <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
               <form method="post" :action="logoutUrl">
-                <button class="w-full rounded-2xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white" type="submit">Se deconnecter</button>
+                <button class="w-full rounded-2xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white" type="submit">Sign out</button>
               </form>
             </div>
           </div>

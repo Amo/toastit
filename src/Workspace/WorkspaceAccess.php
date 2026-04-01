@@ -55,9 +55,9 @@ final class WorkspaceAccess
         return $item;
     }
 
-    public function assertOrganizer(Workspace $workspace): void
+    public function assertOwner(Workspace $workspace): void
     {
-        if ($workspace->getOrganizer()->getId() !== $this->getUserOrFail()->getId()) {
+        if (!$workspace->isOwnedBy($this->getUserOrFail())) {
             throw new AccessDeniedHttpException();
         }
     }
@@ -65,6 +65,13 @@ final class WorkspaceAccess
     public function assertMeetingModeActive(Workspace $workspace): void
     {
         if (!$workspace->isMeetingLive()) {
+            throw new AccessDeniedHttpException();
+        }
+    }
+
+    public function assertMeetingModeIdle(Workspace $workspace): void
+    {
+        if ($workspace->isMeetingLive()) {
             throw new AccessDeniedHttpException();
         }
     }

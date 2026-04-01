@@ -37,9 +37,10 @@ final class DashboardPayloadBuilder
         return [
             'id' => $workspace->getId(),
             'name' => $workspace->getName(),
+            'isDefault' => $workspace->isDefault(),
             'meetingMode' => $workspace->getMeetingMode(),
             'meetingStartedAt' => $workspace->getMeetingStartedAt()?->format(\DateTimeInterface::ATOM),
-            'memberCount' => $workspace->getMemberships()->count() + 1,
+            'memberCount' => $workspace->getMemberships()->count(),
             'openItemCount' => $openItems,
             'resolvedItemCount' => $resolvedItems,
         ];

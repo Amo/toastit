@@ -24,7 +24,7 @@ final class InviteController extends AbstractController
     public function __invoke(int $id, Request $request): JsonResponse
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
-        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertOwner($workspace);
         $payload = $request->toArray();
         $email = trim((string) ($payload['email'] ?? ''));
 
@@ -32,11 +32,7 @@ final class InviteController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'missing_email'], 400);
         }
 
-        $user = $this->userProvisioner->provision($email);
-
-        if ($workspace->getOrganizer()->getId() === $user->getId()) {
-            return $this->json(['ok' => true, 'alreadyMember' => true]);
-        }
+        $user = $this->userProvisioner->findOrCreateUserByEmail($email);
 
         foreach ($workspace->getMemberships() as $membership) {
             if ($membership->getUser()->getId() === $user->getId()) {

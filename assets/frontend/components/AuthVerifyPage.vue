@@ -13,8 +13,8 @@ const props = defineProps({
       <div class="space-y-6">
         <div class="space-y-3">
           <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Verification</p>
-          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Entrez le code recu par email.</h1>
-          <p class="text-base leading-7 text-stone-600">Le lien magique de l'email vous connecte directement. Si le bouton ne fonctionne pas, utilisez le code OTP de secours.</p>
+          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Enter the code you received by email.</h1>
+          <p class="text-base leading-7 text-stone-600">The magic link in the email signs you in directly. If that button does not work, use the backup OTP code.</p>
         </div>
 
         <div class="space-y-3">
@@ -30,7 +30,7 @@ const props = defineProps({
             <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base tracking-[0.4em] uppercase" type="text" name="code" maxlength="6" autocomplete="one-time-code" required>
           </label>
           <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
-            Verifier le code
+            Verify code
           </button>
         </form>
       </div>

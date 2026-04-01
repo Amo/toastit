@@ -22,6 +22,9 @@ class WorkspaceMember
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
+    #[ORM\Column(name: 'is_owner', options: ['default' => false])]
+    private bool $isOwner = false;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -55,6 +58,18 @@ class WorkspaceMember
     public function setUser(User $user): self
     {
         $this->user = $user;
+
+        return $this;
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->isOwner;
+    }
+
+    public function setIsOwner(bool $isOwner): self
+    {
+        $this->isOwner = $isOwner;
 
         return $this;
     }

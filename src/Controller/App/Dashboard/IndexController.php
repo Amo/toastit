@@ -28,7 +28,7 @@ final class IndexController extends AbstractController
             $name = trim($request->request->getString('name'));
 
             if ('' === $name) {
-                $this->addFlash('error', 'Le nom du workspace est requis.');
+                $this->addFlash('error', 'Workspace name is required.');
 
                 return $this->redirectToRoute('app_dashboard');
             }
@@ -38,7 +38,8 @@ final class IndexController extends AbstractController
                 ->setOrganizer($user);
 
             $membership = (new WorkspaceMember())
-                ->setUser($user);
+                ->setUser($user)
+                ->setIsOwner(true);
 
             $workspace->addMembership($membership);
             $this->entityManager->persist($workspace);

@@ -13,6 +13,11 @@ class Workspace
 {
     public const MEETING_MODE_IDLE = 'idle';
     public const MEETING_MODE_LIVE = 'live';
+    public const DEFAULT_DUE_TOMORROW = 'tomorrow';
+    public const DEFAULT_DUE_NEXT_WEEK = 'next_week';
+    public const DEFAULT_DUE_IN_2_WEEKS = 'in_2_weeks';
+    public const DEFAULT_DUE_NEXT_MONDAY = 'next_monday';
+    public const DEFAULT_DUE_FIRST_MONDAY_NEXT_MONTH = 'first_monday_next_month';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -28,6 +33,15 @@ class Workspace
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(name: 'is_default', options: ['default' => false])]
+    private bool $isDefault = false;
+
+    #[ORM\Column(name: 'default_due_preset', length: 32, options: ['default' => self::DEFAULT_DUE_NEXT_WEEK])]
+    private string $defaultDuePreset = self::DEFAULT_DUE_NEXT_WEEK;
+
+    #[ORM\Column(name: 'permalink_background_url', length: 1024, nullable: true)]
+    private ?string $permalinkBackgroundUrl = null;
 
     #[ORM\Column(name: 'meeting_mode', length: 16, options: ['default' => self::MEETING_MODE_IDLE])]
     private string $meetingMode = self::MEETING_MODE_IDLE;
@@ -88,6 +102,53 @@ class Workspace
         return $this->createdAt;
     }
 
+    public function isDefault(): bool
+    {
+        return $this->isDefault;
+    }
+
+    public function setIsDefault(bool $isDefault): self
+    {
+        $this->isDefault = $isDefault;
+
+        return $this;
+    }
+
+    public function getDefaultDuePreset(): string
+    {
+        return $this->defaultDuePreset;
+    }
+
+    public function setDefaultDuePreset(string $defaultDuePreset): self
+    {
+        $allowedPresets = [
+            self::DEFAULT_DUE_TOMORROW,
+            self::DEFAULT_DUE_NEXT_WEEK,
+            self::DEFAULT_DUE_IN_2_WEEKS,
+            self::DEFAULT_DUE_NEXT_MONDAY,
+            self::DEFAULT_DUE_FIRST_MONDAY_NEXT_MONTH,
+        ];
+
+        $this->defaultDuePreset = \in_array($defaultDuePreset, $allowedPresets, true)
+            ? $defaultDuePreset
+            : self::DEFAULT_DUE_NEXT_WEEK;
+
+        return $this;
+    }
+
+    public function getPermalinkBackgroundUrl(): ?string
+    {
+        return $this->permalinkBackgroundUrl;
+    }
+
+    public function setPermalinkBackgroundUrl(?string $permalinkBackgroundUrl): self
+    {
+        $permalinkBackgroundUrl = null !== $permalinkBackgroundUrl ? trim($permalinkBackgroundUrl) : null;
+        $this->permalinkBackgroundUrl = '' === $permalinkBackgroundUrl ? null : $permalinkBackgroundUrl;
+
+        return $this;
+    }
+
     public function getMeetingMode(): string
     {
         return $this->meetingMode;
@@ -144,6 +205,30 @@ class Workspace
         $this->meetingEndedAt = $endedAt ?? new \DateTimeImmutable();
 
         return $this;
+    }
+
+    public function isOwnedBy(User $user): bool
+    {
+        foreach ($this->memberships as $membership) {
+            if ($membership->getUser()->getId() === $user->getId() && $membership->isOwner()) {
+                return true;
+            }
+        }
+
+        return $this->organizer->getId() === $user->getId();
+    }
+
+    public function getOwnerCount(): int
+    {
+        $count = 0;
+
+        foreach ($this->memberships as $membership) {
+            if ($membership->isOwner()) {
+                ++$count;
+            }
+        }
+
+        return $count;
     }
 
     /** @return Collection<int, WorkspaceMember> */

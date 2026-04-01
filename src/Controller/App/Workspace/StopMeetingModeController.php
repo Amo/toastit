@@ -20,7 +20,7 @@ final class StopMeetingModeController extends AbstractController
     public function __invoke(int $id): RedirectResponse
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
-        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertOwner($workspace);
         $workspace->stopMeetingMode();
         $this->entityManager->flush();
 

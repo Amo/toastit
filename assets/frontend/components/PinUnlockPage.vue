@@ -12,9 +12,9 @@ const props = defineProps({
     <section class="tw-toastit-card mx-auto w-full max-w-xl p-8">
       <div class="space-y-6">
         <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Deverrouillage</p>
-          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Entrez votre PIN.</h1>
-          <p class="text-base leading-7 text-stone-600">La session est authentifiee pour {{ email }}, mais le PIN est requis pour acceder a l'application.</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Unlock</p>
+          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Enter your PIN.</h1>
+          <p class="text-base leading-7 text-stone-600">The session is authenticated for {{ email }}, but the PIN is required to access the app.</p>
         </div>
 
         <div class="space-y-3">
@@ -28,12 +28,12 @@ const props = defineProps({
             <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="password" inputmode="numeric" pattern="[0-9]{4}" name="pin" maxlength="4" required>
           </label>
           <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
-            Deverrouiller
+            Unlock
           </button>
         </form>
 
         <form method="post" :action="forgotPinAction">
-          <button class="button toastit-button-notice" type="submit">J'ai oublie mon PIN</button>
+          <button class="button toastit-button-notice" type="submit">I forgot my PIN</button>
         </form>
       </div>
     </section>

@@ -78,6 +78,23 @@ const routeName = computed(() => route.name);
   </AppShell>
 
   <AppShell
+    v-else-if="routeName === 'toast'"
+    current-section="workspace"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :logout-url="spa.urls.logoutUrl"
+    :user="spa.user"
+    content-html=""
+  >
+    <WorkspacePage
+      :api-url="`/api/toasts/${route.params.id}`"
+      :dashboard-url="spa.urls.dashboardUrl"
+      :access-token="spa.accessToken"
+      :standalone-toast-id="route.params.id"
+    />
+  </AppShell>
+
+  <AppShell
     v-else-if="routeName === 'profile'"
     current-section="profile"
     :dashboard-url="spa.urls.dashboardUrl"

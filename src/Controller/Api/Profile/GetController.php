@@ -27,6 +27,7 @@ final class GetController extends AbstractController
                 'firstName' => $user->getFirstName(),
                 'lastName' => $user->getLastName(),
                 'initials' => $user->getInitials(),
+                'gravatarUrl' => $user->getGravatarUrl(),
             ],
         ]);
     }

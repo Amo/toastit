@@ -34,7 +34,8 @@ final class CreateTeamController extends AbstractController
             ->setName($name)
             ->setOrganizer($user);
         $membership = (new WorkspaceMember())
-            ->setUser($user);
+            ->setUser($user)
+            ->setIsOwner(true);
 
         $workspace->addMembership($membership);
         $this->entityManager->persist($workspace);

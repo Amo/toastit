@@ -14,7 +14,6 @@ class Toast
     public const STATUS_VETOED = 'vetoed';
     public const DISCUSSION_PENDING = 'pending';
     public const DISCUSSION_TREATED = 'treated';
-    public const DISCUSSION_POSTPONED = 'postponed';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -63,6 +62,9 @@ class Toast
     #[ORM\Column(type: 'date_immutable', nullable: true)]
     private ?\DateTimeImmutable $dueAt = null;
 
+    #[ORM\Column(name: 'status_changed_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $statusChangedAt = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -78,11 +80,17 @@ class Toast
     #[ORM\OneToMany(mappedBy: 'item', targetEntity: Vote::class, cascade: ['remove'], orphanRemoval: true)]
     private Collection $votes;
 
+    /** @var Collection<int, ToastComment> */
+    #[ORM\OneToMany(mappedBy: 'toast', targetEntity: ToastComment::class, cascade: ['remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['createdAt' => 'ASC'])]
+    private Collection $comments;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->votes = new ArrayCollection();
         $this->followUpChildren = new ArrayCollection();
+        $this->comments = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -188,6 +196,16 @@ class Toast
         return $this->discussionStatus;
     }
 
+    public function isToasted(): bool
+    {
+        return self::DISCUSSION_TREATED === $this->discussionStatus;
+    }
+
+    public function isNew(): bool
+    {
+        return !$this->isVetoed() && !$this->isToasted();
+    }
+
     public function setDiscussionStatus(string $discussionStatus): self
     {
         $this->discussionStatus = $discussionStatus;
@@ -289,6 +307,18 @@ class Toast
         return $this->createdAt;
     }
 
+    public function getStatusChangedAt(): ?\DateTimeImmutable
+    {
+        return $this->statusChangedAt;
+    }
+
+    public function setStatusChangedAt(?\DateTimeImmutable $statusChangedAt): self
+    {
+        $this->statusChangedAt = $statusChangedAt;
+
+        return $this;
+    }
+
     public function getPreviousItem(): ?self
     {
         return $this->previousItem;
@@ -333,5 +363,21 @@ class Toast
     public function getVoteCount(): int
     {
         return $this->votes->count();
+    }
+
+    /** @return Collection<int, ToastComment> */
+    public function getComments(): Collection
+    {
+        return $this->comments;
+    }
+
+    public function addComment(ToastComment $comment): self
+    {
+        if (!$this->comments->contains($comment)) {
+            $this->comments->add($comment);
+            $comment->setToast($this);
+        }
+
+        return $this;
     }
 }

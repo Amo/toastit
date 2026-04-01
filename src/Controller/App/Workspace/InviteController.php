@@ -24,32 +24,30 @@ final class InviteController extends AbstractController
     public function __invoke(int $id, Request $request): RedirectResponse
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
-        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertOwner($workspace);
         $email = trim($request->request->getString('email'));
 
         if ('' === $email) {
-            $this->addFlash('error', 'L email est requis.');
+            $this->addFlash('error', 'Email is required.');
 
             return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
         }
 
-        $user = $this->userProvisioner->provision($email);
+        $user = $this->userProvisioner->findOrCreateUserByEmail($email);
 
-        if ($workspace->getOrganizer()->getId() !== $user->getId()) {
-            foreach ($workspace->getMemberships() as $membership) {
-                if ($membership->getUser()->getId() === $user->getId()) {
-                    return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
-                }
+        foreach ($workspace->getMemberships() as $membership) {
+            if ($membership->getUser()->getId() === $user->getId()) {
+                return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
             }
-
-            $membership = (new WorkspaceMember())
-                ->setWorkspace($workspace)
-                ->setUser($user);
-
-            $workspace->addMembership($membership);
-            $this->entityManager->persist($membership);
-            $this->entityManager->flush();
         }
+
+        $membership = (new WorkspaceMember())
+            ->setWorkspace($workspace)
+            ->setUser($user);
+
+        $workspace->addMembership($membership);
+        $this->entityManager->persist($membership);
+        $this->entityManager->flush();
 
         return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
     }

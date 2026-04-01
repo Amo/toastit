@@ -11,8 +11,8 @@ const props = defineProps({
       <div class="space-y-6">
         <div class="space-y-3">
           <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">PIN</p>
-          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Definissez votre code PIN a 4 chiffres.</h1>
-          <p class="text-base leading-7 text-stone-600">Ce PIN sera demande a chaque nouvelle session et lorsque la session se reverrouille.</p>
+          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Set your 4-digit PIN.</h1>
+          <p class="text-base leading-7 text-stone-600">This PIN will be required for each new session and whenever the session locks again.</p>
         </div>
 
         <p v-for="(message, index) in flashes.error" :key="index" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ message }}</p>
@@ -27,7 +27,7 @@ const props = defineProps({
             <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="password" inputmode="numeric" pattern="[0-9]{4}" name="pin_confirmation" maxlength="4" required>
           </label>
           <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
-            Enregistrer le PIN
+            Save PIN
           </button>
         </form>
       </div>

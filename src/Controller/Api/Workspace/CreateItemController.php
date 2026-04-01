@@ -4,6 +4,7 @@ namespace App\Controller\Api\Workspace;
 
 use App\Entity\Toast;
 use App\Workspace\WorkspaceAccess;
+use App\Workspace\WorkspaceWorkflow;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,6 +15,7 @@ final class CreateItemController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccess $workspaceAccess,
+        private readonly WorkspaceWorkflow $workspaceWorkflow,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -29,11 +31,25 @@ final class CreateItemController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'missing_title'], 400);
         }
 
+        $ownerId = is_numeric($payload['ownerId'] ?? null) ? (int) $payload['ownerId'] : 0;
+        $owner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, $ownerId);
+        $dueAt = null;
+
+        if (!empty($payload['dueOn'])) {
+            try {
+                $dueAt = new \DateTimeImmutable((string) $payload['dueOn']);
+            } catch (\Exception) {
+                return $this->json(['ok' => false, 'error' => 'invalid_due_on'], 400);
+            }
+        }
+
         $item = (new Toast())
             ->setWorkspace($workspace)
             ->setAuthor($this->workspaceAccess->getUserOrFail())
             ->setTitle($title)
-            ->setDescription(trim((string) ($payload['description'] ?? '')) ?: null);
+            ->setDescription(trim((string) ($payload['description'] ?? '')) ?: null)
+            ->setOwner($owner)
+            ->setDueAt($dueAt);
 
         $this->entityManager->persist($item);
         $this->entityManager->flush();

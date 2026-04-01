@@ -3,6 +3,8 @@
 namespace App\Workspace;
 
 use App\Entity\User;
+use App\Entity\Workspace;
+use App\Entity\WorkspaceMember;
 use App\Security\EmailNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -24,9 +26,27 @@ final class UserProvisioner
         }
 
         $user = (new User())->setEmail($normalizedEmail);
+        $this->createDefaultWorkspaceForUser($user);
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
         return $user;
+    }
+
+    public function createDefaultWorkspaceForUser(User $user): void
+    {
+        $workspace = (new Workspace())
+            ->setName('My Toasts')
+            ->setIsDefault(true)
+            ->setOrganizer($user);
+
+        $membership = (new WorkspaceMember())
+            ->setUser($user)
+            ->setIsOwner(true);
+
+        $workspace->addMembership($membership);
+
+        $this->entityManager->persist($workspace);
+        $this->entityManager->persist($membership);
     }
 }

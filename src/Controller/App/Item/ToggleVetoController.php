@@ -6,6 +6,7 @@ use App\Entity\Toast;
 use App\Workspace\WorkspaceAccess;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,15 +25,22 @@ final class ToggleVetoController extends AbstractController
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
         $workspace = $item->getWorkspace();
-        $this->workspaceAccess->assertOrganizer($workspace);
-        $this->workspaceAccess->assertMeetingModeActive($workspace);
+        $this->workspaceAccess->assertOwner($workspace);
+        $this->workspaceAccess->assertMeetingModeIdle($workspace);
+
+        if ($item->isToasted()) {
+            throw new AccessDeniedHttpException();
+        }
 
         if ($item->isVetoed()) {
-            $item->setStatus(Toast::STATUS_OPEN);
+            $item
+                ->setStatus(Toast::STATUS_OPEN)
+                ->setStatusChangedAt(null);
         } else {
             $item
                 ->setStatus(Toast::STATUS_VETOED)
-                ->setIsBoosted(false);
+                ->setIsBoosted(false)
+                ->setStatusChangedAt(new \DateTimeImmutable());
         }
 
         $this->entityManager->flush();

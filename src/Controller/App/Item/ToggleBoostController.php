@@ -7,6 +7,7 @@ use App\Workspace\WorkspaceAccess;
 use App\Workspace\WorkspaceWorkflow;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,8 +27,12 @@ final class ToggleBoostController extends AbstractController
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
         $workspace = $item->getWorkspace();
-        $this->workspaceAccess->assertOrganizer($workspace);
-        $this->workspaceAccess->assertMeetingModeActive($workspace);
+        $this->workspaceAccess->assertOwner($workspace);
+        $this->workspaceAccess->assertMeetingModeIdle($workspace);
+
+        if ($item->isToasted()) {
+            throw new AccessDeniedHttpException();
+        }
 
         if ($item->isBoosted()) {
             $item->setIsBoosted(false);

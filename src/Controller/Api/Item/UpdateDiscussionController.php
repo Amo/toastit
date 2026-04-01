@@ -25,21 +25,10 @@ final class UpdateDiscussionController extends AbstractController
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
         $workspace = $item->getWorkspace();
-        $this->workspaceAccess->assertOrganizer($workspace);
+        $this->workspaceAccess->assertOwner($workspace);
         $this->workspaceAccess->assertMeetingModeActive($workspace);
 
         $payload = $request->toArray();
-        $discussionStatus = trim((string) ($payload['discussionStatus'] ?? ''));
-        $allowedStatuses = [
-            Toast::DISCUSSION_PENDING,
-            Toast::DISCUSSION_TREATED,
-            Toast::DISCUSSION_POSTPONED,
-        ];
-
-        if (!in_array($discussionStatus, $allowedStatuses, true)) {
-            $discussionStatus = Toast::DISCUSSION_PENDING;
-        }
-
         $ownerId = is_numeric($payload['ownerId'] ?? null) ? (int) $payload['ownerId'] : 0;
         $owner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, $ownerId);
         $dueAt = null;
@@ -80,10 +69,11 @@ final class UpdateDiscussionController extends AbstractController
         }
 
         $item
-            ->setDiscussionStatus($discussionStatus)
+            ->setDiscussionStatus(Toast::DISCUSSION_TREATED)
             ->setDiscussionNotes(trim((string) ($payload['discussionNotes'] ?? '')) ?: null)
             ->setOwner($owner)
-            ->setDueAt($dueAt);
+            ->setDueAt($dueAt)
+            ->setStatusChangedAt(new \DateTimeImmutable());
 
         foreach ($followUpItems as $followUpItem) {
             $followUpOwner = $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, (int) ($followUpItem['ownerId'] ?? 0));
@@ -100,7 +90,7 @@ final class UpdateDiscussionController extends AbstractController
                 ->setOwner($followUpOwner)
                 ->setDueAt($followUpDueAt)
                 ->setPreviousItem($item)
-                ->setDescription(sprintf('Suivi cree depuis "%s".', $item->getTitle()));
+                ->setDescription(sprintf('Follow-up created from "%s".', $item->getTitle()));
 
             $this->entityManager->persist($nextItem);
         }

@@ -9,6 +9,7 @@ export const createSpaRouter = () => createRouter({
     { path: '/pin/unlock', name: 'pin-unlock' },
     { path: '/app', name: 'dashboard' },
     { path: '/app/workspaces/:id', name: 'workspace' },
+    { path: '/app/toasts/:id', name: 'toast' },
     { path: '/app/profile', name: 'profile' },
   ],
 });

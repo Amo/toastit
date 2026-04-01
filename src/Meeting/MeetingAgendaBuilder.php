@@ -40,10 +40,9 @@ final class MeetingAgendaBuilder
             return $left->isBoosted() ? -1 : 1;
         }
 
-        if ($left->isBoosted() && $right->isBoosted()) {
-            return $this->compareNullableInt($left->getBoostRank(), $right->getBoostRank())
-                ?: $this->compareCreatedAt($left, $right)
-                ?: $this->compareId($left, $right);
+        $createdAtComparison = $this->compareCreatedAt($left, $right);
+        if (0 !== $createdAtComparison) {
+            return $createdAtComparison;
         }
 
         $voteComparison = $right->getVoteCount() <=> $left->getVoteCount();
@@ -51,8 +50,7 @@ final class MeetingAgendaBuilder
             return $voteComparison;
         }
 
-        return $this->compareCreatedAt($left, $right)
-            ?: $this->compareId($left, $right);
+        return $this->compareId($left, $right);
     }
 
     private function compareVetoedItems(Toast $left, Toast $right): int
@@ -65,11 +63,6 @@ final class MeetingAgendaBuilder
     {
         return $right->getCreatedAt() <=> $left->getCreatedAt()
             ?: (($right->getId() ?? 0) <=> ($left->getId() ?? 0));
-    }
-
-    private function compareNullableInt(?int $left, ?int $right): int
-    {
-        return ($left ?? PHP_INT_MAX) <=> ($right ?? PHP_INT_MAX);
     }
 
     private function compareCreatedAt(Toast $left, Toast $right): int

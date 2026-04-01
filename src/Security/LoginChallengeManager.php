@@ -6,6 +6,7 @@ use App\Entity\LoginChallenge;
 use App\Entity\User;
 use App\Repository\LoginChallengeRepository;
 use App\Repository\UserRepository;
+use App\Workspace\UserProvisioner;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class LoginChallengeManager
@@ -16,6 +17,7 @@ final class LoginChallengeManager
         private readonly LoginChallengeRepository $challengeRepository,
         private readonly EmailNormalizer $emailNormalizer,
         private readonly ChallengeFactory $challengeFactory,
+        private readonly UserProvisioner $userProvisioner,
     ) {
     }
 
@@ -29,6 +31,7 @@ final class LoginChallengeManager
         }
 
         $user = (new User())->setEmail($normalizedEmail);
+        $this->userProvisioner->createDefaultWorkspaceForUser($user);
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
