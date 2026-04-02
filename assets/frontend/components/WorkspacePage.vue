@@ -8,12 +8,15 @@ import CommentThread from './CommentThread.vue';
 import EmptyState from './EmptyState.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import FollowUpEditor from './FollowUpEditor.vue';
+import CreateToastModal from './CreateToastModal.vue';
 import KeyboardHint from './KeyboardHint.vue';
 import MemberListItem from './MemberListItem.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
 import ToastListItem from './ToastListItem.vue';
+import ToastNavigationFooter from './ToastNavigationFooter.vue';
+import WorkspaceHeader from './WorkspaceHeader.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -381,8 +384,6 @@ const closeManageModal = () => {
 
 const openCreateToastModal = async () => {
   isCreateToastModalOpen.value = true;
-  await nextTick();
-  createToastTitleInput.value?.focus();
 };
 
 const closeCreateToastModal = () => {
@@ -884,50 +885,20 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       <div class="relative z-10">
       <template v-if="!standaloneMode">
       <div class="relative">
-        <div class="relative z-10 space-y-2 px-6 py-8 lg:px-10">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <div class="flex flex-wrap items-center gap-3">
-                <h1 class="inline-flex items-center gap-3 text-4xl font-semibold tracking-tight" :class="resolvedWorkspaceBackgroundUrl ? 'text-white' : 'text-stone-950'">
-                  <i v-if="isToastingMode && !isSoloWorkspace" class="fa-solid fa-gear animate-spin [animation-duration:4s]" :class="resolvedWorkspaceBackgroundUrl ? 'text-white/90' : 'text-amber-600'" aria-hidden="true"></i>
-                  <span>{{ workspace.name }}</span>
-                </h1>
-                <span v-if="workspace.isDefault" class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-amber-100 text-amber-700'">Default workspace</span>
-                <span v-if="isSoloWorkspace" class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">Solo workspace</span>
-              </div>
-              <div class="mt-3 flex flex-wrap gap-3 text-sm" :class="resolvedWorkspaceBackgroundUrl ? 'text-white/85' : 'text-stone-500'">
-                <span class="rounded-full px-3 py-1 font-medium" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ newToastCount }} new toast<span v-if="newToastCount > 1">s</span></span>
-                <span class="rounded-full px-3 py-1 font-medium" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ toastedToastCount }} toasted toast<span v-if="toastedToastCount > 1">s</span></span>
-                <span class="rounded-full px-3 py-1 font-medium" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ memberCount }} member<span v-if="memberCount > 1">s</span></span>
-              </div>
-              <p v-if="workspace.isDefault" class="mt-2 text-sm" :class="resolvedWorkspaceBackgroundUrl ? 'text-white/80' : 'text-stone-500'">This workspace is created automatically for every user and stays available as the permanent default.</p>
-            </div>
-            <div v-if="workspace.currentUserIsOwner" class="flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
-                class="inline-grid h-12 w-12 place-items-center rounded-full border text-stone-700 transition"
-                :class="resolvedWorkspaceBackgroundUrl ? 'border-white/30 bg-white/15 text-white hover:border-white/50 hover:bg-white/20' : 'border-stone-200 bg-white hover:border-stone-300 hover:text-stone-950'"
-                @click="openManageModal"
-              >
-                <i class="fa-solid fa-gear" aria-hidden="true"></i>
-                <span class="sr-only">Manage workspace</span>
-              </button>
-              <button
-                v-if="!isSoloWorkspace"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
-                :class="workspace.meetingMode === 'live'
-                  ? (resolvedWorkspaceBackgroundUrl ? 'bg-white text-stone-950 hover:bg-white/90' : 'bg-stone-900 text-white hover:bg-stone-800')
-                  : (resolvedWorkspaceBackgroundUrl ? 'bg-amber-400 text-stone-950 hover:bg-amber-300' : 'bg-amber-500 text-stone-950 hover:bg-amber-400')"
-                :disabled="isSaving"
-                @click="workspace.meetingMode === 'live' ? stopMeetingMode() : startMeetingMode()"
-              >
-                <i v-if="workspace.meetingMode !== 'live'" class="fa-solid fa-bolt" aria-hidden="true"></i>
-                <span>{{ workspace.meetingMode === 'live' ? 'Stop toasting mode' : 'Start toasting mode' }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <WorkspaceHeader
+          :workspace="workspace"
+          :is-toasting-mode="isToastingMode"
+          :is-solo-workspace="isSoloWorkspace"
+          :new-toast-count="newToastCount"
+          :toasted-toast-count="toastedToastCount"
+          :member-count="memberCount"
+          :background-visible="!!resolvedWorkspaceBackgroundUrl"
+          :workspace-url="workspaceUrl"
+          :dashboard-url="dashboardUrl"
+          @open-manage="openManageModal"
+          @start-meeting="startMeetingMode"
+          @stop-meeting="stopMeetingMode"
+        />
       </div>
 
       <div class="mt-4 space-y-0">
@@ -1166,43 +1137,18 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
           </div>
       </ModalDialog>
 
-      <ModalDialog v-if="isCreateToastModalOpen" max-width-class="max-w-2xl" @close="closeCreateToastModal">
-        <ModalHeader eyebrow="New toast" title="Toast details" @close="closeCreateToastModal" />
-
-          <div class="space-y-4 overflow-y-auto px-6 py-6" @keydown="handleCreateToastModalKeydown">
-            <label class="grid gap-2 text-sm font-medium text-stone-700">
-              <span>Title</span>
-              <input ref="createToastTitleInput" v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast">
-            </label>
-
-            <div class="grid gap-4 md:grid-cols-2">
-              <label class="grid gap-2 text-sm font-medium text-stone-700">
-                <span>Assignee</span>
-                <select v-model="itemForm.ownerId" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm">
-                  <option value="">Unassigned</option>
-                  <option v-for="invitee in participants" :key="invitee.id" :value="String(invitee.id)">{{ invitee.displayName }}</option>
-                </select>
-              </label>
-              <label class="grid gap-2 text-sm font-medium text-stone-700">
-                <span>Date</span>
-                <input v-model="itemForm.dueOn" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" type="date">
-              </label>
-            </div>
-
-            <label class="grid gap-2 text-sm font-medium text-stone-700">
-              <span>Details</span>
-              <textarea v-model="itemForm.description" class="min-h-32 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" placeholder="Add details or description" />
-            </label>
-
-            <div class="flex items-center justify-between gap-3">
-              <KeyboardHint>Press Cmd+Enter or Ctrl+Enter to create this toast.</KeyboardHint>
-              <div class="flex justify-end gap-3">
-                <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="closeCreateToastModal">Cancel</button>
-                <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="createItem">Create toast</button>
-              </div>
-            </div>
-          </div>
-      </ModalDialog>
+      <CreateToastModal
+        :open="isCreateToastModalOpen"
+        :item-form="itemForm"
+        :participants="participants"
+        @close="closeCreateToastModal"
+        @create="createItem"
+        @title-keydown="handleCreateToastModalKeydown"
+        @update:title="itemForm.title = $event"
+        @update:owner-id="itemForm.ownerId = $event"
+        @update:due-on="itemForm.dueOn = $event"
+        @update:description="itemForm.description = $event"
+      />
 
       <ModalDialog v-if="selectedToastModal" max-width-class="max-w-4xl" @close="closeToastModal">
         <div class="border-b border-stone-100">
@@ -1411,29 +1357,12 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                 </div>
               </section>
 
-              <div class="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4">
-                <div class="inline-flex items-center gap-2">
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:border-stone-300 hover:text-stone-900 disabled:opacity-40"
-                    :disabled="!canNavigateSelectedToast(-1)"
-                    @click="navigateSelectedToast(-1)"
-                  >
-                    <i class="fa-solid fa-arrow-left text-[0.65rem]" aria-hidden="true"></i>
-                    <span>Previous</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:border-stone-300 hover:text-stone-900 disabled:opacity-40"
-                    :disabled="!canNavigateSelectedToast(1)"
-                    @click="navigateSelectedToast(1)"
-                  >
-                    <span>Next</span>
-                    <i class="fa-solid fa-arrow-right text-[0.65rem]" aria-hidden="true"></i>
-                  </button>
-                </div>
-                <KeyboardHint>Use keyboard arrows to move between toasts.</KeyboardHint>
-              </div>
+              <ToastNavigationFooter
+                :can-navigate-previous="canNavigateSelectedToast(-1)"
+                :can-navigate-next="canNavigateSelectedToast(1)"
+                @previous="navigateSelectedToast(-1)"
+                @next="navigateSelectedToast(1)"
+              />
             </div>
           </div>
       </ModalDialog>
