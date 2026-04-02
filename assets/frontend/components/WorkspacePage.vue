@@ -8,6 +8,7 @@ import CommentThread from './CommentThread.vue';
 import EmptyState from './EmptyState.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import FollowUpEditor from './FollowUpEditor.vue';
+import KeyboardHint from './KeyboardHint.vue';
 import MemberListItem from './MemberListItem.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -1194,7 +1195,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
             </label>
 
             <div class="flex items-center justify-between gap-3">
-              <p class="text-xs text-stone-400">Press Cmd+Enter or Ctrl+Enter to create this toast.</p>
+              <KeyboardHint>Press Cmd+Enter or Ctrl+Enter to create this toast.</KeyboardHint>
               <div class="flex justify-end gap-3">
                 <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="closeCreateToastModal">Cancel</button>
                 <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="createItem">Create toast</button>
@@ -1431,7 +1432,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                     <i class="fa-solid fa-arrow-right text-[0.65rem]" aria-hidden="true"></i>
                   </button>
                 </div>
-                <p class="text-xs text-stone-400">Use keyboard arrows to move between toasts.</p>
+                <KeyboardHint>Use keyboard arrows to move between toasts.</KeyboardHint>
               </div>
             </div>
           </div>
