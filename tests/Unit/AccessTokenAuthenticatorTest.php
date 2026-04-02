@@ -4,7 +4,7 @@ namespace App\Tests\Unit;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
-use App\Security\ApiTokenAuthenticator;
+use App\Security\AccessTokenAuthenticator;
 use App\Security\JwtTokenService;
 use App\Tests\Support\ReflectionHelper;
 use PHPUnit\Framework\TestCase;
@@ -12,11 +12,11 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 
-final class ApiTokenAuthenticatorTest extends TestCase
+final class AccessTokenAuthenticatorTest extends TestCase
 {
     public function testSupportsOnlyProtectedApiRequestsWithAuthorizationHeader(): void
     {
-        $authenticator = new ApiTokenAuthenticator(
+        $authenticator = new AccessTokenAuthenticator(
             new JwtTokenService('test-secret'),
             $this->createMock(UserRepository::class),
         );
@@ -34,7 +34,7 @@ final class ApiTokenAuthenticatorTest extends TestCase
         ReflectionHelper::setId($user, 99);
         $jwtTokenManager = new JwtTokenService('test-secret');
         $repository = $this->createMock(UserRepository::class);
-        $authenticator = new ApiTokenAuthenticator($jwtTokenManager, $repository);
+        $authenticator = new AccessTokenAuthenticator($jwtTokenManager, $repository);
 
         try {
             $authenticator->authenticate(Request::create('/api/dashboard', 'GET', server: ['HTTP_AUTHORIZATION' => 'Token nope']));
@@ -62,7 +62,7 @@ final class ApiTokenAuthenticatorTest extends TestCase
             ->with(15)
             ->willReturn($user);
 
-        $authenticator = new ApiTokenAuthenticator($jwtTokenManager, $repository);
+        $authenticator = new AccessTokenAuthenticator($jwtTokenManager, $repository);
         $passport = $authenticator->authenticate(Request::create('/api/dashboard', 'GET', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$jwtTokenManager->createAccessToken($user, new \DateTimeImmutable()),
         ]));

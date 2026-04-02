@@ -16,7 +16,7 @@ final class LoginChallengeService
         private readonly UserRepository $userRepository,
         private readonly LoginChallengeRepository $challengeRepository,
         private readonly EmailNormalizerService $emailNormalizer,
-        private readonly ChallengeFactory $challengeFactory,
+        private readonly LoginChallengeFactory $challengeFactory,
         private readonly WorkspaceUserService $userProvisioner,
     ) {
     }

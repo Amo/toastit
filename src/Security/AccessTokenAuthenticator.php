@@ -11,7 +11,7 @@ use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 
-final class ApiTokenAuthenticator extends AbstractAuthenticator
+final class AccessTokenAuthenticator extends AbstractAuthenticator
 {
     public function __construct(
         private readonly JwtTokenService $jwtTokenManager,

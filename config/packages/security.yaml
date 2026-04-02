@@ -17,12 +17,12 @@ security:
             stateless: true
             provider: app_users
             custom_authenticators:
-                - App\Security\ApiTokenAuthenticator
+                - App\Security\AccessTokenAuthenticator
         main:
             lazy: true
             provider: app_users
             custom_authenticators:
-                - App\Security\OtpLoginAuthenticator
+                - App\Security\OtpAuthenticator
             logout:
                 path: app_logout
                 target: /

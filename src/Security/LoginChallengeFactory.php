@@ -5,7 +5,7 @@ namespace App\Security;
 use App\Entity\LoginChallenge;
 use App\Entity\User;
 
-final class ChallengeFactory
+final class LoginChallengeFactory
 {
     public function create(User $user, string $purpose, \DateTimeImmutable $now): LoginChallengeResult
     {

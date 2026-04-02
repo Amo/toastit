@@ -4,14 +4,14 @@ namespace App\Tests\Unit;
 
 use App\Entity\LoginChallenge;
 use App\Entity\User;
-use App\Security\ChallengeFactory;
+use App\Security\LoginChallengeFactory;
 use PHPUnit\Framework\TestCase;
 
-final class ChallengeFactoryTest extends TestCase
+final class LoginChallengeFactoryTest extends TestCase
 {
     public function testFactoryBuildsAlphanumericCodeAndTokenizedChallenge(): void
     {
-        $factory = new ChallengeFactory();
+        $factory = new LoginChallengeFactory();
         $user = (new User())->setEmail('factory@example.com');
         $created = $factory->create($user, LoginChallenge::PURPOSE_LOGIN, new \DateTimeImmutable('2026-03-31 10:00:00'));
 

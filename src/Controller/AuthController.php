@@ -5,7 +5,7 @@ namespace App\Controller;
 use App\Entity\LoginChallenge;
 use App\Mailer\TransactionalMailer;
 use App\Security\LoginChallengeService;
-use App\Security\OtpLoginAuthenticator;
+use App\Security\OtpAuthenticator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -86,7 +86,7 @@ final class AuthController extends AbstractController
                 return $this->redirectToRoute('app_auth_verify', ['email' => $email, 'purpose' => $purpose]);
             }
 
-            $this->security->login($challenge->getUser(), OtpLoginAuthenticator::class, 'main');
+            $this->security->login($challenge->getUser(), OtpAuthenticator::class, 'main');
 
             if (!$challenge->getUser()->hasPin() || LoginChallenge::PURPOSE_RESET_PIN === $challenge->getPurpose()) {
                 return $this->redirectToRoute('app_pin_setup');
@@ -109,7 +109,7 @@ final class AuthController extends AbstractController
             return $this->redirect('/');
         }
 
-        $this->security->login($challenge->getUser(), OtpLoginAuthenticator::class, 'main');
+        $this->security->login($challenge->getUser(), OtpAuthenticator::class, 'main');
 
         if (!$challenge->getUser()->hasPin() || LoginChallenge::PURPOSE_RESET_PIN === $challenge->getPurpose()) {
             return $this->redirectToRoute('app_pin_setup');

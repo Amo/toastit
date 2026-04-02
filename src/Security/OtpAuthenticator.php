@@ -9,7 +9,7 @@ use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 
-final class OtpLoginAuthenticator extends AbstractAuthenticator
+final class OtpAuthenticator extends AbstractAuthenticator
 {
     public function supports(Request $request): ?bool
     {
