@@ -5,6 +5,7 @@ import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import ModalDialog from './ModalDialog.vue';
+import ToastListItem from './ToastListItem.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -964,28 +965,17 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
 
             <div v-if="currentToastTab === 'active' && !agendaItems.length" class="text-sm text-stone-500">No active toasts.</div>
             <div v-else-if="currentToastTab === 'active'" class="space-y-3">
-              <article
+              <ToastListItem
                 v-for="(item, index) in agendaItems"
                 :key="item.id"
-                class="overflow-hidden rounded-[1.35rem] border bg-white transition"
-                :class="[
-                  activeToastAccentClasses(item),
-                  'opacity-95 hover:shadow-toastit-panel',
-                ]"
+                variant="active"
+                :index-label="index + 1"
+                :title="item.title"
+                :description="item.description ? truncateDescription(item.description) : ''"
+                :accent-class="activeToastAccentClasses(item)"
+                @open="openToastModal(item)"
               >
-                <button type="button" class="flex w-full items-start justify-between gap-4 px-5 py-4 text-left" @click="openToastModal(item)">
-                  <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                      <span
-                        class="inline-grid h-8 w-8 place-items-center rounded-full font-semibold"
-                        :class="isLateToast(item) ? 'bg-red-600 text-white' : 'bg-amber-100 text-amber-700'"
-                      >
-                        {{ index + 1 }}
-                      </span>
-                      <p class="text-lg font-semibold text-stone-950">{{ item.title }}</p>
-                    </div>
-                    <p v-if="item.description" class="text-sm text-stone-500">{{ truncateDescription(item.description) }}</p>
-                  </div>
+                <template #actions>
                   <div class="flex items-center gap-2">
                     <button
                       v-if="!isSoloWorkspace"
@@ -1029,53 +1019,47 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                       </button>
                     </template>
                   </div>
-                </button>
-              </article>
+                </template>
+              </ToastListItem>
             </div>
 
             <div v-else-if="currentToastTab === 'vetoed' && vetoedItems.length" class="space-y-3">
-              <article
+              <ToastListItem
                 v-for="(item, index) in vetoedItems"
                 :key="item.id"
-                class="overflow-hidden rounded-[1.35rem] border border-stone-200 bg-white opacity-95 transition hover:shadow-toastit-panel"
+                variant="vetoed"
+                :index-label="index + 1"
+                :title="item.title"
+                :description="item.description ? truncateDescription(item.description) : ''"
+                @open="openToastModal(item)"
               >
-                <button type="button" class="flex w-full items-start justify-between gap-4 px-5 py-4 text-left" @click="openToastModal(item)">
-                  <div class="min-w-0 space-y-2">
-                    <div class="flex items-center gap-3">
-                      <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-stone-100 font-semibold text-stone-600">{{ index + 1 }}</span>
-                      <p class="truncate text-lg font-semibold text-stone-950">{{ item.title }}</p>
-                    </div>
-                    <p v-if="item.description" class="text-sm text-stone-500">{{ truncateDescription(item.description) }}</p>
-                  </div>
-                  <div class="shrink-0 text-right">
+                <template #actions>
+                  <div class="text-right">
                     <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Declined</p>
                     <p class="mt-2 text-sm font-medium text-stone-700">{{ item.statusChangedAtDisplay }}</p>
                   </div>
-                </button>
-              </article>
+                </template>
+              </ToastListItem>
             </div>
             <div v-else-if="currentToastTab === 'vetoed'" class="text-sm text-stone-500">No declined toasts.</div>
 
             <div v-else-if="currentToastTab === 'resolved' && resolvedItems.length" class="space-y-3">
-              <article
+              <ToastListItem
                 v-for="(item, index) in resolvedItems"
                 :key="item.id"
-                class="overflow-hidden rounded-[1.35rem] border border-stone-200 bg-white opacity-95 transition hover:shadow-toastit-panel"
+                variant="resolved"
+                :index-label="index + 1"
+                :title="item.title"
+                :description="item.description ? truncateDescription(item.description) : ''"
+                @open="openToastModal(item)"
               >
-                <button type="button" class="flex w-full items-start justify-between gap-4 px-5 py-4 text-left" @click="openToastModal(item)">
-                  <div class="min-w-0 space-y-2">
-                    <div class="flex items-center gap-3">
-                      <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-stone-100 font-semibold text-stone-600">{{ index + 1 }}</span>
-                      <p class="truncate text-lg font-semibold text-stone-950">{{ item.title }}</p>
-                    </div>
-                    <p v-if="item.description" class="text-sm text-stone-500">{{ truncateDescription(item.description) }}</p>
-                  </div>
-                  <div class="shrink-0 text-right">
+                <template #actions>
+                  <div class="text-right">
                     <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Toasted</p>
                     <p class="mt-2 text-sm font-medium text-stone-700">{{ item.statusChangedAtDisplay }}</p>
                   </div>
-                </button>
-              </article>
+                </template>
+              </ToastListItem>
             </div>
             <div v-else-if="currentToastTab === 'resolved'" class="text-sm text-stone-500">No toasted toasts.</div>
         </div>
