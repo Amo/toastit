@@ -20,26 +20,25 @@ final class WorkspaceFlowTest extends WebTestCase
         $client = static::createClient();
         $email = sprintf('workspace-%s@example.com', time());
         $this->loginWithMagicLink($client, $email);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
 
-        $client->request('POST', '/app', ['name' => 'Produit']);
-        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($client);
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => 'Produit']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($client)['workspaceId'];
 
         $title = sprintf('Sujet prioritaire %s', microtime(true));
 
-        $client->request('POST', sprintf('/app/workspaces/%d/items', $workspaceId), [
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/items', $workspaceId), [
             'title' => $title,
             'description' => 'Discussion rapide',
         ]);
-        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
+        self::assertResponseIsSuccessful();
 
         $itemId = $this->findToastIdByTitle($title);
 
-        $client->xmlHttpRequest('POST', sprintf('/app/items/%d/vote', $itemId), [], [], [
-            'HTTP_ACCEPT' => 'application/json',
-        ]);
+        $client->jsonRequest('POST', sprintf('/api/items/%d/vote', $itemId));
         self::assertResponseIsSuccessful();
 
-        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
         $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
         self::assertResponseIsSuccessful();
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -55,17 +54,18 @@ final class WorkspaceFlowTest extends WebTestCase
         $ownerEmail = sprintf('owner-%s@example.com', time());
         $memberEmail = sprintf('member-%s@example.com', time());
         $this->loginWithMagicLink($client, $ownerEmail);
-
-        $client->request('POST', '/app', ['name' => 'Delivery']);
-        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($client);
-
-        $client->request('POST', sprintf('/app/workspaces/%d/invite', $workspaceId), ['email' => $memberEmail]);
-        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
-
-        $client->request('POST', sprintf('/app/workspaces/%d/meeting/start', $workspaceId));
-        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
-
         $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => 'Delivery']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($client)['workspaceId'];
+
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/invite', $workspaceId), ['email' => $memberEmail]);
+        self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/meeting/start', $workspaceId));
+        self::assertResponseIsSuccessful();
+
         $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
         self::assertResponseIsSuccessful();
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -81,33 +81,38 @@ final class WorkspaceFlowTest extends WebTestCase
         $ownerEmail = sprintf('discussion-owner-%s@example.com', time());
         $memberEmail = sprintf('discussion-member-%s@example.com', time());
         $this->loginWithMagicLink($client, $ownerEmail);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
 
-        $client->request('POST', '/app', ['name' => 'Ops']);
-        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($client);
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => 'Ops']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($client)['workspaceId'];
         $sourceTitle = sprintf('Sujet source %s', microtime(true));
-        $client->request('POST', sprintf('/app/workspaces/%d/invite', $workspaceId), ['email' => $memberEmail]);
-        $client->request('POST', sprintf('/app/workspaces/%d/items', $workspaceId), [
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/invite', $workspaceId), ['email' => $memberEmail]);
+        self::assertResponseIsSuccessful();
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/items', $workspaceId), [
             'title' => $sourceTitle,
             'description' => 'Point de depart',
         ]);
-        $client->request('POST', sprintf('/app/workspaces/%d/meeting/start', $workspaceId));
+        self::assertResponseIsSuccessful();
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/meeting/start', $workspaceId));
+        self::assertResponseIsSuccessful();
 
         $memberUserId = $this->findUserIdByEmail($memberEmail);
         $sourceToastId = $this->findToastIdByTitle($sourceTitle);
 
         $followUpTitle = sprintf('Envoyer le recap %s', microtime(true));
-        $client->request('POST', sprintf('/app/items/%d/discussion', $sourceToastId), [
-            'discussion_status' => 'treated',
-            'discussion_notes' => 'Discussion finalisee.',
-            'follow_up_titles' => [$followUpTitle],
-            'follow_up_owner_ids' => [(string) $memberUserId],
-            'follow_up_due_on' => ['2026-04-15'],
-            'owner_id' => (string) $memberUserId,
-            'due_at' => '2026-04-15',
+        $client->jsonRequest('POST', sprintf('/api/items/%d/discussion', $sourceToastId), [
+            'discussionNotes' => 'Discussion finalisee.',
+            'ownerId' => $memberUserId,
+            'dueOn' => '2026-04-15',
+            'followUpItems' => [[
+                'title' => $followUpTitle,
+                'ownerId' => $memberUserId,
+                'dueOn' => '2026-04-15',
+            ]],
         ]);
-        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
+        self::assertResponseIsSuccessful();
 
-        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
         $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
         self::assertResponseIsSuccessful();
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -131,26 +136,32 @@ final class WorkspaceFlowTest extends WebTestCase
         $ownerEmail = sprintf('host-%s@example.com', time());
         $guestEmail = sprintf('guest-%s@example.com', time());
         $this->loginWithMagicLink($ownerClient, $ownerEmail);
+        $ownerClient->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
 
-        $ownerClient->request('POST', '/app', ['name' => 'Review']);
-        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($ownerClient);
+        $ownerClient->jsonRequest('POST', '/api/workspaces', ['name' => 'Review']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($ownerClient)['workspaceId'];
         $title = sprintf('Sujet prive %s', microtime(true));
-        $ownerClient->request('POST', sprintf('/app/workspaces/%d/invite', $workspaceId), ['email' => $guestEmail]);
-        $ownerClient->request('POST', sprintf('/app/workspaces/%d/items', $workspaceId), [
+        $ownerClient->jsonRequest('POST', sprintf('/api/workspaces/%d/invite', $workspaceId), ['email' => $guestEmail]);
+        self::assertResponseIsSuccessful();
+        $ownerClient->jsonRequest('POST', sprintf('/api/workspaces/%d/items', $workspaceId), [
             'title' => $title,
             'description' => 'A discuter',
         ]);
-        $ownerClient->request('POST', sprintf('/app/workspaces/%d/meeting/start', $workspaceId));
+        self::assertResponseIsSuccessful();
+        $ownerClient->jsonRequest('POST', sprintf('/api/workspaces/%d/meeting/start', $workspaceId));
+        self::assertResponseIsSuccessful();
         $itemId = $this->findToastIdByTitle($title);
 
         static::ensureKernelShutdown();
         $guestClient = static::createClient();
         $this->loginWithMagicLink($guestClient, $guestEmail);
+        $guestClient->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($guestEmail));
 
-        $guestClient->request('POST', sprintf('/app/items/%d/boost', $itemId));
+        $guestClient->jsonRequest('POST', sprintf('/api/items/%d/boost', $itemId));
         self::assertResponseStatusCodeSame(403);
 
-        $guestClient->request('POST', sprintf('/app/items/%d/veto', $itemId));
+        $guestClient->jsonRequest('POST', sprintf('/api/items/%d/veto', $itemId));
         self::assertResponseStatusCodeSame(403);
     }
 
@@ -190,14 +201,9 @@ final class WorkspaceFlowTest extends WebTestCase
         return $toast->getId();
     }
 
-    private function assertWorkspaceRedirectAndReturnId(KernelBrowser $client): int
+    private function decodeJsonResponse(KernelBrowser $client): array
     {
-        self::assertResponseRedirects();
-        $target = $client->getResponse()->headers->get('Location');
-        self::assertMatchesRegularExpression('#^/app/workspaces/\d+$#', (string) $target);
-        preg_match('#/app/workspaces/(\d+)$#', (string) $target, $matches);
-
-        return (int) $matches[1];
+        return json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
     }
 
     private function createAccessTokenForEmail(string $email): string

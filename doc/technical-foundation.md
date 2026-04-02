@@ -203,9 +203,8 @@ The design system is a hard constraint, not a loose guideline.
 The current source of truth is:
 
 - `assets/styles/app.scss`
-- `templates/components/ui`
-- `templates/components/forms`
-- `templates/design_system/index.html.twig`
+- `assets/frontend/components`
+- `assets/frontend/styles/app.css`
 - `DESIGN-SYSTEM.md`
 - `AGENTS.md`
 
@@ -219,27 +218,14 @@ Pages must not invent their own primitives.
 
 Examples already introduced:
 
-- icon
-- button
-- alert
-- panel
-- section heading
-- inline email form
-- segmented code input
-
-### Icon policy
-
-All icons must go through the icon component:
-
-- `templates/components/ui/_icon.html.twig`
-
-This must remain true across:
-
-- page actions
-- form buttons
-- overlays
-- icon showcases
-- future navigation and admin tooling
+- page headers
+- modal dialogs
+- modal headers
+- workspace rows
+- toast list items
+- member list items
+- comment thread and composer
+- follow-up editor
 
 ### Color policy
 

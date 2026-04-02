@@ -1,11 +1,11 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { WorkspacesApi } from '../api/workspaces';
 import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
-import PageHero from './PageHero.vue';
+import PageHeader from './PageHeader.vue';
 import WorkspaceRow from './WorkspaceRow.vue';
 
 const props = defineProps({
@@ -105,8 +105,25 @@ const closeCreateWorkspaceModal = () => {
   isCreateWorkspaceModalOpen.value = false;
 };
 
+const dashboardHeaderStats = computed(() => [{
+  label: `${payload.value.workspaces.length} workspace${payload.value.workspaces.length > 1 ? 's' : ''}`,
+  icon: 'fa-solid fa-layer-group',
+  className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold',
+}]);
+
+const dashboardHeaderActions = [{
+  id: 'create-workspace',
+  label: 'New workspace',
+  icon: 'fa-solid fa-plus',
+  theme: 'primary',
+}];
+
 const openWorkspace = (workspaceId) => {
   window.location.href = `/app/workspaces/${workspaceId}`;
+};
+
+const openHome = () => {
+  window.location.href = '/app';
 };
 
 const isTypingTarget = (target) => {
@@ -124,6 +141,12 @@ const isTypingTarget = (target) => {
 
 const handleDashboardKeydown = (event) => {
   if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
+    return;
+  }
+
+  if (event.key.toLowerCase() === 'h') {
+    event.preventDefault();
+    openHome();
     return;
   }
 
@@ -154,21 +177,13 @@ onUnmounted(() => {
 
 <template>
   <section class="tw-toastit-shell space-y-6">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <PageHero eyebrow="Workspace" title="Your workspaces." />
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-stone-600">
-            <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
-            <span>{{ payload.workspaces.length }} workspace<span v-if="payload.workspaces.length > 1">s</span></span>
-          </div>
-        </div>
-      </div>
-      <button type="button" class="inline-flex h-12 w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-amber-500 px-5 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="openCreateWorkspaceModal">
-        <i class="fa-solid fa-plus" aria-hidden="true"></i>
-        <span>New workspace</span>
-      </button>
-    </div>
+    <PageHeader
+      eyebrow="Workspace"
+      title="Your workspaces."
+      :stats="dashboardHeaderStats"
+      :actions="dashboardHeaderActions"
+      @action="openCreateWorkspaceModal"
+    />
 
     <div class="tw-toastit-card overflow-hidden p-6">
       <EmptyState v-if="isLoading" message="Loading..." />
@@ -188,7 +203,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <ModalDialog v-if="isCreateWorkspaceModalOpen" max-width-class="max-w-xl" @close="closeCreateWorkspaceModal">
+    <ModalDialog v-if="isCreateWorkspaceModalOpen" max-width-class="max-w-4xl" @close="closeCreateWorkspaceModal">
       <ModalHeader
         eyebrow="New workspace"
         title="Create a workspace"

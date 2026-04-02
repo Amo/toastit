@@ -72,11 +72,11 @@ export class WorkspacesApi {
   }
 
   toggleBoost(itemId) {
-    return this.client.request(`/app/items/${itemId}/boost`, { method: 'POST' });
+    return this.client.request(`/api/items/${itemId}/boost`, { method: 'POST' });
   }
 
   toggleVeto(itemId) {
-    return this.client.request(`/app/items/${itemId}/veto`, { method: 'POST' });
+    return this.client.request(`/api/items/${itemId}/veto`, { method: 'POST' });
   }
 
   toastItem(itemId) {

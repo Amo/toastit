@@ -16,12 +16,12 @@ final class WorkspaceOrderFlowTest extends WebTestCase
         $client = static::createClient();
         $email = sprintf('order-%s@example.com', time());
         $this->loginWithMagicLink($client, $email);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
 
         $firstWorkspaceId = $this->createWorkspaceAndReturnId($client, 'Alpha');
         $secondWorkspaceId = $this->createWorkspaceAndReturnId($client, 'Bravo');
         $thirdWorkspaceId = $this->createWorkspaceAndReturnId($client, 'Charlie');
 
-        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
         $client->request('GET', '/api/dashboard');
         self::assertResponseIsSuccessful();
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -69,11 +69,11 @@ final class WorkspaceOrderFlowTest extends WebTestCase
 
     private function createWorkspaceAndReturnId(\Symfony\Bundle\FrameworkBundle\KernelBrowser $client, string $name): int
     {
-        $client->request('POST', '/app', ['name' => $name]);
-        self::assertResponseRedirects();
-        preg_match('#/app/workspaces/(\d+)$#', (string) $client->getResponse()->headers->get('Location'), $matches);
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => $name]);
+        self::assertResponseIsSuccessful();
+        $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
 
-        return (int) $matches[1];
+        return (int) $payload['workspaceId'];
     }
 
     private function createAccessTokenForEmail(string $email): string

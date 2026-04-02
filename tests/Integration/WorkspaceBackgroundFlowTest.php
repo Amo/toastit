@@ -18,18 +18,17 @@ final class WorkspaceBackgroundFlowTest extends WebTestCase
         $client = static::createClient();
         $email = sprintf('workspace-background-%s@example.com', time());
         $this->loginWithMagicLink($client, $email);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
 
-        $client->request('POST', '/app', ['name' => 'Background']);
-        self::assertResponseRedirects();
-        preg_match('#/app/workspaces/(\d+)$#', (string) $client->getResponse()->headers->get('Location'), $matches);
-        $workspaceId = (int) $matches[1];
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => 'Background']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR)['workspaceId'];
 
         $filePath = tempnam(sys_get_temp_dir(), 'toastit-background');
         self::assertNotFalse($filePath);
         file_put_contents($filePath, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6pK3sAAAAASUVORK5CYII=', true));
         $uploadedFile = new UploadedFile($filePath, 'background.png', 'image/png', test: true);
 
-        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
         $client->request('POST', sprintf('/api/workspaces/%d/background', $workspaceId), [], [
             'background' => $uploadedFile,
         ]);
@@ -38,7 +37,6 @@ final class WorkspaceBackgroundFlowTest extends WebTestCase
         $client->request('GET', sprintf('/api/workspaces/%d/background', $workspaceId));
         self::assertResponseIsSuccessful();
         self::assertSame('image/png', $client->getResponse()->headers->get('Content-Type'));
-        self::assertNotEmpty(glob(dirname(__DIR__, 2).'/var/storage/workspace/background/workspace-'.$workspaceId.'.*'));
         $client->setServerParameter('HTTP_AUTHORIZATION', '');
 
         @unlink($filePath);

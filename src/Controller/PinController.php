@@ -56,7 +56,7 @@ final class PinController extends AbstractController
             $this->entityManager->flush();
             $this->pinSessionManager->markVerified();
 
-            return $this->redirectToRoute('app_dashboard');
+            return $this->redirect('/app');
         }
 
         throw new \LogicException('GET handled by SPA shell.');
@@ -76,7 +76,7 @@ final class PinController extends AbstractController
 
             $this->pinSessionManager->markVerified();
 
-            return $this->redirectToRoute('app_dashboard');
+            return $this->redirect('/app');
         }
 
         throw new \LogicException('GET handled by SPA shell.');

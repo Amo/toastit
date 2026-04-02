@@ -1,16 +1,14 @@
 <?php
 
-namespace App\Controller\App\Item;
+namespace App\Controller\Api\Item;
 
 use App\Entity\Toast;
 use App\Workspace\WorkspaceAccessService;
 use App\Workspace\WorkspaceWorkflowService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class ToggleBoostController extends AbstractController
@@ -22,8 +20,8 @@ final class ToggleBoostController extends AbstractController
     ) {
     }
 
-    #[Route('/app/items/{id}/boost', name: 'app_item_boost_toggle', methods: ['POST'])]
-    public function __invoke(int $id, Request $request): Response
+    #[Route('/api/items/{id}/boost', name: 'api_item_boost_toggle', methods: ['POST'])]
+    public function __invoke(int $id): JsonResponse
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
         $workspace = $item->getWorkspace();
@@ -45,14 +43,11 @@ final class ToggleBoostController extends AbstractController
 
         $this->entityManager->flush();
 
-        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-            return new JsonResponse([
-                'id' => $item->getId(),
-                'boosted' => $item->isBoosted(),
-                'boostRank' => $item->getBoostRank(),
-            ]);
-        }
-
-        return $this->redirectToRoute('app_workspace_show', ['id' => $workspace->getId()]);
+        return $this->json([
+            'ok' => true,
+            'id' => $item->getId(),
+            'boosted' => $item->isBoosted(),
+            'boostRank' => $item->getBoostRank(),
+        ]);
     }
 }
