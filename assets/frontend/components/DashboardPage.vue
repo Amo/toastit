@@ -20,7 +20,11 @@ const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
 const draggedWorkspaceId = ref(null);
 const armedWorkspaceDragId = ref(null);
-const apiClient = new ToastitApiClient(props.accessToken);
+const apiClient = new ToastitApiClient(props.accessToken, {
+  onUnauthorized: () => {
+    window.location.href = '/';
+  },
+});
 const workspacesApi = new WorkspacesApi(apiClient);
 
 const fetchDashboard = async () => {

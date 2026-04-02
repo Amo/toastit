@@ -16,7 +16,11 @@ const props = defineProps({
 const isLoading = ref(true);
 const isSaving = ref(false);
 const profile = ref({ displayName: '', firstName: '', lastName: '' });
-const apiClient = new ToastitApiClient(props.accessToken);
+const apiClient = new ToastitApiClient(props.accessToken, {
+  onUnauthorized: () => {
+    window.location.href = '/';
+  },
+});
 const profileApi = new ProfileApi(apiClient);
 
 const fetchProfile = async () => {

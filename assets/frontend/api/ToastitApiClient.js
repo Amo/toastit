@@ -1,6 +1,7 @@
 export class ToastitApiClient {
-  constructor(accessToken) {
+  constructor(accessToken, options = {}) {
     this.accessToken = accessToken;
+    this.onUnauthorized = options.onUnauthorized ?? null;
   }
 
   async request(url, options = {}) {
@@ -12,6 +13,10 @@ export class ToastitApiClient {
         ...(options.headers ?? {}),
       },
     });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      this.onUnauthorized(response);
+    }
 
     return response;
   }

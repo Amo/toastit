@@ -48,7 +48,11 @@ const selectedTargetWorkspaceId = ref('');
 const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', isSoloWorkspace: false });
 const commentDrafts = ref({});
 const workspaceBackgroundObjectUrl = ref('');
-const apiClient = new ToastitApiClient(props.accessToken);
+const apiClient = new ToastitApiClient(props.accessToken, {
+  onUnauthorized: () => {
+    window.location.href = '/';
+  },
+});
 const workspacesApi = new WorkspacesApi(apiClient);
 
 const workspace = computed(() => payload.value?.workspace ?? null);
