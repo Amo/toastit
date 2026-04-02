@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
+import EyebrowLabel from './EyebrowLabel.vue';
 import ModalDialog from './ModalDialog.vue';
 
 const props = defineProps({
@@ -1085,7 +1086,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       <ModalDialog v-if="isManageModalOpen" max-width-class="max-w-3xl" @close="closeManageModal">
           <div class="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-5">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Workspace settings</p>
+            <EyebrowLabel>Workspace settings</EyebrowLabel>
               <h2 class="mt-2 text-2xl font-semibold text-stone-950">{{ workspace.name }}</h2>
               <p class="mt-2 text-sm text-stone-500">Manage members and review this workspace without leaving the toast board.</p>
             </div>
@@ -1214,7 +1215,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       <ModalDialog v-if="isCreateToastModalOpen" max-width-class="max-w-2xl" @close="closeCreateToastModal">
           <div class="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-5">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">New toast</p>
+            <EyebrowLabel>New toast</EyebrowLabel>
               <h2 class="mt-2 text-2xl font-semibold text-stone-950">Toast details</h2>
             </div>
             <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeCreateToastModal">
@@ -1261,8 +1262,8 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       <ModalDialog v-if="selectedToastModal" max-width-class="max-w-4xl" @close="closeToastModal">
           <div class="flex items-start justify-between gap-6 border-b border-stone-100 px-6 py-5">
             <div class="min-w-0 space-y-3">
-              <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">
-                <span>Toast details</span>
+              <div class="flex flex-wrap items-center gap-3">
+                <EyebrowLabel>Toast details</EyebrowLabel>
                 <a
                   v-if="permalinkUrl"
                   :href="permalinkUrl"
