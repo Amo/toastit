@@ -170,6 +170,7 @@ final class WorkspacePayloadBuilder
             ],
             'voteCount' => $item->getVoteCount(),
             'currentUserHasVoted' => $hasVoted,
+            'currentUserCanEdit' => $item->isNew() && ($workspace->isOwnedBy($currentUser) || $item->getAuthor()->getId() === $currentUser->getId()),
             'ownerName' => $item->getOwner()?->getDisplayName() ?? ($item->getOwner()?->getId() ? ($inviteeNames[$item->getOwner()->getId()] ?? null) : null),
         ];
     }

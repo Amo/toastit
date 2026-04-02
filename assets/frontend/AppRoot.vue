@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import AppShell from './components/AppShell.vue';
 import LoginPage from './components/LoginPage.vue';
@@ -18,6 +18,54 @@ const props = defineProps({
 const route = useRoute();
 const spa = useSpaContext();
 const routeName = computed(() => route.name);
+let pinLockTimerId = null;
+
+const protectedRouteNames = ['dashboard', 'workspace', 'toast', 'profile'];
+
+const clearPinLockTimer = () => {
+  if (null !== pinLockTimerId) {
+    window.clearTimeout(pinLockTimerId);
+    pinLockTimerId = null;
+  }
+};
+
+const redirectToPinUnlock = () => {
+  if (!protectedRouteNames.includes(String(routeName.value))) {
+    return;
+  }
+
+  window.location.href = spa.urls.unlockAction;
+};
+
+const syncPinLock = () => {
+  clearPinLockTimer();
+
+  if (!spa.user || !protectedRouteNames.includes(String(routeName.value)) || !spa.pinLockExpiresAt) {
+    return;
+  }
+
+  const remainingMs = (Number(spa.pinLockExpiresAt) * 1000) - Date.now();
+
+  if (remainingMs <= 0) {
+    redirectToPinUnlock();
+    return;
+  }
+
+  pinLockTimerId = window.setTimeout(() => {
+    redirectToPinUnlock();
+  }, remainingMs);
+};
+
+onMounted(() => {
+  syncPinLock();
+});
+
+onUnmounted(() => {
+  clearPinLockTimer();
+});
+
+watch(() => routeName.value, syncPinLock);
+watch(() => spa.pinLockExpiresAt, syncPinLock);
 </script>
 
 <template>

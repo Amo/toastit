@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Security\JwtTokenService;
+use App\Security\PinSessionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,6 +13,7 @@ final class SpaController extends AbstractController
 {
     public function __construct(
         private readonly JwtTokenService $jwtTokenManager,
+        private readonly PinSessionService $pinSessionService,
     ) {
     }
 
@@ -30,6 +32,7 @@ final class SpaController extends AbstractController
                     'displayName' => $user->getDisplayName(),
                     'isRoot' => in_array('ROLE_ROOT', $user->getRoles(), true),
                 ] : null,
+                'pinLockExpiresAt' => $user && $user->hasPin() ? $this->pinSessionService->getExpiresAtTimestamp() : null,
                 'loginAction' => $this->generateUrl('app_login_email'),
                 'verifyAction' => $this->generateUrl('app_auth_verify'),
                 'setupAction' => $this->generateUrl('app_pin_setup'),

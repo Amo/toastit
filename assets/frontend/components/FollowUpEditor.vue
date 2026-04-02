@@ -1,4 +1,6 @@
 <script setup>
+import DatePickerField from './DatePickerField.vue';
+
 defineProps({
   followUps: { type: Array, default: () => [] },
   participants: { type: Array, default: () => [] },
@@ -39,12 +41,11 @@ defineEmits(['add', 'remove', 'update']);
         <option value="">Assignee</option>
         <option v-for="invitee in participants" :key="invitee.id" :value="invitee.id">{{ invitee.displayName }}</option>
       </select>
-      <input
-        class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
-        type="date"
-        :value="followUp.dueOn ?? ''"
-        @input="$emit('update', { index: followUpIndex, key: 'dueOn', value: $event.target.value })"
-      >
+      <DatePickerField
+        :model-value="followUp.dueOn ?? ''"
+        label="Date"
+        @update:model-value="$emit('update', { index: followUpIndex, key: 'dueOn', value: $event })"
+      />
       <div class="flex items-end justify-end">
         <button type="button" class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700" @click="$emit('remove', followUpIndex)">Remove</button>
       </div>

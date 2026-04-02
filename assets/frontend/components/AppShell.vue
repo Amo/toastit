@@ -1,5 +1,7 @@
 <script setup>
-import { nextTick, onMounted, ref, useSlots } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, useSlots } from 'vue';
+import ModalDialog from './ModalDialog.vue';
+import ModalHeader from './ModalHeader.vue';
 
 const props = defineProps({
   currentSection: { type: String, required: true },
@@ -11,8 +13,35 @@ const props = defineProps({
 });
 
 const userMenuOpen = ref(false);
+const keyboardShortcutsOpen = ref(false);
 const contentRef = ref(null);
 const slots = useSlots();
+
+const isTypingTarget = (target) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+
+  return tagName === 'input'
+    || tagName === 'textarea'
+    || tagName === 'select'
+    || target.isContentEditable;
+};
+
+const handleGlobalAppKeydown = (event) => {
+  if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
+    return;
+  }
+
+  if (event.key.toLowerCase() !== 'h') {
+    return;
+  }
+
+  event.preventDefault();
+  window.location.href = props.dashboardUrl;
+};
 
 onMounted(async () => {
   await nextTick();
@@ -20,6 +49,12 @@ onMounted(async () => {
   if (contentRef.value && window.Alpine?.initTree) {
     window.Alpine.initTree(contentRef.value);
   }
+
+  window.addEventListener('keydown', handleGlobalAppKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalAppKeydown);
 });
 </script>
 
@@ -30,8 +65,8 @@ onMounted(async () => {
         <div class="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div class="flex items-center justify-between gap-4">
             <a :href="dashboardUrl" class="inline-flex items-center gap-3 text-stone-950">
-              <span class="inline-grid h-10 w-10 place-items-center rounded-2xl bg-amber-100 text-sm font-black text-amber-700">T</span>
-              <span class="text-lg font-semibold tracking-tight">Toastit</span>
+              <span class="inline-grid h-10 w-10 place-items-center rounded-2xl border border-amber-200 bg-amber-100 text-sm font-black text-amber-700 shadow-[0_6px_16px_rgba(180,83,9,0.18)]">T</span>
+              <span class="text-2xl font-bold tracking-[0.04em] text-stone-950">ToastIt</span>
             </a>
 
             <button
@@ -45,26 +80,20 @@ onMounted(async () => {
           </div>
 
           <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-            <nav class="flex flex-wrap items-center gap-2" aria-label="Navigation principale">
-              <a
-                :href="dashboardUrl"
-                class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition"
-                :class="currentSection === 'workspace' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-100'"
-              >
-                Workspace
-              </a>
-              <a
-                :href="profileUrl"
-                class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition"
-                :class="currentSection === 'profile' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-100'"
-              >
-                Profile
-              </a>
-            </nav>
-
-            <div class="relative hidden lg:block">
+            <div class="flex items-center gap-3">
               <button
-                class="inline-flex items-center gap-3 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm transition hover:bg-stone-50"
+                type="button"
+                class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                @click="keyboardShortcutsOpen = true"
+                title="Keyboard shortcuts"
+              >
+                <i class="fa-solid fa-keyboard" aria-hidden="true"></i>
+                <span class="sr-only">Open keyboard shortcuts</span>
+              </button>
+
+              <div class="relative hidden lg:block">
+              <button
+                class="inline-flex items-center gap-3 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
                 type="button"
                 @click="userMenuOpen = !userMenuOpen"
               >
@@ -78,33 +107,87 @@ onMounted(async () => {
               <div v-if="userMenuOpen" class="absolute right-0 top-[calc(100%+0.75rem)] w-72 rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl shadow-stone-200/60">
                 <div class="space-y-1 pb-4">
                   <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
-                  <p class="text-sm text-stone-500">{{ user?.isRoot ? 'ROOT user' : 'User' }}</p>
                 </div>
                 <div class="space-y-2">
+                  <a :href="dashboardUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Workspace</a>
                   <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
                   <form method="post" :action="logoutUrl">
-                    <button class="flex w-full items-center justify-center rounded-2xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800" type="submit">
+                    <button class="flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" type="submit">
                       Sign out
                     </button>
                   </form>
                 </div>
               </div>
             </div>
+            </div>
 
             <div v-if="userMenuOpen" class="grid gap-3 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm lg:hidden">
               <div class="space-y-1">
                 <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
-                <p class="text-sm text-stone-500">{{ user?.isRoot ? 'ROOT user' : 'User' }}</p>
               </div>
+              <a :href="dashboardUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Workspace</a>
               <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
               <form method="post" :action="logoutUrl">
-                <button class="w-full rounded-2xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white" type="submit">Sign out</button>
+                <button class="w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950" type="submit">Sign out</button>
               </form>
             </div>
           </div>
         </div>
       </div>
     </header>
+
+    <ModalDialog v-if="keyboardShortcutsOpen" max-width-class="max-w-4xl" @close="keyboardShortcutsOpen = false">
+      <ModalHeader
+        eyebrow="Keyboard"
+        title="Keyboard shortcuts"
+        description="Shortcuts currently available across the app."
+        @close="keyboardShortcutsOpen = false"
+      />
+
+      <div class="space-y-6 overflow-y-auto px-6 py-6">
+        <div class="space-y-3">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Global</p>
+          <div class="grid gap-3">
+            <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Go to dashboard</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">H</span>
+            </div>
+            <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Close any modal</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">Esc</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Dashboard</p>
+          <div class="grid gap-3">
+            <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Open workspace by position in the list</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">1…9</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Workspace</p>
+          <div class="grid gap-3">
+            <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Open advanced new toast modal</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">T</span>
+            </div>
+            <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Go to previous or next toast in the open modal</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">← →</span>
+            </div>
+            <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Submit the new toast modal form</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">Cmd/Ctrl + Enter</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ModalDialog>
 
     <main class="py-6">
       <div v-if="slots.default" class="tw-toastit-shell">

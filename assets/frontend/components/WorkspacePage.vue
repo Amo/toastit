@@ -7,6 +7,7 @@ import { defaultDueDateForPreset, isLateToast, renderToastDescription, truncateD
 import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
 import CommentThread from './CommentThread.vue';
+import CompactDropdown from './CompactDropdown.vue';
 import EmptyState from './EmptyState.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import FollowUpEditor from './FollowUpEditor.vue';
@@ -15,10 +16,10 @@ import KeyboardHint from './KeyboardHint.vue';
 import MemberListItem from './MemberListItem.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
+import PageHeader from './PageHeader.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
 import ToastListItem from './ToastListItem.vue';
 import ToastNavigationFooter from './ToastNavigationFooter.vue';
-import WorkspaceHeader from './WorkspaceHeader.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -34,10 +35,12 @@ const isSaving = ref(false);
 const errorMessage = ref('');
 const inviteEmail = ref('');
 const itemForm = ref({ title: '', description: '', ownerId: '', dueOn: '' });
-const currentToastTab = ref('active');
+const currentToastFilter = ref('active');
+const currentAssigneeFilter = ref('');
 const isManageModalOpen = ref(false);
 const isCreateToastModalOpen = ref(false);
-const createToastTitleInput = ref(null);
+const createToastModalRef = ref(null);
+const editingToastId = ref(null);
 const workspaceBackgroundFile = ref(null);
 const workspaceBackgroundInput = ref(null);
 const isWorkspaceBackgroundDragOver = ref(false);
@@ -64,6 +67,36 @@ const participants = computed(() => payload.value?.participants ?? []);
 const agendaItems = computed(() => payload.value?.agendaItems ?? []);
 const vetoedItems = computed(() => payload.value?.vetoedItems ?? []);
 const resolvedItems = computed(() => payload.value?.resolvedItems ?? []);
+const assigneeFilterOptions = computed(() => {
+  const me = currentUser.value;
+  const others = participants.value.filter((participant) => participant.id !== me?.id);
+
+  return [
+    { value: '', label: 'None' },
+    ...(me ? [{ value: String(me.id), label: 'Me' }] : []),
+    ...others.map((participant) => ({
+      value: String(participant.id),
+      label: participant.displayName,
+    })),
+  ];
+});
+
+const statusFilterOptions = computed(() => [
+  { value: 'active', label: `New (${displayedAgendaItems.value.length})` },
+  { value: 'vetoed', label: `Declined (${displayedVetoedItems.value.length})` },
+  { value: 'resolved', label: `Toasted (${displayedResolvedItems.value.length})` },
+]);
+
+const matchesAssignmentFilter = (item) => {
+  if (!currentAssigneeFilter.value) {
+    return true;
+  }
+
+  return String(item.owner?.id ?? '') === currentAssigneeFilter.value;
+};
+const displayedAgendaItems = computed(() => agendaItems.value.filter(matchesAssignmentFilter));
+const displayedVetoedItems = computed(() => vetoedItems.value.filter(matchesAssignmentFilter));
+const displayedResolvedItems = computed(() => resolvedItems.value.filter(matchesAssignmentFilter));
 const selectedToastModal = computed(() => {
   if (!selectedToastModalId.value) return null;
 
@@ -112,6 +145,67 @@ const workspacePageBackgroundStyle = computed(() => {
     transform: 'scale(1.03)',
   };
 });
+
+const workspaceHeaderStats = computed(() => [
+  {
+    label: `${newToastCount.value} new toast${newToastCount.value > 1 ? 's' : ''}`,
+    icon: 'fa-solid fa-bread-slice',
+    className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
+  },
+  {
+    label: `${toastedToastCount.value} toasted toast${toastedToastCount.value > 1 ? 's' : ''}`,
+    icon: 'fa-regular fa-calendar-check',
+    className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
+  },
+  {
+    label: isSoloWorkspace.value ? 'solo' : `${memberCount.value} member${memberCount.value > 1 ? 's' : ''}`,
+    icon: isSoloWorkspace.value ? 'fa-regular fa-user' : 'fa-solid fa-users',
+    className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
+  },
+  ...(workspace.value?.isDefault ? [{
+    label: 'Default workspace',
+    className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white uppercase tracking-[0.18em] text-xs font-semibold' : 'bg-amber-100 text-amber-700 uppercase tracking-[0.18em] text-xs font-semibold',
+  }] : []),
+]);
+
+const workspaceHeaderActions = computed(() => {
+  if (!workspace.value?.currentUserIsOwner) {
+    return [];
+  }
+
+  return [
+    {
+      id: 'manage',
+      icon: 'fa-solid fa-gear',
+      theme: 'secondary',
+      iconOnly: true,
+      srLabel: 'Manage workspace',
+    },
+    ...(!isSoloWorkspace.value ? [{
+      id: workspace.value.meetingMode === 'live' ? 'stop-meeting' : 'start-meeting',
+      icon: workspace.value.meetingMode === 'live' ? '' : 'fa-solid fa-bolt',
+      label: workspace.value.meetingMode === 'live' ? 'Stop toasting mode' : 'Start toasting mode',
+      theme: workspace.value.meetingMode === 'live' ? 'secondary' : 'primary',
+      disabled: isSaving.value,
+    }] : []),
+  ];
+});
+
+const handleWorkspaceHeaderAction = (actionId) => {
+  if (actionId === 'manage') {
+    openManageModal();
+    return;
+  }
+
+  if (actionId === 'start-meeting') {
+    startMeetingMode();
+    return;
+  }
+
+  if (actionId === 'stop-meeting') {
+    stopMeetingMode();
+  }
+};
 const duePresetOptions = [
   { value: 'tomorrow', label: 'Tomorrow' },
   { value: 'next_week', label: 'Next week' },
@@ -254,15 +348,18 @@ const removeMember = async (memberId) => {
 
 const createItem = async () => {
   if (!workspace.value || !itemForm.value.title.trim()) return;
-  const { ok } = await workspacesApi.createToast(workspace.value.id, itemForm.value);
+  const { ok } = editingToastId.value
+    ? await workspacesApi.updateToast(editingToastId.value, itemForm.value)
+    : await workspacesApi.createToast(workspace.value.id, itemForm.value);
 
   if (!ok) {
-    errorMessage.value = 'Unable to create toast.';
+    errorMessage.value = editingToastId.value ? 'Unable to update toast.' : 'Unable to create toast.';
     return;
   }
 
   resetItemForm();
   isCreateToastModalOpen.value = false;
+  editingToastId.value = null;
   await fetchWorkspace();
 };
 
@@ -299,11 +396,33 @@ const closeManageModal = () => {
 };
 
 const openCreateToastModal = async () => {
+  editingToastId.value = null;
+  resetItemForm();
   isCreateToastModalOpen.value = true;
+  await nextTick();
+  await createToastModalRef.value?.focusTitle?.();
 };
 
 const closeCreateToastModal = () => {
   isCreateToastModalOpen.value = false;
+  editingToastId.value = null;
+  resetItemForm();
+};
+
+const openEditToastModal = async (item) => {
+  selectedToastModalId.value = null;
+  selectedToastModalCleanState.value = null;
+  toastModalNavigationBlocked.value = false;
+  editingToastId.value = item.id;
+  itemForm.value = {
+    title: item.title ?? '',
+    description: item.description ?? '',
+    ownerId: item.owner?.id ? String(item.owner.id) : '',
+    dueOn: item.dueOn ?? '',
+  };
+  isCreateToastModalOpen.value = true;
+  await nextTick();
+  await createToastModalRef.value?.focusTitle?.();
 };
 
 const normalizeDraftFollowUps = (item) => ensureDraftFollowUps(item)
@@ -396,7 +515,7 @@ const relatedToastStatusLabel = (item) => {
   if (!item) return '';
   if (item.status === 'vetoed') return 'Declined';
   if (item.discussionStatus === 'treated') return 'Toasted';
-  return 'Active';
+  return 'New';
 };
 
 const openToastById = (toastId) => {
@@ -424,16 +543,16 @@ const currentToastSequence = () => {
     return [];
   }
 
-  if (agendaItems.value.some((item) => item.id === selectedToastModal.value.id)) {
-    return agendaItems.value;
+  if (displayedAgendaItems.value.some((item) => item.id === selectedToastModal.value.id)) {
+    return displayedAgendaItems.value;
   }
 
-  if (vetoedItems.value.some((item) => item.id === selectedToastModal.value.id)) {
-    return vetoedItems.value;
+  if (displayedVetoedItems.value.some((item) => item.id === selectedToastModal.value.id)) {
+    return displayedVetoedItems.value;
   }
 
-  if (resolvedItems.value.some((item) => item.id === selectedToastModal.value.id)) {
-    return resolvedItems.value;
+  if (displayedResolvedItems.value.some((item) => item.id === selectedToastModal.value.id)) {
+    return displayedResolvedItems.value;
   }
 
   return [];
@@ -729,6 +848,12 @@ const isTypingTarget = (target) => {
 };
 
 const handleWorkspaceKeydown = (event) => {
+  if (!isTypingTarget(event.target) && !event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === 'h') {
+    event.preventDefault();
+    window.location.href = dashboardUrl;
+    return;
+  }
+
   if (selectedToastModal.value && !isTypingTarget(event.target) && !event.metaKey && !event.ctrlKey && !event.altKey) {
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
@@ -797,19 +922,12 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       <div class="relative z-10">
       <template v-if="!standaloneMode">
       <div class="relative">
-        <WorkspaceHeader
-          :workspace="workspace"
-          :is-toasting-mode="isToastingMode"
-          :is-solo-workspace="isSoloWorkspace"
-          :new-toast-count="newToastCount"
-          :toasted-toast-count="toastedToastCount"
-          :member-count="memberCount"
-          :background-visible="!!resolvedWorkspaceBackgroundUrl"
-          :workspace-url="workspaceUrl"
-          :dashboard-url="dashboardUrl"
-          @open-manage="openManageModal"
-          @start-meeting="startMeetingMode"
-          @stop-meeting="stopMeetingMode"
+        <PageHeader
+          :title="workspace.name"
+          :stats="workspaceHeaderStats"
+          :actions="workspaceHeaderActions"
+          :inverted="!!resolvedWorkspaceBackgroundUrl"
+          @action="handleWorkspaceHeaderAction"
         />
       </div>
 
@@ -818,7 +936,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
             <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
               <input v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast" @keydown.enter.prevent="createItem">
               <button type="button" class="inline-grid h-[3.125rem] place-items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="openCreateToastModal">
-                <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
                 <span class="sr-only">Open toast details</span>
               </button>
               <button class="inline-grid h-[3.125rem] place-items-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="createItem">
@@ -827,37 +945,15 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               </button>
             </div>
 
-            <div class="flex flex-wrap gap-2 pt-4">
-              <button
-                type="button"
-                class="rounded-full px-4 py-2 text-sm font-semibold transition"
-                :class="currentToastTab === 'active' ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'"
-                @click="currentToastTab = 'active'"
-              >
-                Active
-              </button>
-              <button
-                type="button"
-                class="rounded-full px-4 py-2 text-sm font-semibold transition"
-                :class="currentToastTab === 'vetoed' ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'"
-                @click="currentToastTab = 'vetoed'"
-              >
-                Declined
-              </button>
-              <button
-                type="button"
-                class="rounded-full px-4 py-2 text-sm font-semibold transition"
-                :class="currentToastTab === 'resolved' ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'"
-                @click="currentToastTab = 'resolved'"
-              >
-                Toasted
-              </button>
+            <div class="flex flex-wrap items-start gap-3 pt-4">
+              <CompactDropdown v-model="currentToastFilter" icon="fa-solid fa-filter" :options="statusFilterOptions" />
+              <CompactDropdown v-if="!isSoloWorkspace" v-model="currentAssigneeFilter" icon="fa-solid fa-user-check" :options="assigneeFilterOptions" />
             </div>
 
-            <EmptyState v-if="currentToastTab === 'active' && !agendaItems.length" message="No active toasts." />
-            <div v-else-if="currentToastTab === 'active'" class="space-y-3">
+            <EmptyState v-if="currentToastFilter === 'active' && !displayedAgendaItems.length" message="No new toasts." />
+            <div v-else-if="currentToastFilter === 'active'" class="space-y-3">
               <ToastListItem
-                v-for="(item, index) in agendaItems"
+                v-for="(item, index) in displayedAgendaItems"
                 :key="item.id"
                 variant="active"
                 :index-label="index + 1"
@@ -888,6 +984,15 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                       <i class="fa-solid fa-check text-xs" aria-hidden="true"></i>
                       <span class="sr-only">Mark as toasted</span>
                     </button>
+                    <button
+                      v-if="item.currentUserCanEdit && !isToastingMode"
+                      type="button"
+                      class="inline-grid h-8 w-8 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                      @click.stop="openEditToastModal(item)"
+                    >
+                      <i class="fa-solid fa-pen text-xs" aria-hidden="true"></i>
+                      <span class="sr-only">Edit toast</span>
+                    </button>
                     <template v-if="workspace.currentUserIsOwner && !isToastingMode">
                       <button
                         v-if="!isSoloWorkspace"
@@ -914,9 +1019,9 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               </ToastListItem>
             </div>
 
-            <div v-else-if="currentToastTab === 'vetoed' && vetoedItems.length" class="space-y-3">
+            <div v-else-if="currentToastFilter === 'vetoed' && displayedVetoedItems.length" class="space-y-3">
               <ToastListItem
-                v-for="(item, index) in vetoedItems"
+                v-for="(item, index) in displayedVetoedItems"
                 :key="item.id"
                 variant="vetoed"
                 :index-label="index + 1"
@@ -932,11 +1037,11 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                 </template>
               </ToastListItem>
             </div>
-            <EmptyState v-else-if="currentToastTab === 'vetoed'" message="No declined toasts." />
+            <EmptyState v-else-if="currentToastFilter === 'vetoed'" message="No declined toasts." />
 
-            <div v-else-if="currentToastTab === 'resolved' && resolvedItems.length" class="space-y-3">
+            <div v-else-if="currentToastFilter === 'resolved' && displayedResolvedItems.length" class="space-y-3">
               <ToastListItem
-                v-for="(item, index) in resolvedItems"
+                v-for="(item, index) in displayedResolvedItems"
                 :key="item.id"
                 variant="resolved"
                 :index-label="index + 1"
@@ -952,13 +1057,13 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                 </template>
               </ToastListItem>
             </div>
-            <EmptyState v-else-if="currentToastTab === 'resolved'" message="No toasted toasts." />
+            <EmptyState v-else-if="currentToastFilter === 'resolved'" message="No toasted toasts." />
         </div>
       </div>
       </template>
       </div>
 
-      <ModalDialog v-if="isManageModalOpen" max-width-class="max-w-3xl" @close="closeManageModal">
+      <ModalDialog v-if="isManageModalOpen" max-width-class="max-w-4xl" @close="closeManageModal">
         <ModalHeader
           eyebrow="Workspace settings"
           :title="workspace.name"
@@ -971,12 +1076,13 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               <div v-if="workspace.isDefault" class="rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 This is the default workspace for this account.
               </div>
+
               <div>
-                <h3 class="text-lg font-semibold text-stone-950">Members</h3>
-                <p class="mt-1 text-sm leading-6 text-stone-600">Invite the right people so every toast stays in the right context, with the right collaborators.</p>
+                <h3 class="text-lg font-semibold text-stone-950">Workspace settings</h3>
+                <p class="mt-1 text-sm leading-6 text-stone-600">Configure naming, defaults, background, and behavior for this workspace.</p>
               </div>
 
-              <div class="space-y-3 rounded-[1.25rem] border border-stone-200 bg-stone-50 p-4">
+              <div class="space-y-3">
                 <label class="grid gap-2 text-sm font-medium text-stone-700">
                   <span>Workspace name</span>
                   <input v-model="workspaceSettingsForm.name" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text">
@@ -1023,6 +1129,11 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                 </div>
               </div>
 
+              <div>
+                <h3 class="text-lg font-semibold text-stone-950">Members</h3>
+                <p class="mt-1 text-sm leading-6 text-stone-600">Invite the right people so every toast stays in the right context, with the right collaborators.</p>
+              </div>
+
               <div class="space-y-3">
                 <MemberListItem
                   v-for="membership in members"
@@ -1050,9 +1161,12 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       </ModalDialog>
 
       <CreateToastModal
+        ref="createToastModalRef"
         :open="isCreateToastModalOpen"
         :item-form="itemForm"
         :participants="participants"
+        :title="editingToastId ? 'Edit toast' : 'Toast details'"
+        :action-label="editingToastId ? 'Save changes' : 'Create toast'"
         @close="closeCreateToastModal"
         @create="createItem"
         @title-keydown="handleCreateToastModalKeydown"
@@ -1063,7 +1177,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       />
 
       <ModalDialog v-if="selectedToastModal" max-width-class="max-w-4xl" @close="closeToastModal">
-        <div class="border-b border-stone-100">
+        <div class="relative border-b border-stone-100">
           <ModalHeader eyebrow="Toast details" :title="selectedToastModal.title" @close="closeToastModal">
             <div class="mt-3 flex flex-wrap items-center gap-3">
               <a
@@ -1100,9 +1214,18 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               <ToastStatusBadge :label="displayToastStatus(selectedToastModal)" :tone-class="toastStatusTone(selectedToastModal)" />
             </div>
           </ModalHeader>
-          <div class="flex items-center justify-end gap-2 px-6 pb-5">
+          <div class="absolute right-20 top-5 flex items-center gap-2">
               <button
-                v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
+                v-if="selectedToastModal.currentUserCanEdit && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && !isToastingMode"
+                type="button"
+                class="inline-grid h-8 w-8 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                @click="openEditToastModal(selectedToastModal)"
+              >
+                <i class="fa-solid fa-pen text-xs" aria-hidden="true"></i>
+                <span class="sr-only">Edit toast</span>
+              </button>
+              <button
+                v-if="!isSoloWorkspace && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
                 :class="selectedToastModal.currentUserHasVoted ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700'"
@@ -1123,6 +1246,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               </button>
               <template v-if="workspace.currentUserIsOwner && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && !isToastingMode">
                 <button
+                  v-if="!isSoloWorkspace"
                   type="button"
                   class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
                   :class="selectedToastModal.isBoosted ? 'border-amber-500 bg-amber-500 text-stone-950' : 'border-stone-200 bg-white text-stone-600 hover:border-amber-200 hover:text-amber-700'"
@@ -1141,17 +1265,13 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                   <span class="sr-only">{{ selectedToastModal.status === 'vetoed' ? 'Restore toast' : 'Decline toast' }}</span>
                 </button>
               </template>
-            <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeToastModal">
-              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-              <span class="sr-only">Close modal</span>
-            </button>
           </div>
         </div>
 
           <div class="overflow-y-auto px-6 py-6">
             <div class="space-y-6">
               <div>
-                <p v-if="selectedToastModal.description" class="text-lg leading-8 text-stone-700" v-html="renderToastDescription(selectedToastModal.description)"></p>
+                <div v-if="selectedToastModal.description" class="tw-markdown text-stone-700" v-html="renderToastDescription(selectedToastModal.description)"></div>
                 <p v-else class="text-lg text-stone-500">No description</p>
               </div>
 
@@ -1244,7 +1364,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               <section v-if="selectedToastModal.discussionNotes && (!isToastingMode || selectedToastModal.discussionStatus === 'treated' || !workspace.currentUserIsOwner)" class="space-y-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Decision</p>
                 <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4">
-                  <p class="text-base leading-7 text-stone-800" v-html="renderToastDescription(selectedToastModal.discussionNotes)"></p>
+                  <div class="tw-markdown text-stone-800" v-html="renderToastDescription(selectedToastModal.discussionNotes)"></div>
                 </div>
               </section>
 

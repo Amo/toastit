@@ -10,6 +10,9 @@ export const createSpaContext = (bootstrap) => ({
   get user() {
     return this.bootstrap.user ?? null;
   },
+  get pinLockExpiresAt() {
+    return this.bootstrap.pinLockExpiresAt ?? null;
+  },
   get flashes() {
     return this.bootstrap.flashes ?? { success: [], error: [] };
   },

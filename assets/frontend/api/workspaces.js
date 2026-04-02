@@ -51,6 +51,10 @@ export class WorkspacesApi {
     return this.client.postJson(`/api/workspaces/${workspaceId}/items`, payload);
   }
 
+  updateToast(itemId, payload) {
+    return this.client.putJson(`/api/items/${itemId}`, payload);
+  }
+
   startMeetingMode(workspaceId) {
     return this.client.request(`/api/workspaces/${workspaceId}/meeting/start`, { method: 'POST' });
   }

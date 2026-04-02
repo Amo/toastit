@@ -1,4 +1,6 @@
 <script setup>
+import { nextTick, ref } from 'vue';
+import DatePickerField from './DatePickerField.vue';
 import KeyboardHint from './KeyboardHint.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -7,19 +9,33 @@ defineProps({
   open: { type: Boolean, required: true },
   itemForm: { type: Object, required: true },
   participants: { type: Array, default: () => [] },
+  title: { type: String, default: 'Toast details' },
+  actionLabel: { type: String, default: 'Create toast' },
 });
 
 defineEmits(['close', 'create', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
+
+const titleInput = ref(null);
+
+const focusTitle = async () => {
+  await nextTick();
+  titleInput.value?.focus();
+};
+
+defineExpose({
+  focusTitle,
+});
 </script>
 
 <template>
-  <ModalDialog v-if="open" max-width-class="max-w-2xl" @close="$emit('close')">
-    <ModalHeader eyebrow="New toast" title="Toast details" @close="$emit('close')" />
+  <ModalDialog v-if="open" max-width-class="max-w-4xl" @close="$emit('close')">
+    <ModalHeader eyebrow="New toast" :title="title" @close="$emit('close')" />
 
     <div class="space-y-4 overflow-y-auto px-6 py-6" @keydown="$emit('title-keydown', $event)">
       <label class="grid gap-2 text-sm font-medium text-stone-700">
         <span>Title</span>
         <input
+          ref="titleInput"
           class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base"
           type="text"
           :value="itemForm.title"
@@ -37,22 +53,23 @@ defineEmits(['close', 'create', 'title-input', 'title-keydown', 'update:title', 
             <option v-for="invitee in participants" :key="invitee.id" :value="String(invitee.id)">{{ invitee.displayName }}</option>
           </select>
         </label>
-        <label class="grid gap-2 text-sm font-medium text-stone-700">
-          <span>Date</span>
-          <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" type="date" :value="itemForm.dueOn" @input="$emit('update:dueOn', $event.target.value)">
-        </label>
+        <DatePickerField
+          :model-value="itemForm.dueOn"
+          label="Date"
+          @update:model-value="$emit('update:dueOn', $event)"
+        />
       </div>
 
       <label class="grid gap-2 text-sm font-medium text-stone-700">
         <span>Details</span>
-        <textarea class="min-h-32 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
+        <textarea class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
       </label>
 
       <div class="flex items-center justify-between gap-3">
         <KeyboardHint>Press Cmd+Enter or Ctrl+Enter to create this toast.</KeyboardHint>
         <div class="flex justify-end gap-3">
           <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="$emit('close')">Cancel</button>
-          <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="$emit('create')">Create toast</button>
+          <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="$emit('create')">{{ actionLabel }}</button>
         </div>
       </div>
     </div>

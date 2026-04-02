@@ -1,30 +1,27 @@
-export const escapeHtml = (value) => value
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
-  .replaceAll("'", '&#39;');
+import DOMPurify from 'dompurify';
+import MarkdownIt from 'markdown-it';
+
+const markdown = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true,
+});
+
+markdown.renderer.rules.link_open = (tokens, index, options, env, self) => {
+  const token = tokens[index];
+  token.attrSet('target', '_blank');
+  token.attrSet('rel', 'noopener noreferrer');
+  token.attrJoin('class', 'font-medium text-amber-700 underline');
+
+  return self.renderToken(tokens, index, options);
+};
+
+markdown.renderer.rules.code_inline = (tokens, index) => `<code class="rounded bg-stone-100 px-1 py-0.5 text-[0.85em] text-stone-800">${markdown.utils.escapeHtml(tokens[index].content)}</code>`;
 
 export const renderToastDescription = (value) => {
   if (!value) return '';
 
-  let html = escapeHtml(value);
-  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="font-medium text-amber-700 underline">$1</a>');
-  html = html.replace(/(^|[\s(>])((https?:\/\/|www\.)[^\s<]+)/g, (match, prefix, url) => {
-    if (prefix.includes('href=')) {
-      return match;
-    }
-
-    const href = url.startsWith('www.') ? `https://${url}` : url;
-
-    return `${prefix}<a href="${href}" target="_blank" rel="noopener noreferrer" class="font-medium text-amber-700 underline">${url}</a>`;
-  });
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
-  html = html.replace(/`([^`]+)`/g, '<code class="rounded bg-stone-100 px-1 py-0.5 text-[0.85em] text-stone-800">$1</code>');
-  html = html.replace(/\n/g, '<br>');
-
-  return html;
+  return DOMPurify.sanitize(markdown.render(value));
 };
 
 export const truncateDescription = (value, limit = 140) => {
