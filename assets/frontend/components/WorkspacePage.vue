@@ -5,6 +5,7 @@ import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
 import CommentThread from './CommentThread.vue';
+import EmptyState from './EmptyState.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import FollowUpEditor from './FollowUpEditor.vue';
 import MemberListItem from './MemberListItem.vue';
@@ -876,7 +877,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       <div class="absolute inset-0" :style="workspacePageBackgroundStyle"></div>
       <div class="absolute inset-0 bg-white/8"></div>
     </div>
-    <div v-if="isLoading" class="relative z-10 tw-toastit-card p-6 text-sm text-stone-500">Loading...</div>
+    <div v-if="isLoading" class="relative z-10 tw-toastit-card p-6"><EmptyState message="Loading..." /></div>
     <div v-else-if="errorMessage" class="relative z-10 tw-toastit-card p-6 text-sm text-red-600">{{ errorMessage }}</div>
     <template v-else-if="workspace">
       <div class="relative z-10">
@@ -969,7 +970,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               </button>
             </div>
 
-            <div v-if="currentToastTab === 'active' && !agendaItems.length" class="text-sm text-stone-500">No active toasts.</div>
+            <EmptyState v-if="currentToastTab === 'active' && !agendaItems.length" message="No active toasts." />
             <div v-else-if="currentToastTab === 'active'" class="space-y-3">
               <ToastListItem
                 v-for="(item, index) in agendaItems"
@@ -1047,7 +1048,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                 </template>
               </ToastListItem>
             </div>
-            <div v-else-if="currentToastTab === 'vetoed'" class="text-sm text-stone-500">No declined toasts.</div>
+            <EmptyState v-else-if="currentToastTab === 'vetoed'" message="No declined toasts." />
 
             <div v-else-if="currentToastTab === 'resolved' && resolvedItems.length" class="space-y-3">
               <ToastListItem
@@ -1067,7 +1068,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                 </template>
               </ToastListItem>
             </div>
-            <div v-else-if="currentToastTab === 'resolved'" class="text-sm text-stone-500">No toasted toasts.</div>
+            <EmptyState v-else-if="currentToastTab === 'resolved'" message="No toasted toasts." />
         </div>
       </div>
       </template>

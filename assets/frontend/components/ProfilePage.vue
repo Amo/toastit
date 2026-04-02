@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
+import EmptyState from './EmptyState.vue';
 import PageHero from './PageHero.vue';
 import PrimaryActionButton from './PrimaryActionButton.vue';
 import TextInputField from './TextInputField.vue';
@@ -45,7 +46,7 @@ onMounted(fetchProfile);
     <PageHero eyebrow="Profile" :title="profile.displayName || 'My profile'" description="Set your first and last name to improve lists, avatars, and invitations." />
 
     <div class="tw-toastit-card max-w-2xl p-6">
-      <div v-if="isLoading" class="text-sm text-stone-500">Loading...</div>
+      <EmptyState v-if="isLoading" message="Loading..." />
       <div v-else class="space-y-4">
         <TextInputField v-model="profile.firstName" label="First name" />
         <TextInputField v-model="profile.lastName" label="Last name" />

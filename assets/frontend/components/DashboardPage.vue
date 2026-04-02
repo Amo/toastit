@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
+import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 import PageHero from './PageHero.vue';
@@ -166,8 +167,8 @@ onUnmounted(() => {
     </div>
 
     <div class="tw-toastit-card overflow-hidden p-6">
-      <div v-if="isLoading" class="text-sm text-stone-500">Loading...</div>
-      <div v-else-if="!payload.workspaces.length" class="text-sm text-stone-500">No workspaces yet.</div>
+      <EmptyState v-if="isLoading" message="Loading..." />
+      <EmptyState v-else-if="!payload.workspaces.length" message="No workspaces yet." />
       <div v-else class="space-y-4">
         <WorkspaceRow
           v-for="workspace in payload.workspaces"
