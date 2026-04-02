@@ -16,11 +16,10 @@ migrate:
 	docker compose exec -T php php bin/console doctrine:migrations:migrate --no-interaction
 
 build:
-	npm run build:css
 	npm run build
 
 dev:
-	npm run dev:assets
+	npm run dev
 
 test-db-prepare:
 	docker compose exec -T database mariadb -uroot -p'!ChangeRootMe!' -e "DROP DATABASE IF EXISTS app_test; CREATE DATABASE app_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON app_test.* TO 'app'@'%'; FLUSH PRIVILEGES;"

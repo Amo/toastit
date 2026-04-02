@@ -4,10 +4,7 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "build:css": "sass --no-source-map --style=compressed assets/styles/app.scss public/styles/app.css",
-    "dev": "vite build --watch --mode development",
-    "dev:assets": "concurrently \"npm:watch:css\" \"npm:dev\"",
-    "watch:css": "sass --watch --no-source-map assets/styles/app.scss public/styles/app.css"
+    "dev": "vite build --watch --mode development"
   },
   "keywords": [],
   "author": "",
