@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import ModalDialog from './ModalDialog.vue';
+import ModalHeader from './ModalHeader.vue';
 import PageHero from './PageHero.vue';
 import WorkspaceRow from './WorkspaceRow.vue';
 
@@ -183,17 +184,12 @@ onUnmounted(() => {
     </div>
 
     <ModalDialog v-if="isCreateWorkspaceModalOpen" max-width-class="max-w-xl" @close="closeCreateWorkspaceModal">
-        <div class="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-5">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">New workspace</p>
-            <h2 class="mt-2 text-2xl font-semibold text-stone-950">Create a workspace</h2>
-            <p class="mt-2 text-sm leading-6 text-stone-600">Create a solo, duo, or group workspace and start turning ideas into accountable action.</p>
-          </div>
-          <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeCreateWorkspaceModal">
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-            <span class="sr-only">Close modal</span>
-          </button>
-        </div>
+      <ModalHeader
+        eyebrow="New workspace"
+        title="Create a workspace"
+        description="Create a solo, duo, or group workspace and start turning ideas into accountable action."
+        @close="closeCreateWorkspaceModal"
+      />
 
         <div class="space-y-4 overflow-y-auto px-6 py-6">
           <label class="grid gap-2 text-sm font-medium text-stone-700">

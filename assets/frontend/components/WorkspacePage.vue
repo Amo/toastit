@@ -9,6 +9,7 @@ import EyebrowLabel from './EyebrowLabel.vue';
 import FollowUpEditor from './FollowUpEditor.vue';
 import MemberListItem from './MemberListItem.vue';
 import ModalDialog from './ModalDialog.vue';
+import ModalHeader from './ModalHeader.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
 import ToastListItem from './ToastListItem.vue';
 
@@ -1073,17 +1074,12 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       </div>
 
       <ModalDialog v-if="isManageModalOpen" max-width-class="max-w-3xl" @close="closeManageModal">
-          <div class="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-5">
-            <div>
-            <EyebrowLabel>Workspace settings</EyebrowLabel>
-              <h2 class="mt-2 text-2xl font-semibold text-stone-950">{{ workspace.name }}</h2>
-              <p class="mt-2 text-sm text-stone-500">Manage members and review this workspace without leaving the toast board.</p>
-            </div>
-            <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeManageModal">
-              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-              <span class="sr-only">Close modal</span>
-            </button>
-          </div>
+        <ModalHeader
+          eyebrow="Workspace settings"
+          :title="workspace.name"
+          description="Manage members and review this workspace without leaving the toast board."
+          @close="closeManageModal"
+        />
 
           <div class="overflow-y-auto px-6 py-6">
             <div class="space-y-4">
@@ -1169,16 +1165,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       </ModalDialog>
 
       <ModalDialog v-if="isCreateToastModalOpen" max-width-class="max-w-2xl" @close="closeCreateToastModal">
-          <div class="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-5">
-            <div>
-            <EyebrowLabel>New toast</EyebrowLabel>
-              <h2 class="mt-2 text-2xl font-semibold text-stone-950">Toast details</h2>
-            </div>
-            <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeCreateToastModal">
-              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-              <span class="sr-only">Close modal</span>
-            </button>
-          </div>
+        <ModalHeader eyebrow="New toast" title="Toast details" @close="closeCreateToastModal" />
 
           <div class="space-y-4 overflow-y-auto px-6 py-6" @keydown="handleCreateToastModalKeydown">
             <label class="grid gap-2 text-sm font-medium text-stone-700">
@@ -1216,46 +1203,44 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
       </ModalDialog>
 
       <ModalDialog v-if="selectedToastModal" max-width-class="max-w-4xl" @close="closeToastModal">
-          <div class="flex items-start justify-between gap-6 border-b border-stone-100 px-6 py-5">
-            <div class="min-w-0 space-y-3">
-              <div class="flex flex-wrap items-center gap-3">
-                <EyebrowLabel>Toast details</EyebrowLabel>
-                <a
-                  v-if="permalinkUrl"
-                  :href="permalinkUrl"
-                  class="inline-flex items-center text-amber-600 transition hover:text-amber-700"
-                  title="Open standalone toast permalink"
-                >
-                  <i class="fa-solid fa-link" aria-hidden="true"></i>
-                  <span class="sr-only">Open standalone toast permalink</span>
-                </a>
-                <a
-                  v-if="standaloneMode"
-                  :href="workspaceUrl"
-                  class="inline-flex items-center gap-2 text-amber-600 transition hover:text-amber-700"
-                >
-                  <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                  <span>{{ workspace.name }}</span>
-                </a>
-              </div>
-              <h2 class="mt-2 text-2xl font-semibold text-stone-950">{{ selectedToastModal.title }}</h2>
-              <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
-                <span class="inline-flex items-center gap-2">
-                  <i class="fa-regular fa-user" aria-hidden="true"></i>
-                  <span>{{ selectedToastModal.author.displayName }}</span>
-                </span>
-                <span v-if="selectedToastModal.owner" class="inline-flex items-center gap-2">
-                  <i class="fa-solid fa-user-check" aria-hidden="true"></i>
-                  <span>{{ selectedToastModal.owner.displayName }}</span>
-                </span>
-                <span v-if="selectedToastModal.dueOnDisplay" class="inline-flex items-center gap-2">
-                  <i class="fa-regular fa-calendar" aria-hidden="true"></i>
-                  <span>{{ selectedToastModal.dueOnDisplay }}</span>
-                </span>
-                <ToastStatusBadge :label="displayToastStatus(selectedToastModal)" :tone-class="toastStatusTone(selectedToastModal)" />
-              </div>
+        <div class="border-b border-stone-100">
+          <ModalHeader eyebrow="Toast details" :title="selectedToastModal.title" @close="closeToastModal">
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <a
+                v-if="permalinkUrl"
+                :href="permalinkUrl"
+                class="inline-flex items-center text-amber-600 transition hover:text-amber-700"
+                title="Open standalone toast permalink"
+              >
+                <i class="fa-solid fa-link" aria-hidden="true"></i>
+                <span class="sr-only">Open standalone toast permalink</span>
+              </a>
+              <a
+                v-if="standaloneMode"
+                :href="workspaceUrl"
+                class="inline-flex items-center gap-2 text-amber-600 transition hover:text-amber-700"
+              >
+                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                <span>{{ workspace.name }}</span>
+              </a>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
+              <span class="inline-flex items-center gap-2">
+                <i class="fa-regular fa-user" aria-hidden="true"></i>
+                <span>{{ selectedToastModal.author.displayName }}</span>
+              </span>
+              <span v-if="selectedToastModal.owner" class="inline-flex items-center gap-2">
+                <i class="fa-solid fa-user-check" aria-hidden="true"></i>
+                <span>{{ selectedToastModal.owner.displayName }}</span>
+              </span>
+              <span v-if="selectedToastModal.dueOnDisplay" class="inline-flex items-center gap-2">
+                <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+                <span>{{ selectedToastModal.dueOnDisplay }}</span>
+              </span>
+              <ToastStatusBadge :label="displayToastStatus(selectedToastModal)" :tone-class="toastStatusTone(selectedToastModal)" />
+            </div>
+          </ModalHeader>
+          <div class="flex items-center justify-end gap-2 px-6 pb-5">
               <button
                 v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
                 type="button"
@@ -1296,12 +1281,12 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                   <span class="sr-only">{{ selectedToastModal.status === 'vetoed' ? 'Restore toast' : 'Decline toast' }}</span>
                 </button>
               </template>
-              <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeToastModal">
-                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                <span class="sr-only">Close modal</span>
-              </button>
-            </div>
+            <button type="button" class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800" @click="closeToastModal">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              <span class="sr-only">Close modal</span>
+            </button>
           </div>
+        </div>
 
           <div class="overflow-y-auto px-6 py-6">
             <div class="space-y-6">
