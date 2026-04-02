@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
+import { ProfileApi } from '../api/profile';
 import EmptyState from './EmptyState.vue';
 import PageHero from './PageHero.vue';
 import PrimaryActionButton from './PrimaryActionButton.vue';
@@ -16,10 +17,11 @@ const isLoading = ref(true);
 const isSaving = ref(false);
 const profile = ref({ displayName: '', firstName: '', lastName: '' });
 const apiClient = new ToastitApiClient(props.accessToken);
+const profileApi = new ProfileApi(apiClient);
 
 const fetchProfile = async () => {
   isLoading.value = true;
-  const { ok, data } = await apiClient.getJson(props.apiUrl);
+  const { ok, data } = await profileApi.getProfile(props.apiUrl);
 
   if (ok && data) {
     profile.value = data.user;
@@ -30,7 +32,7 @@ const fetchProfile = async () => {
 
 const saveProfile = async () => {
   isSaving.value = true;
-  await apiClient.putJson(props.updateUrl, {
+  await profileApi.saveProfile(props.updateUrl, {
     firstName: profile.value.firstName,
     lastName: profile.value.lastName,
   });
