@@ -3,6 +3,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
+import CommentComposer from './CommentComposer.vue';
+import CommentThread from './CommentThread.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import MemberListItem from './MemberListItem.vue';
 import ModalDialog from './ModalDialog.vue';
@@ -1425,46 +1427,17 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                 </div>
 
                 <div class="rounded-[1.5rem] border border-stone-200 bg-white p-4">
-                  <div v-if="selectedToastModal.comments?.length" class="space-y-3">
-                    <div v-for="comment in selectedToastModal.comments" :key="comment.id" class="flex items-start gap-3">
-                      <AvatarBadge
-                        :seed="comment.author.id"
-                        :initials="comment.author.initials"
-                        :gravatar-url="comment.author.gravatarUrl"
-                        :alt="comment.author.displayName"
-                      />
-                      <div class="min-w-0 flex-1 space-y-2">
-                        <div class="rounded-2xl bg-stone-50 px-4 py-3">
-                          <p class="text-sm leading-7 text-stone-700" v-html="renderToastDescription(comment.content)"></p>
-                        </div>
-                        <div class="px-1 text-xs text-stone-500">
-                          {{ comment.author.displayName }} · {{ comment.createdAtDisplay }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <p v-else class="text-sm text-stone-500">No comments.</p>
+                  <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" />
 
-                  <div v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'" class="mt-4 flex items-end gap-3 border-t border-stone-100 pt-4">
-                    <AvatarBadge
-                      :seed="currentUser?.id"
-                      :initials="currentUser?.initials"
-                      :gravatar-url="currentUser?.gravatarUrl"
-                      :alt="currentUser?.displayName"
-                    />
-                    <textarea
-                      class="min-h-[2.75rem] min-w-0 flex-1 resize-none overflow-hidden rounded-[1.4rem] border bg-white px-4 py-3 text-sm leading-6 transition"
-                      :class="toastModalNavigationBlocked && isCommentDraftDirty ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'"
-                      :value="commentDraftFor(selectedToastModal.id)"
-                      rows="1"
-                      placeholder="Write a comment"
-                      @input="handleCommentDraftInput(selectedToastModal.id, $event)"
-                      @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
-                    ></textarea>
-                    <button type="button" class="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" @click="createComment(selectedToastModal.id)">
-                      Send
-                    </button>
-                  </div>
+                  <CommentComposer
+                    v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
+                    :current-user="currentUser"
+                    :value="commentDraftFor(selectedToastModal.id)"
+                    :blocked="toastModalNavigationBlocked && isCommentDraftDirty"
+                    @input="handleCommentDraftInput(selectedToastModal.id, $event)"
+                    @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
+                    @submit="createComment(selectedToastModal.id)"
+                  />
                 </div>
               </section>
 
