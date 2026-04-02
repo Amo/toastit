@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
+import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
 import ModalDialog from './ModalDialog.vue';
 
@@ -15,30 +16,18 @@ const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
 const draggedWorkspaceId = ref(null);
 const armedWorkspaceDragId = ref(null);
+const apiClient = new ToastitApiClient(props.accessToken);
 
 const fetchDashboard = async () => {
   isLoading.value = true;
-  const response = await fetch(props.apiUrl, {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${props.accessToken}`,
-    },
-  });
-  payload.value = response.ok ? await response.json() : { workspaces: [] };
+  const { ok, data } = await apiClient.getJson(props.apiUrl);
+  payload.value = ok && data ? data : { workspaces: [] };
   isLoading.value = false;
 };
 
 const persistWorkspaceOrder = async () => {
-  await fetch('/api/workspaces/reorder', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${props.accessToken}`,
-    },
-    body: JSON.stringify({
-      workspaceIds: payload.value.workspaces.map((workspace) => workspace.id),
-    }),
+  await apiClient.postJson('/api/workspaces/reorder', {
+    workspaceIds: payload.value.workspaces.map((workspace) => workspace.id),
   });
 };
 
@@ -86,21 +75,11 @@ const onWorkspaceDragStart = (event, workspaceId) => {
 const createWorkspace = async () => {
   if (!workspaceName.value.trim()) return;
   creatingWorkspace.value = true;
-  const response = await fetch('/api/workspaces', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${props.accessToken}`,
-    },
-    body: JSON.stringify({ name: workspaceName.value }),
-  });
+  const { ok, data } = await apiClient.postJson('/api/workspaces', { name: workspaceName.value });
 
-  if (response.ok) {
-    const result = await response.json();
-
-    if (result.workspaceId) {
-      window.location.href = `/app/workspaces/${result.workspaceId}`;
+  if (ok && data) {
+    if (data.workspaceId) {
+      window.location.href = `/app/workspaces/${data.workspaceId}`;
       return;
     }
   }

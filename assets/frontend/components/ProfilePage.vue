@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue';
+import { ToastitApiClient } from '../api/ToastitApiClient';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -10,19 +11,14 @@ const props = defineProps({
 const isLoading = ref(true);
 const isSaving = ref(false);
 const profile = ref({ displayName: '', firstName: '', lastName: '' });
+const apiClient = new ToastitApiClient(props.accessToken);
 
 const fetchProfile = async () => {
   isLoading.value = true;
-  const response = await fetch(props.apiUrl, {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${props.accessToken}`,
-    },
-  });
+  const { ok, data } = await apiClient.getJson(props.apiUrl);
 
-  if (response.ok) {
-    const payload = await response.json();
-    profile.value = payload.user;
+  if (ok && data) {
+    profile.value = data.user;
   }
 
   isLoading.value = false;
@@ -30,17 +26,9 @@ const fetchProfile = async () => {
 
 const saveProfile = async () => {
   isSaving.value = true;
-  await fetch(props.updateUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${props.accessToken}`,
-    },
-    body: JSON.stringify({
-      firstName: profile.value.firstName,
-      lastName: profile.value.lastName,
-    }),
+  await apiClient.putJson(props.updateUrl, {
+    firstName: profile.value.firstName,
+    lastName: profile.value.lastName,
   });
   isSaving.value = false;
   await fetchProfile();
