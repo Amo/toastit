@@ -31,8 +31,8 @@ final class LoginChallengeService
         }
 
         $user = (new User())->setEmail($normalizedEmail);
-        $this->userProvisioner->createDefaultWorkspaceForUser($user);
         $this->entityManager->persist($user);
+        $this->userProvisioner->createDefaultWorkspaceForUser($user);
         $this->entityManager->flush();
 
         return $user;

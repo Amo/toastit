@@ -227,10 +227,12 @@ final class EntityBehaviorTest extends TestCase
         $membership = (new WorkspaceMember())
             ->setWorkspace($workspace)
             ->setUser($user)
+            ->setDisplayOrder(4)
             ->setIsOwner(true);
 
         self::assertSame($workspace, $membership->getWorkspace());
         self::assertSame($user, $membership->getUser());
+        self::assertSame(4, $membership->getDisplayOrder());
         self::assertTrue($membership->isOwner());
 
         $vote = (new Vote())->setItem($toast)->setUser($user);

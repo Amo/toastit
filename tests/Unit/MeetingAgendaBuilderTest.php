@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 final class MeetingAgendaBuilderTest extends TestCase
 {
-    public function testBuildOrdersBoostedItemsFirstSeparatesVetoedAndResolvedItems(): void
+    public function testBuildOrdersLateItemsBeforeBoostedItemsAndSeparatesOtherStates(): void
     {
         $workspace = (new Workspace())
             ->setOrganizer((new User())->setEmail('owner@example.com'))
@@ -28,15 +28,24 @@ final class MeetingAgendaBuilderTest extends TestCase
             ->setAuthor((new User())->setEmail('boosted@example.com'))
             ->setTitle('Boosted')
             ->setIsBoosted(true)
-            ->setBoostRank(1);
+            ->setBoostRank(1)
+            ->setDueAt(new \DateTimeImmutable('2999-04-01'));
         $this->setCreatedAt($boosted, '2026-04-01 10:00:00');
 
         $boostedOlder = (new Toast())
             ->setWorkspace($workspace)
             ->setAuthor((new User())->setEmail('boosted-older@example.com'))
             ->setTitle('Boosted older')
-            ->setIsBoosted(true);
+            ->setIsBoosted(true)
+            ->setDueAt(new \DateTimeImmutable('2999-04-02'));
         $this->setCreatedAt($boostedOlder, '2026-04-01 08:00:00');
+
+        $late = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor((new User())->setEmail('late@example.com'))
+            ->setTitle('Late')
+            ->setDueAt(new \DateTimeImmutable('2000-01-01'));
+        $this->setCreatedAt($late, '2026-04-01 11:00:00');
 
         $vetoed = (new Toast())
             ->setWorkspace($workspace)
@@ -63,13 +72,14 @@ final class MeetingAgendaBuilderTest extends TestCase
         $workspace->getItems()->add($normal);
         $workspace->getItems()->add($boosted);
         $workspace->getItems()->add($boostedOlder);
+        $workspace->getItems()->add($late);
         $workspace->getItems()->add($olderLessVoted);
         $workspace->getItems()->add($vetoed);
         $workspace->getItems()->add($resolved);
 
         $agenda = (new MeetingAgendaBuilder())->build($workspace);
 
-        self::assertSame(['Boosted older', 'Boosted', 'Older less voted', 'Normal'], array_map(
+        self::assertSame(['Late', 'Boosted', 'Boosted older', 'Normal', 'Older less voted'], array_map(
             static fn (Toast $item): string => $item->getTitle(),
             $agenda->activeItems
         ));

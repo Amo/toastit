@@ -2,9 +2,10 @@
 
 namespace App\Entity;
 
+use App\Repository\WorkspaceMemberRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: WorkspaceMemberRepository::class)]
 #[ORM\Table(name: 'team_member')]
 #[ORM\UniqueConstraint(name: 'uniq_workspace_member', columns: ['team_id', 'user_id'])]
 class WorkspaceMember
@@ -24,6 +25,9 @@ class WorkspaceMember
 
     #[ORM\Column(name: 'is_owner', options: ['default' => false])]
     private bool $isOwner = false;
+
+    #[ORM\Column(name: 'display_order', options: ['default' => 0])]
+    private int $displayOrder = 0;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
@@ -77,5 +81,17 @@ class WorkspaceMember
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getDisplayOrder(): int
+    {
+        return $this->displayOrder;
+    }
+
+    public function setDisplayOrder(int $displayOrder): self
+    {
+        $this->displayOrder = max(0, $displayOrder);
+
+        return $this;
     }
 }

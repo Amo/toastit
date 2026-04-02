@@ -4,6 +4,7 @@ namespace App\Controller\Api\Dashboard;
 
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
+use App\Repository\WorkspaceMemberRepository;
 use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,6 +16,7 @@ final class CreateTeamController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
+        private readonly WorkspaceMemberRepository $workspaceMemberRepository,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -35,6 +37,7 @@ final class CreateTeamController extends AbstractController
             ->setOrganizer($user);
         $membership = (new WorkspaceMember())
             ->setUser($user)
+            ->setDisplayOrder($this->workspaceMemberRepository->nextDisplayOrderForUser($user))
             ->setIsOwner(true);
 
         $workspace->addMembership($membership);

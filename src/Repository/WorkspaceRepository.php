@@ -22,6 +22,8 @@ class WorkspaceRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('workspace')
             ->distinct()
+            ->leftJoin('workspace.memberships', 'dashboardMembership', 'WITH', 'dashboardMembership.user = :user')
+            ->addSelect('dashboardMembership')
             ->leftJoin('workspace.memberships', 'membership')
             ->addSelect('membership')
             ->leftJoin('membership.user', 'memberUser')
@@ -36,7 +38,8 @@ class WorkspaceRepository extends ServiceEntityRepository
                 AND membership_match.user = :user
             )')
             ->setParameter('user', $user)
-            ->orderBy('workspace.createdAt', 'DESC')
+            ->orderBy('dashboardMembership.displayOrder', 'ASC')
+            ->addOrderBy('workspace.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
     }

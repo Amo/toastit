@@ -6,6 +6,7 @@ const props = defineProps({
   initials: { type: String, default: '' },
   gravatarUrl: { type: String, default: '' },
   alt: { type: String, default: '' },
+  title: { type: String, default: '' },
 });
 
 const imageFailed = ref(false);
@@ -52,6 +53,7 @@ const onImageError = () => {
   <span
     class="inline-grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-semibold uppercase"
     :class="shouldShowImage ? 'bg-stone-100 text-stone-700' : [fallbackTone.background, fallbackTone.text]"
+    :title="title || alt"
   >
     <img
       v-if="shouldShowImage"

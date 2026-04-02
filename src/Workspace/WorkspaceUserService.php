@@ -5,6 +5,7 @@ namespace App\Workspace;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
+use App\Repository\WorkspaceMemberRepository;
 use App\Security\EmailNormalizerService;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -13,6 +14,7 @@ final class WorkspaceUserService
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly EmailNormalizerService $emailNormalizer,
+        private readonly WorkspaceMemberRepository $workspaceMemberRepository,
     ) {
     }
 
@@ -26,8 +28,8 @@ final class WorkspaceUserService
         }
 
         $user = (new User())->setEmail($normalizedEmail);
-        $this->createDefaultWorkspaceForUser($user);
         $this->entityManager->persist($user);
+        $this->createDefaultWorkspaceForUser($user);
         $this->entityManager->flush();
 
         return $user;
@@ -43,6 +45,7 @@ final class WorkspaceUserService
 
         $membership = (new WorkspaceMember())
             ->setUser($user)
+            ->setDisplayOrder($this->workspaceMemberRepository->nextDisplayOrderForUser($user))
             ->setIsOwner(true);
 
         $workspace->addMembership($membership);

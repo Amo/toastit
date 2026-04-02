@@ -3,6 +3,7 @@
 namespace App\Controller\App\Workspace;
 
 use App\Entity\WorkspaceMember;
+use App\Repository\WorkspaceMemberRepository;
 use App\Workspace\WorkspaceUserService;
 use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -16,6 +17,7 @@ final class InviteController extends AbstractController
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly WorkspaceUserService $userProvisioner,
+        private readonly WorkspaceMemberRepository $workspaceMemberRepository,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -43,6 +45,7 @@ final class InviteController extends AbstractController
 
         $membership = (new WorkspaceMember())
             ->setWorkspace($workspace)
+            ->setDisplayOrder($this->workspaceMemberRepository->nextDisplayOrderForUser($user))
             ->setUser($user);
 
         $workspace->addMembership($membership);

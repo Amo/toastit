@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AvatarBadge from './AvatarBadge.vue';
+import ModalDialog from './ModalDialog.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -20,6 +21,7 @@ const itemForm = ref({ title: '', description: '', ownerId: '', dueOn: '' });
 const currentToastTab = ref('active');
 const isManageModalOpen = ref(false);
 const isCreateToastModalOpen = ref(false);
+const createToastTitleInput = ref(null);
 const selectedToastModalId = ref(null);
 const selectedTargetWorkspaceId = ref('');
 const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', permalinkBackgroundUrl: '', isSoloWorkspace: false });
@@ -59,7 +61,7 @@ const standaloneBackgroundStyle = computed(() => {
   }
 
   return {
-    backgroundImage: `linear-gradient(rgba(28, 25, 23, 0.18), rgba(28, 25, 23, 0.18)), url("${backgroundUrl}")`,
+    backgroundImage: `linear-gradient(rgba(28, 25, 23, 0.8), rgba(28, 25, 23, 0.1), rgba(28, 25, 23, 0.8)), url("${backgroundUrl}")`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
   };
@@ -87,6 +89,29 @@ const toastStatusTone = (item) => {
   }
 
   return 'text-amber-600';
+};
+
+const todayDateString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const isLateToast = (item) => !!item?.dueOn && item.dueOn < todayDateString();
+
+const activeToastAccentClasses = (item) => {
+  if (isLateToast(item)) {
+    return 'border-l-4 border-l-red-600 border-t-red-200 border-r-red-200 border-b-red-200';
+  }
+
+  if (item.isBoosted) {
+    return 'border-l-4 border-l-amber-500 border-t-amber-200 border-r-amber-200 border-b-amber-200';
+  }
+
+  return 'border-stone-200';
 };
 
 const escapeHtml = (value) => value
@@ -278,6 +303,13 @@ const createItem = async () => {
   await fetchWorkspace();
 };
 
+const handleCreateToastModalKeydown = (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    event.preventDefault();
+    createItem();
+  }
+};
+
 const startMeetingMode = async () => {
   if (!workspace.value?.currentUserIsOwner) return;
   isSaving.value = true;
@@ -309,8 +341,10 @@ const closeManageModal = () => {
   isManageModalOpen.value = false;
 };
 
-const openCreateToastModal = () => {
+const openCreateToastModal = async () => {
   isCreateToastModalOpen.value = true;
+  await nextTick();
+  createToastTitleInput.value?.focus();
 };
 
 const closeCreateToastModal = () => {
@@ -609,7 +643,41 @@ const saveDiscussion = async () => {
   isSaving.value = false;
 };
 
-onMounted(fetchWorkspace);
+const isTypingTarget = (target) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+
+  return tagName === 'input'
+    || tagName === 'textarea'
+    || tagName === 'select'
+    || target.isContentEditable;
+};
+
+const handleWorkspaceKeydown = (event) => {
+  if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
+    return;
+  }
+
+  if (event.key.toLowerCase() !== 't' || !workspace.value) {
+    return;
+  }
+
+  event.preventDefault();
+  openCreateToastModal();
+};
+
+onMounted(() => {
+  fetchWorkspace();
+  window.addEventListener('keydown', handleWorkspaceKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleWorkspaceKeydown);
+});
+
 watch(() => props.apiUrl, fetchWorkspace);
 </script>
 
@@ -674,16 +742,6 @@ watch(() => props.apiUrl, fetchWorkspace);
 
       <div class="space-y-6">
         <div class="tw-toastit-card p-6 space-y-4">
-            <div class="flex items-center justify-between gap-4">
-              <h2 class="text-lg font-semibold text-stone-950">Toasts</h2>
-              <span v-if="!isSoloWorkspace" class="rounded-full px-3 py-1 text-xs font-semibold" :class="workspace.meetingMode === 'live' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-700'">
-                {{ workspace.meetingMode === 'live' ? 'Toasting' : 'Idle' }}
-              </span>
-            </div>
-            <p class="text-sm leading-6 text-stone-600">
-              {{ isSoloWorkspace ? 'Capture personal to-dos, follow your backlog, and mark them toasted when done.' : (isToastingMode ? 'Review each toast in sequence, capture the decision, and create the next follow-ups.' : 'Capture ideas, prioritize them together, then toast them into clear owners, deadlines, and follow-ups.') }}
-            </p>
-
             <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
               <input v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast" @keydown.enter.prevent="createItem">
               <button type="button" class="inline-grid h-[3.125rem] place-items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="openCreateToastModal">
@@ -730,14 +788,19 @@ watch(() => props.apiUrl, fetchWorkspace);
                 :key="item.id"
                 class="overflow-hidden rounded-[1.35rem] border bg-white transition"
                 :class="[
-                  item.isBoosted ? 'border-l-4 border-l-amber-500 border-t-amber-200 border-r-amber-200 border-b-amber-200' : 'border-stone-200',
+                  activeToastAccentClasses(item),
                   'opacity-95 hover:shadow-toastit-panel',
                 ]"
               >
                 <button type="button" class="flex w-full items-start justify-between gap-4 px-5 py-4 text-left" @click="openToastModal(item)">
                   <div class="space-y-2">
                     <div class="flex items-center gap-3">
-                      <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-amber-100 font-semibold text-amber-700">{{ index + 1 }}</span>
+                      <span
+                        class="inline-grid h-8 w-8 place-items-center rounded-full font-semibold"
+                        :class="isLateToast(item) ? 'bg-red-600 text-white' : 'bg-amber-100 text-amber-700'"
+                      >
+                        {{ index + 1 }}
+                      </span>
                       <p class="text-lg font-semibold text-stone-950">{{ item.title }}</p>
                     </div>
                     <p v-if="item.description" class="text-sm text-stone-500">{{ truncateDescription(item.description) }}</p>
@@ -839,8 +902,7 @@ watch(() => props.apiUrl, fetchWorkspace);
       </template>
       </div>
 
-      <div v-if="isManageModalOpen" class="!mt-0 fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/20 backdrop-blur-sm px-4 py-[5vh]" @click.self="closeManageModal">
-        <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-2xl">
+      <ModalDialog v-if="isManageModalOpen" max-width-class="max-w-3xl" @close="closeManageModal">
           <div class="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-5">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Workspace settings</p>
@@ -944,11 +1006,9 @@ watch(() => props.apiUrl, fetchWorkspace);
               </div>
             </div>
           </div>
-        </div>
-      </div>
+      </ModalDialog>
 
-      <div v-if="isCreateToastModalOpen" class="!mt-0 fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/20 backdrop-blur-sm px-4 py-[5vh]" @click.self="closeCreateToastModal">
-        <div class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-2xl">
+      <ModalDialog v-if="isCreateToastModalOpen" max-width-class="max-w-2xl" @close="closeCreateToastModal">
           <div class="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-5">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">New toast</p>
@@ -960,10 +1020,10 @@ watch(() => props.apiUrl, fetchWorkspace);
             </button>
           </div>
 
-          <div class="space-y-4 overflow-y-auto px-6 py-6">
+          <div class="space-y-4 overflow-y-auto px-6 py-6" @keydown="handleCreateToastModalKeydown">
             <label class="grid gap-2 text-sm font-medium text-stone-700">
               <span>Title</span>
-              <input v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast">
+              <input ref="createToastTitleInput" v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast">
             </label>
 
             <div class="grid gap-4 md:grid-cols-2">
@@ -985,16 +1045,17 @@ watch(() => props.apiUrl, fetchWorkspace);
               <textarea v-model="itemForm.description" class="min-h-32 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" placeholder="Add details or description" />
             </label>
 
-            <div class="flex justify-end gap-3">
-              <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="closeCreateToastModal">Cancel</button>
-              <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="createItem">Create toast</button>
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-xs text-stone-400">Press Cmd+Enter or Ctrl+Enter to create this toast.</p>
+              <div class="flex justify-end gap-3">
+                <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="closeCreateToastModal">Cancel</button>
+                <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="createItem">Create toast</button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+      </ModalDialog>
 
-      <div v-if="selectedToastModal" class="!mt-0 fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/20 backdrop-blur-sm px-4 py-[5vh]" @click.self="closeToastModal">
-        <div class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-2xl">
+      <ModalDialog v-if="selectedToastModal" max-width-class="max-w-4xl" @close="closeToastModal">
           <div class="flex items-start justify-between gap-6 border-b border-stone-100 px-6 py-5">
             <div class="min-w-0 space-y-3">
               <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">
@@ -1240,8 +1301,7 @@ watch(() => props.apiUrl, fetchWorkspace);
               </section>
             </div>
           </div>
-        </div>
-      </div>
+      </ModalDialog>
     </template>
   </section>
 </template>

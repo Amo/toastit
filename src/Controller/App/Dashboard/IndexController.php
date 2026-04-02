@@ -4,6 +4,7 @@ namespace App\Controller\App\Dashboard;
 
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
+use App\Repository\WorkspaceMemberRepository;
 use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,6 +16,7 @@ final class IndexController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
+        private readonly WorkspaceMemberRepository $workspaceMemberRepository,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -39,6 +41,7 @@ final class IndexController extends AbstractController
 
             $membership = (new WorkspaceMember())
                 ->setUser($user)
+                ->setDisplayOrder($this->workspaceMemberRepository->nextDisplayOrderForUser($user))
                 ->setIsOwner(true);
 
             $workspace->addMembership($membership);
