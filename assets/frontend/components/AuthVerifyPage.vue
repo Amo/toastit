@@ -1,6 +1,7 @@
 <script setup>
 import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
+import TextInputField from './TextInputField.vue';
 
 const props = defineProps({
   email: { type: String, default: '' },
@@ -25,10 +26,7 @@ const props = defineProps({
         <form method="post" :action="verifyAction" class="space-y-4">
           <input type="hidden" name="email" :value="email">
           <input type="hidden" name="purpose" :value="purpose">
-          <label class="grid gap-2 text-sm font-medium text-stone-700">
-            <span>Code OTP</span>
-            <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base tracking-[0.4em] uppercase" type="text" name="code" maxlength="6" autocomplete="one-time-code" required>
-          </label>
+          <TextInputField label="Code OTP" name="code" type="text" autocomplete="one-time-code" maxlength="6" required />
           <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
             Verify code
           </button>

@@ -1,6 +1,7 @@
 <script setup>
 import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
+import TextInputField from './TextInputField.vue';
 
 const props = defineProps({
   setupAction: { type: String, required: true },
@@ -21,14 +22,8 @@ const props = defineProps({
         <FlashMessages :error="flashes.error" />
 
         <form method="post" :action="setupAction" class="space-y-4">
-          <label class="grid gap-2 text-sm font-medium text-stone-700">
-            <span>PIN</span>
-            <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="password" inputmode="numeric" pattern="[0-9]{4}" name="pin" maxlength="4" required>
-          </label>
-          <label class="grid gap-2 text-sm font-medium text-stone-700">
-            <span>Confirmation</span>
-            <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="password" inputmode="numeric" pattern="[0-9]{4}" name="pin_confirmation" maxlength="4" required>
-          </label>
+          <TextInputField label="PIN" type="password" inputmode="numeric" pattern="[0-9]{4}" name="pin" maxlength="4" required />
+          <TextInputField label="Confirmation" type="password" inputmode="numeric" pattern="[0-9]{4}" name="pin_confirmation" maxlength="4" required />
           <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
             Save PIN
           </button>

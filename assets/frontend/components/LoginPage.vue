@@ -1,6 +1,7 @@
 <script setup>
 import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
+import TextInputField from './TextInputField.vue';
 
 const props = defineProps({
   email: { type: String, default: '' },
@@ -37,10 +38,7 @@ const props = defineProps({
         </div>
 
         <form v-else method="post" :action="loginAction" class="space-y-4">
-          <label class="grid gap-2 text-sm font-medium text-stone-700">
-            <span>Email address</span>
-            <input class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="email" name="email" :value="email" placeholder="hello@toastit.app" required>
-          </label>
+          <TextInputField label="Email address" type="email" name="email" :value="email" placeholder="hello@toastit.app" required />
 
           <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
             Continue
