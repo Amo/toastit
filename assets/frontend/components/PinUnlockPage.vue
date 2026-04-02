@@ -1,4 +1,5 @@
 <script setup>
+import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
 
 const props = defineProps({
@@ -19,10 +20,7 @@ const props = defineProps({
           :description="`The session is authenticated for ${email}, but the PIN is required to access the app.`"
         />
 
-        <div class="space-y-3">
-          <p v-for="(message, index) in flashes.success" :key="`success-${index}`" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</p>
-          <p v-for="(message, index) in flashes.error" :key="`error-${index}`" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ message }}</p>
-        </div>
+        <FlashMessages :success="flashes.success" :error="flashes.error" />
 
         <form method="post" :action="unlockAction" class="space-y-4">
           <label class="grid gap-2 text-sm font-medium text-stone-700">

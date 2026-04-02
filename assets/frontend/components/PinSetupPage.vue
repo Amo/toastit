@@ -1,4 +1,5 @@
 <script setup>
+import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
 
 const props = defineProps({
@@ -17,7 +18,7 @@ const props = defineProps({
           description="This PIN will be required for each new session and whenever the session locks again."
         />
 
-        <p v-for="(message, index) in flashes.error" :key="index" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ message }}</p>
+        <FlashMessages :error="flashes.error" />
 
         <form method="post" :action="setupAction" class="space-y-4">
           <label class="grid gap-2 text-sm font-medium text-stone-700">
