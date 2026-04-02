@@ -27,7 +27,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/20 px-4 py-[5vh] backdrop-blur-sm"
+    class="!mt-0 fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/20 px-4 py-[5vh] backdrop-blur-[9px]"
     @click.self="emit('close')"
   >
     <div class="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-2xl" :class="maxWidthClass">

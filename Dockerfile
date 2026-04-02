@@ -13,6 +13,7 @@ WORKDIR /app
 
 COPY docker/frankenphp/Caddyfile /etc/caddy/Caddyfile
 COPY docker/frankenphp/docker-entrypoint.sh /usr/local/bin/app-entrypoint
+COPY docker/frankenphp/php/conf.d/zz-uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
 COPY docker/frankenphp/php/conf.d/zz-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug.ini
 
 ENTRYPOINT ["app-entrypoint"]

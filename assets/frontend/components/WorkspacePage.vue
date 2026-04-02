@@ -22,10 +22,16 @@ const currentToastTab = ref('active');
 const isManageModalOpen = ref(false);
 const isCreateToastModalOpen = ref(false);
 const createToastTitleInput = ref(null);
+const workspaceBackgroundFile = ref(null);
+const workspaceBackgroundInput = ref(null);
+const isWorkspaceBackgroundDragOver = ref(false);
 const selectedToastModalId = ref(null);
+const selectedToastModalCleanState = ref(null);
+const toastModalNavigationBlocked = ref(false);
 const selectedTargetWorkspaceId = ref('');
-const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', permalinkBackgroundUrl: '', isSoloWorkspace: false });
+const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', isSoloWorkspace: false });
 const commentDrafts = ref({});
+const workspaceBackgroundObjectUrl = ref('');
 
 const workspace = computed(() => payload.value?.workspace ?? null);
 const currentUser = computed(() => payload.value?.currentUser ?? null);
@@ -53,8 +59,10 @@ const ownerCount = computed(() => members.value.filter((membership) => membershi
 const workspaceUrl = computed(() => workspace.value ? `/app/workspaces/${workspace.value.id}` : props.dashboardUrl);
 const permalinkUrl = computed(() => selectedToastModal.value ? `/app/toasts/${selectedToastModal.value.id}` : null);
 const isSoloWorkspace = computed(() => workspace.value?.isSoloWorkspace === true);
+const resolvedWorkspaceBackgroundUrl = computed(() => workspaceBackgroundObjectUrl.value || workspace.value?.permalinkBackgroundUrl || '');
+
 const standaloneBackgroundStyle = computed(() => {
-  const backgroundUrl = workspace.value?.permalinkBackgroundUrl;
+  const backgroundUrl = resolvedWorkspaceBackgroundUrl.value;
 
   if (!standaloneMode.value || !backgroundUrl) {
     return {};
@@ -64,6 +72,22 @@ const standaloneBackgroundStyle = computed(() => {
     backgroundImage: `linear-gradient(rgba(28, 25, 23, 0.8), rgba(28, 25, 23, 0.1), rgba(28, 25, 23, 0.8)), url("${backgroundUrl}")`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
+  };
+});
+
+const workspacePageBackgroundStyle = computed(() => {
+  const backgroundUrl = resolvedWorkspaceBackgroundUrl.value;
+
+  if (standaloneMode.value || !backgroundUrl) {
+    return {};
+  }
+
+  return {
+    backgroundImage: `linear-gradient(rgba(19, 36, 68, 0.44), rgba(32, 74, 135, 0.14), rgba(17, 24, 39, 0.48)), url("${backgroundUrl}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    filter: 'blur(15px) saturate(0.95)',
+    transform: 'scale(1.03)',
   };
 });
 const duePresetOptions = [
@@ -247,7 +271,6 @@ const fetchWorkspace = async () => {
   workspaceSettingsForm.value = {
     name: payload.value.workspace?.name ?? '',
     defaultDuePreset: payload.value.workspace?.defaultDuePreset ?? 'next_week',
-    permalinkBackgroundUrl: payload.value.workspace?.permalinkBackgroundUrl ?? '',
     isSoloWorkspace: payload.value.workspace?.isSoloWorkspace ?? false,
   };
   selectedTargetWorkspaceId.value = payload.value.otherWorkspaces?.[0]?.id ? String(payload.value.otherWorkspaces[0].id) : '';
@@ -257,6 +280,41 @@ const fetchWorkspace = async () => {
   }
   resetItemForm();
   isLoading.value = false;
+};
+
+const revokeWorkspaceBackgroundObjectUrl = () => {
+  if (workspaceBackgroundObjectUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(workspaceBackgroundObjectUrl.value);
+  }
+
+  workspaceBackgroundObjectUrl.value = '';
+};
+
+const loadWorkspaceBackground = async () => {
+  revokeWorkspaceBackgroundObjectUrl();
+
+  const backgroundUrl = workspace.value?.permalinkBackgroundUrl;
+
+  if (!backgroundUrl) {
+    return;
+  }
+
+  if (backgroundUrl.startsWith('http://') || backgroundUrl.startsWith('https://')) {
+    workspaceBackgroundObjectUrl.value = backgroundUrl;
+    return;
+  }
+
+  const response = await fetch(backgroundUrl, {
+    headers: {
+      Authorization: `Bearer ${props.accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    return;
+  }
+
+  workspaceBackgroundObjectUrl.value = URL.createObjectURL(await response.blob());
 };
 
 const authorizedHeaders = (json = false) => ({
@@ -351,9 +409,75 @@ const closeCreateToastModal = () => {
   isCreateToastModalOpen.value = false;
 };
 
+const normalizeDraftFollowUps = (item) => ensureDraftFollowUps(item)
+  .map((followUp) => ({
+    title: (followUp.title ?? '').trim(),
+    ownerId: followUp.ownerId ? String(followUp.ownerId) : '',
+    dueOn: followUp.dueOn ?? '',
+  }))
+  .filter((followUp) => followUp.title !== '' || followUp.ownerId !== '' || followUp.dueOn !== '');
+
+const serializeToastModalState = (item) => JSON.stringify({
+  discussionNotes: item?.discussionNotes ?? '',
+  draftFollowUps: normalizeDraftFollowUps(item),
+  commentDraft: item?.id ? commentDraftFor(item.id).trim() : '',
+});
+
+const isSelectedToastModalDirty = computed(() => {
+  if (!selectedToastModal.value || !isToastingMode.value) {
+    return false;
+  }
+
+  return serializeToastModalState(selectedToastModal.value) !== selectedToastModalCleanState.value;
+});
+
+const selectedToastModalInitialState = computed(() => {
+  if (!selectedToastModalCleanState.value) {
+    return { discussionNotes: '', draftFollowUps: [], commentDraft: '' };
+  }
+
+  return JSON.parse(selectedToastModalCleanState.value);
+});
+
+const isDecisionNotesDirty = computed(() => {
+  if (!selectedToastModal.value || !isToastingMode.value) {
+    return false;
+  }
+
+  return (selectedToastModal.value.discussionNotes ?? '') !== selectedToastModalInitialState.value.discussionNotes;
+});
+
+const isFollowUpsDirty = computed(() => {
+  if (!selectedToastModal.value || !isToastingMode.value) {
+    return false;
+  }
+
+  return JSON.stringify(normalizeDraftFollowUps(selectedToastModal.value)) !== JSON.stringify(selectedToastModalInitialState.value.draftFollowUps ?? []);
+});
+
+const isCommentDraftDirty = computed(() => {
+  if (!selectedToastModal.value || !isToastingMode.value) {
+    return false;
+  }
+
+  return commentDraftFor(selectedToastModal.value.id).trim() !== (selectedToastModalInitialState.value.commentDraft ?? '');
+});
+
+const triggerToastModalNavigationBlockedFeedback = () => {
+  toastModalNavigationBlocked.value = true;
+  window.clearTimeout(triggerToastModalNavigationBlockedFeedback.timeoutId);
+  triggerToastModalNavigationBlockedFeedback.timeoutId = window.setTimeout(() => {
+    toastModalNavigationBlocked.value = false;
+  }, 900);
+};
+
+triggerToastModalNavigationBlockedFeedback.timeoutId = 0;
+
 const openToastModal = (item) => {
   selectedToastModalId.value = item.id;
   selectedTargetWorkspaceId.value = otherWorkspaces.value[0]?.id ? String(otherWorkspaces.value[0].id) : '';
+  selectedToastModalCleanState.value = serializeToastModalState(item);
+  toastModalNavigationBlocked.value = false;
 
   if (standaloneMode.value) {
     router.push(`/app/toasts/${item.id}`);
@@ -367,6 +491,8 @@ const closeToastModal = () => {
   }
 
   selectedToastModalId.value = null;
+  selectedToastModalCleanState.value = null;
+  toastModalNavigationBlocked.value = false;
 };
 
 const relatedToastStatusLabel = (item) => {
@@ -387,11 +513,76 @@ const openToastById = (toastId) => {
     if (standaloneMode.value) {
       router.push(`/app/toasts/${toastId}`);
       selectedToastModalId.value = toastId;
+      selectedToastModalCleanState.value = serializeToastModalState(item);
+      toastModalNavigationBlocked.value = false;
       return;
     }
 
     openToastModal(item);
   }
+};
+
+const currentToastSequence = () => {
+  if (!selectedToastModal.value) {
+    return [];
+  }
+
+  if (agendaItems.value.some((item) => item.id === selectedToastModal.value.id)) {
+    return agendaItems.value;
+  }
+
+  if (vetoedItems.value.some((item) => item.id === selectedToastModal.value.id)) {
+    return vetoedItems.value;
+  }
+
+  if (resolvedItems.value.some((item) => item.id === selectedToastModal.value.id)) {
+    return resolvedItems.value;
+  }
+
+  return [];
+};
+
+const navigateSelectedToast = (direction) => {
+  if (isSelectedToastModalDirty.value) {
+    triggerToastModalNavigationBlockedFeedback();
+    return;
+  }
+
+  const sequence = currentToastSequence();
+
+  if (!sequence.length || !selectedToastModal.value) {
+    return;
+  }
+
+  const currentIndex = sequence.findIndex((item) => item.id === selectedToastModal.value.id);
+
+  if (currentIndex < 0) {
+    return;
+  }
+
+  const nextToast = sequence[currentIndex + direction];
+
+  if (!nextToast) {
+    return;
+  }
+
+  openToastById(nextToast.id);
+};
+
+const canNavigateSelectedToast = (direction) => {
+  const sequence = currentToastSequence();
+
+  if (!sequence.length || !selectedToastModal.value) {
+    return false;
+  }
+
+  const currentIndex = sequence.findIndex((item) => item.id === selectedToastModal.value.id);
+
+  if (currentIndex < 0) {
+    return false;
+  }
+
+  return !!sequence[currentIndex + direction] && !isSelectedToastModalDirty.value;
 };
 
 const commentDraftFor = (itemId) => commentDrafts.value[itemId] ?? '';
@@ -456,8 +647,43 @@ const saveWorkspaceSettings = async () => {
     return;
   }
 
+  if (workspaceBackgroundFile.value) {
+    const formData = new FormData();
+    formData.append('background', workspaceBackgroundFile.value);
+
+    const uploadResponse = await fetch(`/api/workspaces/${workspace.value.id}/background`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${props.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+      errorMessage.value = 'Unable to upload workspace background.';
+      return;
+    }
+
+    workspaceBackgroundFile.value = null;
+  }
+
   closeManageModal();
   await fetchWorkspace();
+  await loadWorkspaceBackground();
+};
+
+const handleWorkspaceBackgroundChange = (event) => {
+  workspaceBackgroundFile.value = event.target.files?.[0] ?? null;
+};
+
+const openWorkspaceBackgroundBrowse = () => {
+  workspaceBackgroundInput.value?.click();
+};
+
+const handleWorkspaceBackgroundDrop = (event) => {
+  isWorkspaceBackgroundDragOver.value = false;
+  workspaceBackgroundFile.value = event.dataTransfer?.files?.[0] ?? null;
 };
 
 const promoteMember = async (memberId) => {
@@ -657,6 +883,28 @@ const isTypingTarget = (target) => {
 };
 
 const handleWorkspaceKeydown = (event) => {
+  if (selectedToastModal.value && !isTypingTarget(event.target) && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      if (isSelectedToastModalDirty.value) {
+        triggerToastModalNavigationBlockedFeedback();
+        return;
+      }
+      navigateSelectedToast(-1);
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      if (isSelectedToastModalDirty.value) {
+        triggerToastModalNavigationBlockedFeedback();
+        return;
+      }
+      navigateSelectedToast(1);
+      return;
+    }
+  }
+
   if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
     return;
   }
@@ -676,9 +924,11 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleWorkspaceKeydown);
+  revokeWorkspaceBackgroundObjectUrl();
 });
 
 watch(() => props.apiUrl, fetchWorkspace);
+watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
 </script>
 
 <template>
@@ -688,59 +938,66 @@ watch(() => props.apiUrl, fetchWorkspace);
       class="pointer-events-none fixed inset-0 z-0"
       :style="standaloneBackgroundStyle"
     ></div>
+    <div
+      v-if="!standaloneMode && resolvedWorkspaceBackgroundUrl"
+      class="pointer-events-none fixed inset-0 z-0"
+    >
+      <div class="absolute inset-0" :style="workspacePageBackgroundStyle"></div>
+      <div class="absolute inset-0 bg-white/8"></div>
+    </div>
     <div v-if="isLoading" class="relative z-10 tw-toastit-card p-6 text-sm text-stone-500">Loading...</div>
     <div v-else-if="errorMessage" class="relative z-10 tw-toastit-card p-6 text-sm text-red-600">{{ errorMessage }}</div>
     <template v-else-if="workspace">
       <div class="relative z-10">
       <template v-if="!standaloneMode">
-      <div class="space-y-2">
-        <nav class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-600" aria-label="Breadcrumb">
-          <a :href="dashboardUrl" class="transition hover:text-amber-700">Home</a>
-          <span class="text-amber-300">/</span>
-          <span class="text-amber-700">{{ workspace.name }}</span>
-        </nav>
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <div class="flex flex-wrap items-center gap-3">
-              <h1 class="inline-flex items-center gap-3 text-4xl font-semibold tracking-tight text-stone-950">
-                <i v-if="isToastingMode && !isSoloWorkspace" class="fa-solid fa-gear animate-spin text-amber-600 [animation-duration:4s]" aria-hidden="true"></i>
-                <span>{{ workspace.name }}</span>
-              </h1>
-              <span v-if="workspace.isDefault" class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Default workspace</span>
-              <span v-if="isSoloWorkspace" class="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-700">Solo workspace</span>
+      <div class="relative">
+        <div class="relative z-10 space-y-2 px-6 py-8 lg:px-10">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="flex flex-wrap items-center gap-3">
+                <h1 class="inline-flex items-center gap-3 text-4xl font-semibold tracking-tight" :class="resolvedWorkspaceBackgroundUrl ? 'text-white' : 'text-stone-950'">
+                  <i v-if="isToastingMode && !isSoloWorkspace" class="fa-solid fa-gear animate-spin [animation-duration:4s]" :class="resolvedWorkspaceBackgroundUrl ? 'text-white/90' : 'text-amber-600'" aria-hidden="true"></i>
+                  <span>{{ workspace.name }}</span>
+                </h1>
+                <span v-if="workspace.isDefault" class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-amber-100 text-amber-700'">Default workspace</span>
+                <span v-if="isSoloWorkspace" class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">Solo workspace</span>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-3 text-sm" :class="resolvedWorkspaceBackgroundUrl ? 'text-white/85' : 'text-stone-500'">
+                <span class="rounded-full px-3 py-1 font-medium" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ newToastCount }} new toast<span v-if="newToastCount > 1">s</span></span>
+                <span class="rounded-full px-3 py-1 font-medium" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ toastedToastCount }} toasted toast<span v-if="toastedToastCount > 1">s</span></span>
+                <span class="rounded-full px-3 py-1 font-medium" :class="resolvedWorkspaceBackgroundUrl ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ memberCount }} member<span v-if="memberCount > 1">s</span></span>
+              </div>
+              <p v-if="workspace.isDefault" class="mt-2 text-sm" :class="resolvedWorkspaceBackgroundUrl ? 'text-white/80' : 'text-stone-500'">This workspace is created automatically for every user and stays available as the permanent default.</p>
             </div>
-            <div class="mt-3 flex flex-wrap gap-3 text-sm text-stone-500">
-              <span class="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">{{ newToastCount }} new toast<span v-if="newToastCount > 1">s</span></span>
-              <span class="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">{{ toastedToastCount }} toasted toast<span v-if="toastedToastCount > 1">s</span></span>
-              <span class="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">{{ memberCount }} member<span v-if="memberCount > 1">s</span></span>
+            <div v-if="workspace.currentUserIsOwner" class="flex flex-wrap items-center justify-end gap-3">
+              <button
+                type="button"
+                class="inline-grid h-12 w-12 place-items-center rounded-full border text-stone-700 transition"
+                :class="resolvedWorkspaceBackgroundUrl ? 'border-white/30 bg-white/15 text-white hover:border-white/50 hover:bg-white/20' : 'border-stone-200 bg-white hover:border-stone-300 hover:text-stone-950'"
+                @click="openManageModal"
+              >
+                <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                <span class="sr-only">Manage workspace</span>
+              </button>
+              <button
+                v-if="!isSoloWorkspace"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
+                :class="workspace.meetingMode === 'live'
+                  ? (resolvedWorkspaceBackgroundUrl ? 'bg-white text-stone-950 hover:bg-white/90' : 'bg-stone-900 text-white hover:bg-stone-800')
+                  : (resolvedWorkspaceBackgroundUrl ? 'bg-amber-400 text-stone-950 hover:bg-amber-300' : 'bg-amber-500 text-stone-950 hover:bg-amber-400')"
+                :disabled="isSaving"
+                @click="workspace.meetingMode === 'live' ? stopMeetingMode() : startMeetingMode()"
+              >
+                <i v-if="workspace.meetingMode !== 'live'" class="fa-solid fa-bolt" aria-hidden="true"></i>
+                <span>{{ workspace.meetingMode === 'live' ? 'Stop toasting mode' : 'Start toasting mode' }}</span>
+              </button>
             </div>
-            <p v-if="workspace.isDefault" class="mt-2 text-sm text-stone-500">This workspace is created automatically for every user and stays available as the permanent default.</p>
-          </div>
-          <div v-if="workspace.currentUserIsOwner" class="flex flex-wrap items-center justify-end gap-3">
-            <button
-              type="button"
-              class="inline-grid h-12 w-12 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition hover:border-stone-300 hover:text-stone-950"
-              @click="openManageModal"
-            >
-              <i class="fa-solid fa-gear" aria-hidden="true"></i>
-              <span class="sr-only">Manage workspace</span>
-            </button>
-            <button
-              v-if="!isSoloWorkspace"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-60"
-              :class="workspace.meetingMode === 'live' ? 'bg-stone-900 text-white hover:bg-stone-800' : 'bg-amber-500 text-stone-950 hover:bg-amber-400'"
-              :disabled="isSaving"
-              @click="workspace.meetingMode === 'live' ? stopMeetingMode() : startMeetingMode()"
-            >
-              <i v-if="workspace.meetingMode !== 'live'" class="fa-solid fa-bolt" aria-hidden="true"></i>
-              <span>{{ workspace.meetingMode === 'live' ? 'Stop toasting mode' : 'Start toasting mode' }}</span>
-            </button>
           </div>
         </div>
       </div>
 
-      <div class="space-y-6">
+      <div class="mt-4 space-y-0">
         <div class="tw-toastit-card p-6 space-y-4">
             <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
               <input v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast" @keydown.enter.prevent="createItem">
@@ -936,10 +1193,33 @@ watch(() => props.apiUrl, fetchWorkspace);
                     <option v-for="option in duePresetOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                   </select>
                 </label>
-                <label class="grid gap-2 text-sm font-medium text-stone-700">
-                  <span>Permalink background image URL</span>
-                  <input v-model="workspaceSettingsForm.permalinkBackgroundUrl" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" type="url" placeholder="https://example.com/background.jpg">
-                </label>
+              <div class="grid gap-2 text-sm font-medium text-stone-700">
+                <span>Permalink background image</span>
+                <input
+                  ref="workspaceBackgroundInput"
+                  class="sr-only"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  @change="handleWorkspaceBackgroundChange"
+                >
+                <button
+                  type="button"
+                  class="flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-white px-4 py-5 text-center transition"
+                  :class="isWorkspaceBackgroundDragOver ? 'border-amber-400 bg-amber-50' : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50'"
+                  @click="openWorkspaceBackgroundBrowse"
+                  @dragenter.prevent="isWorkspaceBackgroundDragOver = true"
+                  @dragover.prevent="isWorkspaceBackgroundDragOver = true"
+                  @dragleave.prevent="isWorkspaceBackgroundDragOver = false"
+                  @drop.prevent="handleWorkspaceBackgroundDrop"
+                >
+                  <i class="fa-regular fa-image text-lg text-stone-400" aria-hidden="true"></i>
+                  <p class="text-sm font-medium text-stone-700">
+                    <span v-if="workspaceBackgroundFile">{{ workspaceBackgroundFile.name }}</span>
+                    <span v-else>Drag and drop an image here or click to browse</span>
+                  </p>
+                  <p class="text-xs text-stone-400">PNG, JPG, WebP or GIF. One private background image per workspace.</p>
+                </button>
+              </div>
                 <label class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700">
                   <span>Solo workspace</span>
                   <input v-model="workspaceSettingsForm.isSoloWorkspace" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-400">
@@ -1153,7 +1433,7 @@ watch(() => props.apiUrl, fetchWorkspace);
                 <p v-else class="text-lg text-stone-500">No description</p>
               </div>
 
-              <section v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && otherWorkspaces.length" class="space-y-3">
+              <section v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && otherWorkspaces.length && !isToastingMode" class="space-y-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Move or copy</p>
                 <div class="flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
                   <select v-model="selectedTargetWorkspaceId" class="min-w-[14rem] rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
@@ -1195,16 +1475,29 @@ watch(() => props.apiUrl, fetchWorkspace);
               <div v-if="workspace.currentUserIsOwner && isToastingMode && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'" class="space-y-4">
                 <label class="grid gap-2 text-sm font-medium text-stone-700">
                   <span>Decision notes</span>
-                  <textarea class="min-h-28 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="selectedToastModal.discussionNotes ?? ''" @input="updateItemField(selectedToastModal.id, 'discussionNotes', $event.target.value)" />
+                  <textarea
+                    class="min-h-28 rounded-2xl border bg-white px-4 py-3 text-sm transition"
+                    :class="toastModalNavigationBlocked && isDecisionNotesDirty ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'"
+                    :value="selectedToastModal.discussionNotes ?? ''"
+                    @input="updateItemField(selectedToastModal.id, 'discussionNotes', $event.target.value)"
+                  />
                 </label>
 
-                <div class="space-y-3">
+                <div
+                  class="space-y-3 rounded-[1.25rem] border p-3 transition"
+                  :class="toastModalNavigationBlocked && isFollowUpsDirty ? 'border-red-300 bg-red-50/40' : 'border-transparent'"
+                >
                   <div class="flex items-center justify-between gap-4">
                     <p class="text-sm font-medium text-stone-700">Create follow-ups in this workspace</p>
                     <button type="button" class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700" @click="addFollowUpDraft(selectedToastModal.id)">Add</button>
                   </div>
 
-                  <div v-for="(followUp, followUpIndex) in ensureDraftFollowUps(selectedToastModal)" :key="followUpIndex" class="grid gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_11rem_auto]">
+                  <div
+                    v-for="(followUp, followUpIndex) in ensureDraftFollowUps(selectedToastModal)"
+                    :key="followUpIndex"
+                    class="grid gap-3 rounded-2xl border bg-stone-50 p-4 transition xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_11rem_auto]"
+                    :class="toastModalNavigationBlocked && isFollowUpsDirty ? 'border-red-300' : 'border-stone-200'"
+                  >
                     <input class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm" type="text" :value="followUp.title ?? ''" placeholder="Follow-up title" @input="updateFollowUpDraft(selectedToastModal.id, followUpIndex, 'title', $event.target.value)">
                     <select class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm" :value="followUp.ownerId ?? ''" @change="updateFollowUpDraft(selectedToastModal.id, followUpIndex, 'ownerId', $event.target.value)">
                       <option value="">Assignee</option>
@@ -1286,7 +1579,8 @@ watch(() => props.apiUrl, fetchWorkspace);
                       :alt="currentUser?.displayName"
                     />
                     <textarea
-                      class="min-h-[2.75rem] min-w-0 flex-1 resize-none overflow-hidden rounded-[1.4rem] border border-stone-200 bg-white px-4 py-3 text-sm leading-6"
+                      class="min-h-[2.75rem] min-w-0 flex-1 resize-none overflow-hidden rounded-[1.4rem] border bg-white px-4 py-3 text-sm leading-6 transition"
+                      :class="toastModalNavigationBlocked && isCommentDraftDirty ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'"
                       :value="commentDraftFor(selectedToastModal.id)"
                       rows="1"
                       placeholder="Write a comment"
@@ -1299,6 +1593,30 @@ watch(() => props.apiUrl, fetchWorkspace);
                   </div>
                 </div>
               </section>
+
+              <div class="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4">
+                <div class="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:border-stone-300 hover:text-stone-900 disabled:opacity-40"
+                    :disabled="!canNavigateSelectedToast(-1)"
+                    @click="navigateSelectedToast(-1)"
+                  >
+                    <i class="fa-solid fa-arrow-left text-[0.65rem]" aria-hidden="true"></i>
+                    <span>Previous</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:border-stone-300 hover:text-stone-900 disabled:opacity-40"
+                    :disabled="!canNavigateSelectedToast(1)"
+                    @click="navigateSelectedToast(1)"
+                  >
+                    <span>Next</span>
+                    <i class="fa-solid fa-arrow-right text-[0.65rem]" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <p class="text-xs text-stone-400">Use keyboard arrows to move between toasts.</p>
+              </div>
             </div>
           </div>
       </ModalDialog>

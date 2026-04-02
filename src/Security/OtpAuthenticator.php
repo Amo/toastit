@@ -2,14 +2,16 @@
 
 namespace App\Security;
 
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 
-final class OtpAuthenticator extends AbstractAuthenticator
+final class OtpAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
     public function supports(Request $request): ?bool
     {
@@ -29,5 +31,10 @@ final class OtpAuthenticator extends AbstractAuthenticator
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
         return null;
+    }
+
+    public function start(Request $request, ?AuthenticationException $authException = null): Response
+    {
+        return new RedirectResponse('/');
     }
 }

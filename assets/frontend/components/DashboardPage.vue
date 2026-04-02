@@ -178,7 +178,6 @@ onUnmounted(() => {
             <span>{{ payload.workspaces.length }} workspace<span v-if="payload.workspaces.length > 1">s</span></span>
           </div>
         </div>
-        <p class="text-base leading-7 text-stone-600">Turn sticky notes into shared plans and real results. Every workspace keeps your toasts, follow-ups, and collaborators in the same flow.</p>
       </div>
       <button type="button" class="inline-flex h-12 w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-amber-500 px-5 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="openCreateWorkspaceModal">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>

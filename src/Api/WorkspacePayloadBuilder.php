@@ -8,6 +8,7 @@ use App\Entity\Workspace;
 use App\Meeting\MeetingAgendaBuilder;
 use App\Repository\WorkspaceRepository;
 use App\Workspace\WorkspaceWorkflowService;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class WorkspacePayloadBuilder
 {
@@ -15,6 +16,7 @@ final class WorkspacePayloadBuilder
         private readonly MeetingAgendaBuilder $agendaBuilder,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly WorkspaceRepository $workspaceRepository,
+        private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
 
@@ -36,7 +38,7 @@ final class WorkspacePayloadBuilder
                 'name' => $workspace->getName(),
                 'isDefault' => $workspace->isDefault(),
                 'defaultDuePreset' => $workspace->getDefaultDuePreset(),
-                'permalinkBackgroundUrl' => $workspace->getPermalinkBackgroundUrl(),
+                'permalinkBackgroundUrl' => $this->resolvePermalinkBackgroundUrl($workspace),
                 'isSoloWorkspace' => $workspace->isSoloWorkspace(),
                 'meetingMode' => $workspace->getMeetingMode(),
                 'meetingStartedAt' => $workspace->getMeetingStartedAt()?->format(\DateTimeInterface::ATOM),
@@ -170,5 +172,20 @@ final class WorkspacePayloadBuilder
             'currentUserHasVoted' => $hasVoted,
             'ownerName' => $item->getOwner()?->getDisplayName() ?? ($item->getOwner()?->getId() ? ($inviteeNames[$item->getOwner()->getId()] ?? null) : null),
         ];
+    }
+
+    private function resolvePermalinkBackgroundUrl(Workspace $workspace): ?string
+    {
+        $background = $workspace->getPermalinkBackgroundUrl();
+
+        if (null === $background || '' === $background) {
+            return null;
+        }
+
+        if (str_starts_with($background, 'http://') || str_starts_with($background, 'https://')) {
+            return $background;
+        }
+
+        return $this->urlGenerator->generate('api_workspace_background_get', ['id' => $workspace->getId()]);
     }
 }
