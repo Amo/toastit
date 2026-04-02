@@ -30,19 +30,19 @@ final class ApiRefreshTokenService
         return $plainToken;
     }
 
-    public function validate(string $plainToken, \DateTimeImmutable $now): RefreshTokenValidation
+    public function validate(string $plainToken, \DateTimeImmutable $now): RefreshTokenResult
     {
         $refreshToken = $this->refreshTokenRepository->findActiveByHash(hash('sha256', $plainToken), $now);
 
         if (!$refreshToken instanceof ApiRefreshToken || $refreshToken->isExpired($now)) {
-            return new RefreshTokenValidation(null, 'invalid_refresh_token');
+            return new RefreshTokenResult(null, 'invalid_refresh_token');
         }
 
         if ($refreshToken->isInactive($now)) {
-            return new RefreshTokenValidation(null, 'refresh_inactive');
+            return new RefreshTokenResult(null, 'refresh_inactive');
         }
 
-        return new RefreshTokenValidation($refreshToken, null);
+        return new RefreshTokenResult($refreshToken, null);
     }
 
     public function markUsed(ApiRefreshToken $refreshToken, \DateTimeImmutable $now): void

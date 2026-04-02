@@ -2,7 +2,7 @@
 
 namespace App\Security;
 
-final class EmailNormalizer
+final class EmailNormalizerService
 {
     public function normalize(string $email): string
     {

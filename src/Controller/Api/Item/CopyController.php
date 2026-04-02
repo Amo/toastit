@@ -5,8 +5,8 @@ namespace App\Controller\Api\Item;
 use App\Entity\Toast;
 use App\Entity\Workspace;
 use App\Entity\User;
-use App\Workspace\WorkspaceAccess;
-use App\Workspace\WorkspaceWorkflow;
+use App\Workspace\WorkspaceAccessService;
+use App\Workspace\WorkspaceWorkflowService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,8 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 final class CopyController extends AbstractController
 {
     public function __construct(
-        private readonly WorkspaceAccess $workspaceAccess,
-        private readonly WorkspaceWorkflow $workspaceWorkflow,
+        private readonly WorkspaceAccessService $workspaceAccess,
+        private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }

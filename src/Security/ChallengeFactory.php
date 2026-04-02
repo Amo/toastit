@@ -7,7 +7,7 @@ use App\Entity\User;
 
 final class ChallengeFactory
 {
-    public function create(User $user, string $purpose, \DateTimeImmutable $now): CreatedChallenge
+    public function create(User $user, string $purpose, \DateTimeImmutable $now): LoginChallengeResult
     {
         $selector = bin2hex(random_bytes(8));
         $token = bin2hex(random_bytes(16));
@@ -21,7 +21,7 @@ final class ChallengeFactory
             ->setTokenHash(hash('sha256', $token))
             ->setExpiresAt($now->modify('+10 minutes'));
 
-        return new CreatedChallenge($challenge, $token);
+        return new LoginChallengeResult($challenge, $token);
     }
 
     private function generateCode(): string

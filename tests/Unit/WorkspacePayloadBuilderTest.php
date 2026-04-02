@@ -12,7 +12,7 @@ use App\Entity\WorkspaceMember;
 use App\Meeting\MeetingAgendaBuilder;
 use App\Repository\WorkspaceRepository;
 use App\Tests\Support\ReflectionHelper;
-use App\Workspace\WorkspaceWorkflow;
+use App\Workspace\WorkspaceWorkflowService;
 use PHPUnit\Framework\TestCase;
 
 final class WorkspacePayloadBuilderTest extends TestCase
@@ -85,7 +85,7 @@ final class WorkspacePayloadBuilderTest extends TestCase
             ->with($currentUser)
             ->willReturn([$workspace, $otherWorkspace]);
 
-        $builder = new WorkspacePayloadBuilder(new MeetingAgendaBuilder(), new WorkspaceWorkflow(), $repository);
+        $builder = new WorkspacePayloadBuilder(new MeetingAgendaBuilder(), new WorkspaceWorkflowService(), $repository);
         $payload = $builder->build($workspace, $currentUser);
 
         self::assertSame(1, $payload['currentUser']['id']);

@@ -4,7 +4,7 @@ namespace App\Controller\App\Item;
 
 use App\Entity\Vote;
 use App\Repository\VoteRepository;
-use App\Workspace\WorkspaceAccess;
+use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ToggleVoteController extends AbstractController
 {
     public function __construct(
-        private readonly WorkspaceAccess $workspaceAccess,
+        private readonly WorkspaceAccessService $workspaceAccess,
         private readonly VoteRepository $voteRepository,
         private readonly EntityManagerInterface $entityManager,
     ) {

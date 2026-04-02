@@ -7,14 +7,14 @@ use App\Entity\User;
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
 use App\Tests\Support\ReflectionHelper;
-use App\Workspace\WorkspaceWorkflow;
+use App\Workspace\WorkspaceWorkflowService;
 use PHPUnit\Framework\TestCase;
 
-final class WorkspaceWorkflowTest extends TestCase
+final class WorkspaceWorkflowServiceTest extends TestCase
 {
     public function testInviteeQueriesSortAndDeduplicateUsers(): void
     {
-        $workflow = new WorkspaceWorkflow();
+        $workflow = new WorkspaceWorkflowService();
         $organizer = (new User())->setEmail('zoe@example.com')->setFirstName('Zoe');
         $member = (new User())->setEmail('alice@example.com')->setFirstName('Alice');
         ReflectionHelper::setId($organizer, 10);
@@ -42,7 +42,7 @@ final class WorkspaceWorkflowTest extends TestCase
 
     public function testNextBoostRankAndFollowUpDetection(): void
     {
-        $workflow = new WorkspaceWorkflow();
+        $workflow = new WorkspaceWorkflowService();
         $owner = (new User())->setEmail('owner@example.com');
         ReflectionHelper::setId($owner, 7);
 

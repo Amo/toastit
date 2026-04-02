@@ -11,7 +11,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-final class WorkspaceAccess
+final class WorkspaceAccessService
 {
     public function __construct(
         private readonly WorkspaceRepository $workspaceRepository,

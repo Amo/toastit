@@ -3,8 +3,8 @@
 namespace App\Controller\App\Item;
 
 use App\Entity\Toast;
-use App\Workspace\WorkspaceAccess;
-use App\Workspace\WorkspaceWorkflow;
+use App\Workspace\WorkspaceAccessService;
+use App\Workspace\WorkspaceWorkflowService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -16,8 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ToggleBoostController extends AbstractController
 {
     public function __construct(
-        private readonly WorkspaceAccess $workspaceAccess,
-        private readonly WorkspaceWorkflow $workspaceWorkflow,
+        private readonly WorkspaceAccessService $workspaceAccess,
+        private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }

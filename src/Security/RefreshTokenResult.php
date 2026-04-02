@@ -4,7 +4,7 @@ namespace App\Security;
 
 use App\Entity\ApiRefreshToken;
 
-final readonly class RefreshTokenValidation
+final readonly class RefreshTokenResult
 {
     public function __construct(
         public ?ApiRefreshToken $refreshToken,

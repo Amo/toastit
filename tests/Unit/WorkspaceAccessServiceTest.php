@@ -7,7 +7,7 @@ use App\Entity\User;
 use App\Entity\Workspace;
 use App\Repository\WorkspaceRepository;
 use App\Tests\Support\ReflectionHelper;
-use App\Workspace\WorkspaceAccess;
+use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +15,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-final class WorkspaceAccessTest extends TestCase
+final class WorkspaceAccessServiceTest extends TestCase
 {
     public function testUserWorkspaceAndItemAccessGuards(): void
     {
@@ -52,7 +52,7 @@ final class WorkspaceAccessTest extends TestCase
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
 
-        $access = new WorkspaceAccess($workspaceRepository, $entityManager, $security);
+        $access = new WorkspaceAccessService($workspaceRepository, $entityManager, $security);
 
         self::assertSame($user, $access->getUserOrFail());
         self::assertSame($workspace, $access->getWorkspaceOrFail(10));
@@ -75,7 +75,7 @@ final class WorkspaceAccessTest extends TestCase
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn(null);
 
-        $access = new WorkspaceAccess($workspaceRepository, $entityManager, $security);
+        $access = new WorkspaceAccessService($workspaceRepository, $entityManager, $security);
 
         try {
             $access->getUserOrFail();
@@ -89,7 +89,7 @@ final class WorkspaceAccessTest extends TestCase
         $securityWithUser = $this->createMock(Security::class);
         $securityWithUser->method('getUser')->willReturn($user);
         $workspaceRepository->method('findOneForUser')->willReturn(null);
-        $accessWithUser = new WorkspaceAccess($workspaceRepository, $entityManager, $securityWithUser);
+        $accessWithUser = new WorkspaceAccessService($workspaceRepository, $entityManager, $securityWithUser);
 
         try {
             $accessWithUser->getWorkspaceOrFail(123);

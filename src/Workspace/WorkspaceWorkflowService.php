@@ -6,7 +6,7 @@ use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Workspace;
 
-final class WorkspaceWorkflow
+final class WorkspaceWorkflowService
 {
     /**
      * @return list<User>

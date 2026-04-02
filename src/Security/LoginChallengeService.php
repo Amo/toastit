@@ -15,7 +15,7 @@ final class LoginChallengeService
         private readonly EntityManagerInterface $entityManager,
         private readonly UserRepository $userRepository,
         private readonly LoginChallengeRepository $challengeRepository,
-        private readonly EmailNormalizer $emailNormalizer,
+        private readonly EmailNormalizerService $emailNormalizer,
         private readonly ChallengeFactory $challengeFactory,
         private readonly WorkspaceUserService $userProvisioner,
     ) {
@@ -38,7 +38,7 @@ final class LoginChallengeService
         return $user;
     }
 
-    public function issueChallenge(User $user, string $purpose): CreatedChallenge
+    public function issueChallenge(User $user, string $purpose): LoginChallengeResult
     {
         $now = new \DateTimeImmutable();
         $this->challengeRepository->invalidateActiveChallenges($user, $purpose, $now);

@@ -7,13 +7,13 @@ use App\Entity\User;
 use App\Entity\Workspace;
 use App\Meeting\MeetingAgendaBuilder;
 use App\Repository\WorkspaceRepository;
-use App\Workspace\WorkspaceWorkflow;
+use App\Workspace\WorkspaceWorkflowService;
 
 final class WorkspacePayloadBuilder
 {
     public function __construct(
         private readonly MeetingAgendaBuilder $agendaBuilder,
-        private readonly WorkspaceWorkflow $workspaceWorkflow,
+        private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly WorkspaceRepository $workspaceRepository,
     ) {
     }

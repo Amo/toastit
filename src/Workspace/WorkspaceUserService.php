@@ -5,14 +5,14 @@ namespace App\Workspace;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
-use App\Security\EmailNormalizer;
+use App\Security\EmailNormalizerService;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class WorkspaceUserService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly EmailNormalizer $emailNormalizer,
+        private readonly EmailNormalizerService $emailNormalizer,
     ) {
     }
 

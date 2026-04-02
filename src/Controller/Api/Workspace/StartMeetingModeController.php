@@ -2,7 +2,7 @@
 
 namespace App\Controller\Api\Workspace;
 
-use App\Workspace\WorkspaceAccess;
+use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 final class StartMeetingModeController extends AbstractController
 {
     public function __construct(
-        private readonly WorkspaceAccess $workspaceAccess,
+        private readonly WorkspaceAccessService $workspaceAccess,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }

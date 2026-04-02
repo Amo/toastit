@@ -3,7 +3,7 @@
 namespace App\Tests\Unit;
 
 use App\Entity\User;
-use App\Security\EmailNormalizer;
+use App\Security\EmailNormalizerService;
 use App\Workspace\WorkspaceUserService;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,7 +29,7 @@ final class WorkspaceUserServiceTest extends TestCase
         $entityManager->expects(self::never())->method('persist');
         $entityManager->expects(self::never())->method('flush');
 
-        $provisioner = new WorkspaceUserService($entityManager, new EmailNormalizer());
+        $provisioner = new WorkspaceUserService($entityManager, new EmailNormalizerService());
 
         self::assertSame($existingUser, $provisioner->findOrCreateUserByEmail(' Existing@example.com '));
     }
@@ -55,7 +55,7 @@ final class WorkspaceUserServiceTest extends TestCase
             });
         $entityManager->expects(self::once())->method('flush');
 
-        $provisioner = new WorkspaceUserService($entityManager, new EmailNormalizer());
+        $provisioner = new WorkspaceUserService($entityManager, new EmailNormalizerService());
         $user = $provisioner->findOrCreateUserByEmail(' New@example.com ');
 
         self::assertSame('new@example.com', $user->getEmail());
