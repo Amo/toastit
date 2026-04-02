@@ -8,7 +8,7 @@ use App\Entity\WorkspaceMember;
 use App\Security\EmailNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class UserProvisioner
+final class WorkspaceUserService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

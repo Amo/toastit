@@ -3,9 +3,9 @@
 namespace App\Controller\Api\Auth;
 
 use App\Entity\LoginChallenge;
-use App\Security\ApiRefreshTokenManager;
-use App\Security\JwtTokenManager;
-use App\Security\LoginChallengeManager;
+use App\Security\ApiRefreshTokenService;
+use App\Security\JwtTokenService;
+use App\Security\LoginChallengeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,9 +14,9 @@ use Symfony\Component\Routing\Attribute\Route;
 final class VerifyOtpController extends AbstractController
 {
     public function __construct(
-        private readonly LoginChallengeManager $loginChallengeManager,
-        private readonly JwtTokenManager $jwtTokenManager,
-        private readonly ApiRefreshTokenManager $refreshTokenManager,
+        private readonly LoginChallengeService $loginChallengeManager,
+        private readonly JwtTokenService $jwtTokenManager,
+        private readonly ApiRefreshTokenService $refreshTokenManager,
     ) {
     }
 

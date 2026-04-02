@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\Entity\LoginChallenge;
 use App\Mailer\TransactionalMailer;
-use App\Security\LoginChallengeManager;
+use App\Security\LoginChallengeService;
 use App\Security\OtpLoginAuthenticator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -18,7 +18,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 final class AuthController extends AbstractController
 {
     public function __construct(
-        private readonly LoginChallengeManager $loginChallengeManager,
+        private readonly LoginChallengeService $loginChallengeManager,
         private readonly TransactionalMailer $transactionalMailer,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly RateLimiterFactory $authRequestLimiter,

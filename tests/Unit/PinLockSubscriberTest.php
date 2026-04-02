@@ -4,7 +4,7 @@ namespace App\Tests\Unit;
 
 use App\Entity\User;
 use App\EventSubscriber\PinLockSubscriber;
-use App\Security\PinSessionManager;
+use App\Security\PinSessionService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,7 +23,7 @@ final class PinLockSubscriberTest extends TestCase
 
         $subscriber = new PinLockSubscriber(
             $this->createMock(Security::class),
-            new PinSessionManager(new RequestStack()),
+            new PinSessionService(new RequestStack()),
             $this->createMock(UrlGeneratorInterface::class),
         );
 
@@ -46,7 +46,7 @@ final class PinLockSubscriberTest extends TestCase
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->with('app_pin_setup')->willReturn('/pin/setup');
 
-        $subscriber = new PinLockSubscriber($security, $this->createPinSessionManager(), $urlGenerator);
+        $subscriber = new PinLockSubscriber($security, $this->createPinSessionService(), $urlGenerator);
         $event = new RequestEvent(
             $this->createMock(HttpKernelInterface::class),
             Request::create('/app'),
@@ -64,7 +64,7 @@ final class PinLockSubscriberTest extends TestCase
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
 
-        [$pinSessionManager, $session] = $this->createPinSessionManagerWithSession();
+        [$pinSessionManager, $session] = $this->createPinSessionServiceWithSession();
         $session->set('security.pin_verified_at', time() - 4000);
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
@@ -89,7 +89,7 @@ final class PinLockSubscriberTest extends TestCase
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
 
-        [$pinSessionManager, $session] = $this->createPinSessionManagerWithSession();
+        [$pinSessionManager, $session] = $this->createPinSessionServiceWithSession();
         $session->set('security.pin_verified_at', time());
 
         $subscriber = new PinLockSubscriber(
@@ -109,15 +109,15 @@ final class PinLockSubscriberTest extends TestCase
         self::assertNull($event->getResponse());
     }
 
-    private function createPinSessionManager(): PinSessionManager
+    private function createPinSessionService(): PinSessionService
     {
-        return $this->createPinSessionManagerWithSession()[0];
+        return $this->createPinSessionServiceWithSession()[0];
     }
 
     /**
-     * @return array{0: PinSessionManager, 1: Session}
+     * @return array{0: PinSessionService, 1: Session}
      */
-    private function createPinSessionManagerWithSession(): array
+    private function createPinSessionServiceWithSession(): array
     {
         $session = new Session(new MockArraySessionStorage());
         $request = new Request();
@@ -125,6 +125,6 @@ final class PinLockSubscriberTest extends TestCase
         $requestStack = new RequestStack();
         $requestStack->push($request);
 
-        return [new PinSessionManager($requestStack), $session];
+        return [new PinSessionService($requestStack), $session];
     }
 }

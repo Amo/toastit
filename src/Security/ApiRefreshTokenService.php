@@ -7,7 +7,7 @@ use App\Entity\User;
 use App\Repository\ApiRefreshTokenRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class ApiRefreshTokenManager
+final class ApiRefreshTokenService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

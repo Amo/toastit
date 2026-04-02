@@ -5,7 +5,7 @@ namespace App\Tests\Unit;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Security\ApiTokenAuthenticator;
-use App\Security\JwtTokenManager;
+use App\Security\JwtTokenService;
 use App\Tests\Support\ReflectionHelper;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +17,7 @@ final class ApiTokenAuthenticatorTest extends TestCase
     public function testSupportsOnlyProtectedApiRequestsWithAuthorizationHeader(): void
     {
         $authenticator = new ApiTokenAuthenticator(
-            new JwtTokenManager('test-secret'),
+            new JwtTokenService('test-secret'),
             $this->createMock(UserRepository::class),
         );
 
@@ -32,7 +32,7 @@ final class ApiTokenAuthenticatorTest extends TestCase
     {
         $user = (new User())->setEmail('user@example.com');
         ReflectionHelper::setId($user, 99);
-        $jwtTokenManager = new JwtTokenManager('test-secret');
+        $jwtTokenManager = new JwtTokenService('test-secret');
         $repository = $this->createMock(UserRepository::class);
         $authenticator = new ApiTokenAuthenticator($jwtTokenManager, $repository);
 
@@ -53,7 +53,7 @@ final class ApiTokenAuthenticatorTest extends TestCase
     {
         $user = (new User())->setEmail('user@example.com');
         ReflectionHelper::setId($user, 15);
-        $jwtTokenManager = new JwtTokenManager('test-secret');
+        $jwtTokenManager = new JwtTokenService('test-secret');
 
         $repository = $this->createMock(UserRepository::class);
         $repository

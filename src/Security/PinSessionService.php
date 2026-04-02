@@ -4,7 +4,7 @@ namespace App\Security;
 
 use Symfony\Component\HttpFoundation\RequestStack;
 
-final class PinSessionManager
+final class PinSessionService
 {
     private const PIN_VERIFIED_AT = 'security.pin_verified_at';
 

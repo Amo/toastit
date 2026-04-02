@@ -6,10 +6,10 @@ use App\Entity\LoginChallenge;
 use App\Entity\User;
 use App\Repository\LoginChallengeRepository;
 use App\Repository\UserRepository;
-use App\Workspace\UserProvisioner;
+use App\Workspace\WorkspaceUserService;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class LoginChallengeManager
+final class LoginChallengeService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -17,7 +17,7 @@ final class LoginChallengeManager
         private readonly LoginChallengeRepository $challengeRepository,
         private readonly EmailNormalizer $emailNormalizer,
         private readonly ChallengeFactory $challengeFactory,
-        private readonly UserProvisioner $userProvisioner,
+        private readonly WorkspaceUserService $userProvisioner,
     ) {
     }
 

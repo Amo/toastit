@@ -6,7 +6,7 @@ use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
-use App\Security\JwtTokenManager;
+use App\Security\JwtTokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -208,7 +208,7 @@ final class WorkspaceFlowTest extends WebTestCase
 
         self::assertInstanceOf(User::class, $user);
 
-        return static::getContainer()->get(JwtTokenManager::class)
+        return static::getContainer()->get(JwtTokenService::class)
             ->createAccessToken($user, new \DateTimeImmutable());
     }
 }

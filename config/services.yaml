@@ -24,7 +24,7 @@ services:
         arguments:
             $defaultFrom: '%app.mailer_from%'
 
-    App\Security\JwtTokenManager:
+    App\Security\JwtTokenService:
         arguments:
             $secret: '%env(APP_SECRET)%'
 

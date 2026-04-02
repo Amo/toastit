@@ -3,7 +3,7 @@
 namespace App\EventSubscriber;
 
 use App\Entity\User;
-use App\Security\PinSessionManager;
+use App\Security\PinSessionService;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -15,7 +15,7 @@ final class PinLockSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly Security $security,
-        private readonly PinSessionManager $pinSessionManager,
+        private readonly PinSessionService $pinSessionManager,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }

@@ -4,7 +4,7 @@ namespace App\Security;
 
 use App\Entity\User;
 
-final class JwtTokenManager
+final class JwtTokenService
 {
     public function __construct(
         private readonly string $secret,

@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use App\Security\JwtTokenManager;
+use App\Security\JwtTokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -16,7 +16,7 @@ final class ProfileController extends AbstractController
     public function __construct(
         private readonly Security $security,
         private readonly EntityManagerInterface $entityManager,
-        private readonly JwtTokenManager $jwtTokenManager,
+        private readonly JwtTokenService $jwtTokenManager,
     ) {
     }
 

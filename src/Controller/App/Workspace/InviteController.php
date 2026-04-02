@@ -3,7 +3,7 @@
 namespace App\Controller\App\Workspace;
 
 use App\Entity\WorkspaceMember;
-use App\Workspace\UserProvisioner;
+use App\Workspace\WorkspaceUserService;
 use App\Workspace\WorkspaceAccess;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,7 +15,7 @@ final class InviteController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccess $workspaceAccess,
-        private readonly UserProvisioner $userProvisioner,
+        private readonly WorkspaceUserService $userProvisioner,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }

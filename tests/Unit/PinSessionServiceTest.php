@@ -2,14 +2,14 @@
 
 namespace App\Tests\Unit;
 
-use App\Security\PinSessionManager;
+use App\Security\PinSessionService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
-final class PinSessionManagerTest extends TestCase
+final class PinSessionServiceTest extends TestCase
 {
     public function testMarkVerifyAndClearLifecycle(): void
     {
@@ -19,7 +19,7 @@ final class PinSessionManagerTest extends TestCase
         $requestStack = new RequestStack();
         $requestStack->push($request);
 
-        $manager = new PinSessionManager($requestStack);
+        $manager = new PinSessionService($requestStack);
 
         self::assertFalse($manager->isVerified());
 
@@ -39,7 +39,7 @@ final class PinSessionManagerTest extends TestCase
         $requestStack = new RequestStack();
         $requestStack->push($request);
 
-        $manager = new PinSessionManager($requestStack);
+        $manager = new PinSessionService($requestStack);
 
         self::assertFalse($manager->isVerified());
     }

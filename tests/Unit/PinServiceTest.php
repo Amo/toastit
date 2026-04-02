@@ -3,11 +3,11 @@
 namespace App\Tests\Unit;
 
 use App\Entity\User;
-use App\Security\PinManager;
+use App\Security\PinService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-final class PinManagerTest extends TestCase
+final class PinServiceTest extends TestCase
 {
     public function testHashAndVerifyPin(): void
     {
@@ -24,7 +24,7 @@ final class PinManagerTest extends TestCase
             ->with($user, '1234')
             ->willReturn(true);
 
-        $manager = new PinManager($hasher);
+        $manager = new PinService($hasher);
 
         self::assertSame('hashed-pin', $manager->hashPin($user, '1234'));
         self::assertTrue($manager->verifyPin($user, '1234'));

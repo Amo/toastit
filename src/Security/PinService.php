@@ -5,7 +5,7 @@ namespace App\Security;
 use App\Entity\User;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-final class PinManager
+final class PinService
 {
     public function __construct(
         private readonly UserPasswordHasherInterface $passwordHasher,

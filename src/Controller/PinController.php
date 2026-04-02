@@ -5,9 +5,9 @@ namespace App\Controller;
 use App\Entity\LoginChallenge;
 use App\Entity\User;
 use App\Mailer\TransactionalMailer;
-use App\Security\LoginChallengeManager;
-use App\Security\PinManager;
-use App\Security\PinSessionManager;
+use App\Security\LoginChallengeService;
+use App\Security\PinService;
+use App\Security\PinSessionService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -20,11 +20,11 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 final class PinController extends AbstractController
 {
     public function __construct(
-        private readonly PinManager $pinManager,
-        private readonly PinSessionManager $pinSessionManager,
+        private readonly PinService $pinManager,
+        private readonly PinSessionService $pinSessionManager,
         private readonly EntityManagerInterface $entityManager,
         private readonly Security $security,
-        private readonly LoginChallengeManager $loginChallengeManager,
+        private readonly LoginChallengeService $loginChallengeManager,
         private readonly TransactionalMailer $transactionalMailer,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {

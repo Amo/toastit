@@ -3,9 +3,9 @@
 namespace App\Controller\Api\Auth;
 
 use App\Repository\UserRepository;
-use App\Security\ApiRefreshTokenManager;
-use App\Security\JwtTokenManager;
-use App\Security\PinManager;
+use App\Security\ApiRefreshTokenService;
+use App\Security\JwtTokenService;
+use App\Security\PinService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,10 +15,10 @@ use Symfony\Component\Routing\Attribute\Route;
 final class SetupPinController extends AbstractController
 {
     public function __construct(
-        private readonly JwtTokenManager $jwtTokenManager,
+        private readonly JwtTokenService $jwtTokenManager,
         private readonly UserRepository $userRepository,
-        private readonly PinManager $pinManager,
-        private readonly ApiRefreshTokenManager $refreshTokenManager,
+        private readonly PinService $pinManager,
+        private readonly ApiRefreshTokenService $refreshTokenManager,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
