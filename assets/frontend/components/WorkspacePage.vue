@@ -5,6 +5,7 @@ import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import ModalDialog from './ModalDialog.vue';
+import ToastStatusBadge from './ToastStatusBadge.vue';
 import ToastListItem from './ToastListItem.vue';
 
 const props = defineProps({
@@ -1280,10 +1281,7 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                   <i class="fa-regular fa-calendar" aria-hidden="true"></i>
                   <span>{{ selectedToastModal.dueOnDisplay }}</span>
                 </span>
-                <span class="inline-flex items-center gap-2">
-                  <i class="fa-regular fa-circle-dot" :class="toastStatusTone(selectedToastModal)" aria-hidden="true"></i>
-                  <span class="font-semibold" :class="toastStatusTone(selectedToastModal)">{{ displayToastStatus(selectedToastModal) }}</span>
-                </span>
+                <ToastStatusBadge :label="displayToastStatus(selectedToastModal)" :tone-class="toastStatusTone(selectedToastModal)" />
               </div>
             </div>
             <div class="flex items-center gap-2">
