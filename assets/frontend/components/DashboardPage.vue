@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
+import { WorkspacesApi } from '../api/workspaces';
 import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -20,18 +21,17 @@ const isCreateWorkspaceModalOpen = ref(false);
 const draggedWorkspaceId = ref(null);
 const armedWorkspaceDragId = ref(null);
 const apiClient = new ToastitApiClient(props.accessToken);
+const workspacesApi = new WorkspacesApi(apiClient);
 
 const fetchDashboard = async () => {
   isLoading.value = true;
-  const { ok, data } = await apiClient.getJson(props.apiUrl);
+  const { ok, data } = await workspacesApi.getDashboard(props.apiUrl);
   payload.value = ok && data ? data : { workspaces: [] };
   isLoading.value = false;
 };
 
 const persistWorkspaceOrder = async () => {
-  await apiClient.postJson('/api/workspaces/reorder', {
-    workspaceIds: payload.value.workspaces.map((workspace) => workspace.id),
-  });
+  await workspacesApi.reorderWorkspaceList(payload.value.workspaces.map((workspace) => workspace.id));
 };
 
 const reorderWorkspaces = async (targetWorkspaceId) => {
@@ -78,7 +78,7 @@ const onWorkspaceDragStart = (event, workspaceId) => {
 const createWorkspace = async () => {
   if (!workspaceName.value.trim()) return;
   creatingWorkspace.value = true;
-  const { ok, data } = await apiClient.postJson('/api/workspaces', { name: workspaceName.value });
+  const { ok, data } = await workspacesApi.createWorkspace(workspaceName.value);
 
   if (ok && data) {
     if (data.workspaceId) {

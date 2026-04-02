@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
+import { WorkspacesApi } from '../api/workspaces';
 import { defaultDueDateForPreset, isLateToast, renderToastDescription, truncateDescription } from '../utils/workspaceFormatting';
 import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
@@ -48,6 +49,7 @@ const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', isS
 const commentDrafts = ref({});
 const workspaceBackgroundObjectUrl = ref('');
 const apiClient = new ToastitApiClient(props.accessToken);
+const workspacesApi = new WorkspacesApi(apiClient);
 
 const workspace = computed(() => payload.value?.workspace ?? null);
 const currentUser = computed(() => payload.value?.currentUser ?? null);
@@ -178,7 +180,7 @@ const fetchWorkspace = async () => {
   isLoading.value = true;
   errorMessage.value = '';
 
-  const { ok, data } = await apiClient.getJson(props.apiUrl);
+  const { ok, data } = await workspacesApi.getWorkspace(props.apiUrl);
 
   if (!ok || !data) {
     payload.value = null;
@@ -224,7 +226,7 @@ const loadWorkspaceBackground = async () => {
     return;
   }
 
-  const { ok, blob } = await apiClient.getBlob(backgroundUrl);
+  const { ok, blob } = await workspacesApi.getWorkspaceBackground(backgroundUrl);
 
   if (!ok || !blob) {
     return;
@@ -235,20 +237,20 @@ const loadWorkspaceBackground = async () => {
 
 const inviteMember = async () => {
   if (!payload.value || !inviteEmail.value.trim()) return;
-  await apiClient.postJson(`/api/workspaces/${workspace.value.id}/invite`, { email: inviteEmail.value });
+  await workspacesApi.inviteMember(workspace.value.id, inviteEmail.value);
   inviteEmail.value = '';
   await fetchWorkspace();
 };
 
 const removeMember = async (memberId) => {
   if (!workspace.value) return;
-  await apiClient.delete(`/api/workspaces/${workspace.value.id}/members/${memberId}`);
+  await workspacesApi.removeMember(workspace.value.id, memberId);
   await fetchWorkspace();
 };
 
 const createItem = async () => {
   if (!workspace.value || !itemForm.value.title.trim()) return;
-  const { ok } = await apiClient.postJson(`/api/workspaces/${workspace.value.id}/items`, itemForm.value);
+  const { ok } = await workspacesApi.createToast(workspace.value.id, itemForm.value);
 
   if (!ok) {
     errorMessage.value = 'Unable to create toast.';
@@ -270,7 +272,7 @@ const handleCreateToastModalKeydown = (event) => {
 const startMeetingMode = async () => {
   if (!workspace.value?.currentUserIsOwner) return;
   isSaving.value = true;
-  await apiClient.request(`/api/workspaces/${workspace.value.id}/meeting/start`, { method: 'POST' });
+  await workspacesApi.startMeetingMode(workspace.value.id);
   await fetchWorkspace();
   openTopActiveToast();
   isSaving.value = false;
@@ -279,7 +281,7 @@ const startMeetingMode = async () => {
 const stopMeetingMode = async () => {
   if (!workspace.value?.currentUserIsOwner) return;
   isSaving.value = true;
-  await apiClient.request(`/api/workspaces/${workspace.value.id}/meeting/stop`, { method: 'POST' });
+  await workspacesApi.stopMeetingMode(workspace.value.id);
   await fetchWorkspace();
   isSaving.value = false;
 };
@@ -509,7 +511,7 @@ const createComment = async (itemId) => {
 
   if (!content) return;
 
-  const { ok } = await apiClient.postJson(`/api/items/${itemId}/comments`, { content });
+  const { ok } = await workspacesApi.addComment(itemId, content);
 
   if (!ok) {
     errorMessage.value = 'Unable to add comment.';
@@ -523,7 +525,7 @@ const createComment = async (itemId) => {
 const saveWorkspaceSettings = async () => {
   if (!workspace.value?.currentUserIsOwner) return;
 
-  const { ok } = await apiClient.postJson(`/api/workspaces/${workspace.value.id}/settings`, workspaceSettingsForm.value);
+  const { ok } = await workspacesApi.saveWorkspaceSettings(workspace.value.id, workspaceSettingsForm.value);
 
   if (!ok) {
     errorMessage.value = 'Unable to save workspace settings.';
@@ -534,7 +536,7 @@ const saveWorkspaceSettings = async () => {
     const formData = new FormData();
     formData.append('background', workspaceBackgroundFile.value);
 
-    const { ok: uploadOk } = await apiClient.postFormData(`/api/workspaces/${workspace.value.id}/background`, formData);
+    const { ok: uploadOk } = await workspacesApi.uploadWorkspaceBackground(workspace.value.id, formData);
 
     if (!uploadOk) {
       errorMessage.value = 'Unable to upload workspace background.';
@@ -564,7 +566,7 @@ const handleWorkspaceBackgroundDrop = (event) => {
 
 const promoteMember = async (memberId) => {
   if (!workspace.value?.currentUserIsOwner) return;
-  const { ok } = await apiClient.request(`/api/workspaces/${workspace.value.id}/members/${memberId}/promote`, { method: 'POST' });
+  const { ok } = await workspacesApi.promoteMember(workspace.value.id, memberId);
 
   if (!ok) {
     errorMessage.value = 'Unable to promote member.';
@@ -576,7 +578,7 @@ const promoteMember = async (memberId) => {
 
 const demoteMember = async (memberId) => {
   if (!workspace.value?.currentUserIsOwner) return;
-  const { ok } = await apiClient.request(`/api/workspaces/${workspace.value.id}/members/${memberId}/demote`, { method: 'POST' });
+  const { ok } = await workspacesApi.demoteMember(workspace.value.id, memberId);
 
   if (!ok) {
     errorMessage.value = 'Unable to demote owner.';
@@ -588,24 +590,24 @@ const demoteMember = async (memberId) => {
 
 const toggleVote = async (itemId) => {
   if (isToastingMode.value) return;
-  await apiClient.request(`/api/items/${itemId}/vote`, { method: 'POST' });
+  await workspacesApi.toggleVote(itemId);
   await fetchWorkspace();
 };
 
 const toggleBoost = async (itemId) => {
-  await apiClient.request(`/app/items/${itemId}/boost`, { method: 'POST' });
+  await workspacesApi.toggleBoost(itemId);
   await fetchWorkspace();
 };
 
 const toggleVeto = async (itemId) => {
-  await apiClient.request(`/app/items/${itemId}/veto`, { method: 'POST' });
+  await workspacesApi.toggleVeto(itemId);
   await fetchWorkspace();
 };
 
 const toastItem = async (itemId) => {
   if (!isSoloWorkspace.value) return;
 
-  const { ok } = await apiClient.request(`/api/items/${itemId}/toast`, { method: 'POST' });
+  const { ok } = await workspacesApi.toastItem(itemId);
 
   if (!ok) {
     errorMessage.value = 'Unable to toast this item.';
@@ -618,9 +620,7 @@ const toastItem = async (itemId) => {
 const copyToast = async (targetWorkspaceId = null) => {
   if (!selectedToastModal.value) return;
 
-  const { ok, data } = await apiClient.postJson(`/api/items/${selectedToastModal.value.id}/copy`, {
-    targetWorkspaceId: targetWorkspaceId ?? null,
-  });
+  const { ok, data } = await workspacesApi.copyToast(selectedToastModal.value.id, targetWorkspaceId ?? null);
 
   if (!ok || !data) {
     errorMessage.value = 'Unable to copy toast.';
@@ -644,9 +644,7 @@ const copyToast = async (targetWorkspaceId = null) => {
 const transferToast = async () => {
   if (!selectedToastModal.value || !selectedTargetWorkspaceId.value) return;
 
-  const { ok, data } = await apiClient.postJson(`/api/items/${selectedToastModal.value.id}/transfer`, {
-    targetWorkspaceId: Number(selectedTargetWorkspaceId.value),
-  });
+  const { ok, data } = await workspacesApi.transferToast(selectedToastModal.value.id, Number(selectedTargetWorkspaceId.value));
 
   if (!ok || !data) {
     errorMessage.value = 'Unable to transfer toast.';
@@ -695,7 +693,7 @@ const saveDiscussion = async () => {
   isSaving.value = true;
   const currentToastIndex = agendaItems.value.findIndex((item) => item.id === selectedToastModal.value.id);
 
-  const { ok } = await apiClient.postJson(`/api/items/${selectedToastModal.value.id}/discussion`, {
+  const { ok } = await workspacesApi.saveDiscussion(selectedToastModal.value.id, {
     discussionNotes: selectedToastModal.value.discussionNotes,
     ownerId: selectedToastModal.value.owner?.id ?? null,
     dueOn: selectedToastModal.value.dueOn,
