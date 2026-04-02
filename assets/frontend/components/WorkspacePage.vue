@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
+import MemberListItem from './MemberListItem.vue';
 import ModalDialog from './ModalDialog.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
 import ToastListItem from './ToastListItem.vue';
@@ -1139,49 +1140,16 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
               </div>
 
               <div class="space-y-3">
-                <div v-for="membership in members" :key="membership.id" class="flex items-center justify-between gap-4 rounded-xl border border-stone-200 px-4 py-3">
-                  <div class="flex items-center gap-3">
-                    <AvatarBadge
-                      :seed="membership.user.id"
-                      :initials="membership.user.initials"
-                      :gravatar-url="membership.user.gravatarUrl"
-                      :alt="membership.user.displayName"
-                    />
-                    <div>
-                      <p class="font-medium text-stone-900">{{ membership.user.displayName }}</p>
-                      <p class="text-sm text-stone-500">{{ membership.user.email }}</p>
-                    </div>
-                  </div>
-                  <div class="flex flex-wrap items-center justify-end gap-2">
-                    <span v-if="membership.isOwner" class="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">Owner</span>
-                    <template v-if="workspace.currentUserIsOwner">
-                      <button
-                        v-if="!membership.isOwner"
-                        type="button"
-                        class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700"
-                        @click="promoteMember(membership.id)"
-                      >
-                        Promote
-                      </button>
-                      <button
-                        v-else-if="ownerCount > 1"
-                        type="button"
-                        class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700"
-                        @click="demoteMember(membership.id)"
-                      >
-                        Demote
-                      </button>
-                      <button
-                        v-if="!membership.isOwner || ownerCount > 1"
-                        type="button"
-                        class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700"
-                        @click="removeMember(membership.id)"
-                      >
-                        Remove
-                      </button>
-                    </template>
-                  </div>
-                </div>
+                <MemberListItem
+                  v-for="membership in members"
+                  :key="membership.id"
+                  :membership="membership"
+                  :workspace-current-user-is-owner="workspace.currentUserIsOwner"
+                  :owner-count="ownerCount"
+                  @promote="promoteMember"
+                  @demote="demoteMember"
+                  @remove="removeMember"
+                />
               </div>
 
               <div v-if="workspace.currentUserIsOwner" class="space-y-3 rounded-[1.25rem] border border-stone-200 bg-stone-50 p-4">
