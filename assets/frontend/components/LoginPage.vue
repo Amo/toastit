@@ -1,6 +1,8 @@
 <script setup>
 import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
+import PrimaryActionButton from './PrimaryActionButton.vue';
+import SecondaryActionButton from './SecondaryActionButton.vue';
 import TextInputField from './TextInputField.vue';
 
 const props = defineProps({
@@ -28,11 +30,11 @@ const props = defineProps({
         <div v-if="isAuthenticated" class="space-y-4">
           <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">You are already signed in.</p>
           <div class="flex flex-wrap gap-3">
-            <a class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" :href="dashboardUrl">
+            <PrimaryActionButton :href="dashboardUrl">
               Open app
-            </a>
+            </PrimaryActionButton>
             <form method="post" :action="logoutUrl">
-              <button class="button toastit-button-notice" type="submit">Sign out</button>
+              <SecondaryActionButton type="submit">Sign out</SecondaryActionButton>
             </form>
           </div>
         </div>
@@ -40,9 +42,9 @@ const props = defineProps({
         <form v-else method="post" :action="loginAction" class="space-y-4">
           <TextInputField label="Email address" type="email" name="email" :value="email" placeholder="hello@toastit.app" required />
 
-          <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
+          <PrimaryActionButton type="submit">
             Continue
-          </button>
+          </PrimaryActionButton>
         </form>
       </div>
     </section>

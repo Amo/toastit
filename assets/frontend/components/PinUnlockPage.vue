@@ -1,6 +1,8 @@
 <script setup>
 import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
+import PrimaryActionButton from './PrimaryActionButton.vue';
+import SecondaryActionButton from './SecondaryActionButton.vue';
 import TextInputField from './TextInputField.vue';
 
 const props = defineProps({
@@ -25,13 +27,13 @@ const props = defineProps({
 
         <form method="post" :action="unlockAction" class="space-y-4">
           <TextInputField label="PIN" type="password" inputmode="numeric" pattern="[0-9]{4}" name="pin" maxlength="4" required />
-          <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" type="submit">
+          <PrimaryActionButton type="submit">
             Unlock
-          </button>
+          </PrimaryActionButton>
         </form>
 
         <form method="post" :action="forgotPinAction">
-          <button class="button toastit-button-notice" type="submit">I forgot my PIN</button>
+          <SecondaryActionButton type="submit">I forgot my PIN</SecondaryActionButton>
         </form>
       </div>
     </section>

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import PageHero from './PageHero.vue';
+import PrimaryActionButton from './PrimaryActionButton.vue';
 import TextInputField from './TextInputField.vue';
 
 const props = defineProps({
@@ -48,9 +49,9 @@ onMounted(fetchProfile);
       <div v-else class="space-y-4">
         <TextInputField v-model="profile.firstName" label="First name" />
         <TextInputField v-model="profile.lastName" label="Last name" />
-        <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400 disabled:opacity-60" :disabled="isSaving" @click="saveProfile">
+        <PrimaryActionButton :disabled="isSaving" @click="saveProfile">
           {{ isSaving ? 'Saving...' : 'Save' }}
-        </button>
+        </PrimaryActionButton>
       </div>
     </div>
   </section>
