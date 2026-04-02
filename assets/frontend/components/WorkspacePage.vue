@@ -6,6 +6,7 @@ import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
 import CommentThread from './CommentThread.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
+import FollowUpEditor from './FollowUpEditor.vue';
 import MemberListItem from './MemberListItem.vue';
 import ModalDialog from './ModalDialog.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
@@ -1359,32 +1360,14 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                   />
                 </label>
 
-                <div
-                  class="space-y-3 rounded-[1.25rem] border p-3 transition"
-                  :class="toastModalNavigationBlocked && isFollowUpsDirty ? 'border-red-300 bg-red-50/40' : 'border-transparent'"
-                >
-                  <div class="flex items-center justify-between gap-4">
-                    <p class="text-sm font-medium text-stone-700">Create follow-ups in this workspace</p>
-                    <button type="button" class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700" @click="addFollowUpDraft(selectedToastModal.id)">Add</button>
-                  </div>
-
-                  <div
-                    v-for="(followUp, followUpIndex) in ensureDraftFollowUps(selectedToastModal)"
-                    :key="followUpIndex"
-                    class="grid gap-3 rounded-2xl border bg-stone-50 p-4 transition xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_11rem_auto]"
-                    :class="toastModalNavigationBlocked && isFollowUpsDirty ? 'border-red-300' : 'border-stone-200'"
-                  >
-                    <input class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm" type="text" :value="followUp.title ?? ''" placeholder="Follow-up title" @input="updateFollowUpDraft(selectedToastModal.id, followUpIndex, 'title', $event.target.value)">
-                    <select class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm" :value="followUp.ownerId ?? ''" @change="updateFollowUpDraft(selectedToastModal.id, followUpIndex, 'ownerId', $event.target.value)">
-                      <option value="">Assignee</option>
-                      <option v-for="invitee in participants" :key="invitee.id" :value="invitee.id">{{ invitee.displayName }}</option>
-                    </select>
-                    <input class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm" type="date" :value="followUp.dueOn ?? ''" @input="updateFollowUpDraft(selectedToastModal.id, followUpIndex, 'dueOn', $event.target.value)">
-                    <div class="flex items-end justify-end">
-                      <button type="button" class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700" @click="removeFollowUpDraft(selectedToastModal.id, followUpIndex)">Remove</button>
-                    </div>
-                  </div>
-                </div>
+                <FollowUpEditor
+                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
+                  :participants="participants"
+                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
+                  @add="addFollowUpDraft(selectedToastModal.id)"
+                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
+                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
+                />
 
                 <div class="flex justify-end">
                   <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400 disabled:opacity-60" :disabled="isSaving" @click="saveDiscussion">
