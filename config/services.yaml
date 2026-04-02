@@ -43,8 +43,3 @@ services:
     App\Security\JwtTokenService:
         arguments:
             $secret: '%env(APP_SECRET)%'
-
-    App\Controller\AuthController:
-        bind:
-            Symfony\Component\RateLimiter\RateLimiterFactory $authRequestLimiter: '@limiter.auth_request'
-            Symfony\Component\RateLimiter\RateLimiterFactory $authVerifyLimiter: '@limiter.auth_verify'

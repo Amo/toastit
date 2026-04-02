@@ -12,6 +12,7 @@ class LoginChallenge
 {
     public const PURPOSE_LOGIN = 'login';
     public const PURPOSE_RESET_PIN = 'reset_pin';
+    public const PURPOSE_DELETE_ACCOUNT = 'delete_account';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

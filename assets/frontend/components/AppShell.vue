@@ -1,5 +1,6 @@
 <script setup>
 import { nextTick, onMounted, onUnmounted, ref, useSlots } from 'vue';
+import { authStore } from '../authStore';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 
@@ -7,9 +8,9 @@ const props = defineProps({
   currentSection: { type: String, required: true },
   dashboardUrl: { type: String, required: true },
   profileUrl: { type: String, required: true },
-  logoutUrl: { type: String, required: true },
   user: { type: Object, default: null },
   contentHtml: { type: String, required: true },
+  showAppNavigation: { type: Boolean, default: true },
 });
 
 const userMenuOpen = ref(false);
@@ -43,6 +44,15 @@ const handleGlobalAppKeydown = (event) => {
   window.location.href = props.dashboardUrl;
 };
 
+const logout = () => {
+  authStore.logout();
+  window.location.href = '/';
+};
+
+const lockSession = () => {
+  window.dispatchEvent(new CustomEvent('toastit:lock-session'));
+};
+
 onMounted(async () => {
   await nextTick();
 
@@ -64,12 +74,13 @@ onUnmounted(() => {
       <div class="tw-toastit-shell">
         <div class="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div class="flex items-center justify-between gap-4">
-            <a :href="dashboardUrl" class="inline-flex items-center gap-3 text-stone-950">
+            <a :href="dashboardUrl" class="inline-flex items-center gap-0 text-stone-950">
               <span class="inline-grid h-10 w-10 place-items-center rounded-2xl border border-amber-200 bg-amber-100 text-sm font-black text-amber-700 shadow-[0_6px_16px_rgba(180,83,9,0.18)]">T</span>
-              <span class="text-2xl font-bold tracking-[0.04em] text-stone-950">ToastIt</span>
+              <span class="-ml-1 text-2xl font-bold tracking-[0.04em] text-stone-950">oastIt</span>
             </a>
 
             <button
+              v-if="showAppNavigation"
               type="button"
               class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 lg:hidden"
               @click="userMenuOpen = !userMenuOpen"
@@ -79,8 +90,18 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+          <div v-if="showAppNavigation" class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
             <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                @click="lockSession"
+                title="Lock session"
+              >
+                <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                <span class="sr-only">Lock session</span>
+              </button>
+
               <button
                 type="button"
                 class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
@@ -111,11 +132,9 @@ onUnmounted(() => {
                 <div class="space-y-2">
                   <a :href="dashboardUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Workspace</a>
                   <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
-                  <form method="post" :action="logoutUrl">
-                    <button class="flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" type="submit">
-                      Sign out
-                    </button>
-                  </form>
+                  <button class="flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" type="button" @click="logout">
+                    Sign out
+                  </button>
                 </div>
               </div>
             </div>
@@ -127,16 +146,14 @@ onUnmounted(() => {
               </div>
               <a :href="dashboardUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Workspace</a>
               <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
-              <form method="post" :action="logoutUrl">
-                <button class="w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950" type="submit">Sign out</button>
-              </form>
+              <button class="w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950" type="button" @click="logout">Sign out</button>
             </div>
           </div>
         </div>
       </div>
     </header>
 
-    <ModalDialog v-if="keyboardShortcutsOpen" max-width-class="max-w-4xl" @close="keyboardShortcutsOpen = false">
+    <ModalDialog v-if="showAppNavigation && keyboardShortcutsOpen" max-width-class="max-w-4xl" @close="keyboardShortcutsOpen = false">
       <ModalHeader
         eyebrow="Keyboard"
         title="Keyboard shortcuts"

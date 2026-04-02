@@ -2,6 +2,8 @@
 
 namespace App\Tests\Integration;
 
+use App\Security\JwtTokenService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class PinFlowTest extends WebTestCase
@@ -15,26 +17,32 @@ final class PinFlowTest extends WebTestCase
 
         $email = sprintf('pin-%s@example.com', time());
 
-        $client->request('POST', '/connexion', ['email' => $email]);
+        $client->jsonRequest('POST', '/api/auth/request-otp', ['email' => $email]);
+        self::assertResponseIsSuccessful();
         $payload = $this->fetchSingleMailpitMessage();
-        preg_match('/\R([A-Z0-9]{6})\R\RCe code expire/', $payload['Text'], $match);
-        $code = $match[1];
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $payload['Text'], $match);
+        $code = $match[1].$match[2];
 
-        $client->request('POST', '/connexion/verifier', [
+        $client->jsonRequest('POST', '/api/auth/verify-otp', [
             'email' => $email,
             'purpose' => 'login',
             'code' => $code,
         ]);
-        self::assertResponseRedirects('/pin/setup');
-
-        $client->request('POST', '/pin/setup', [
-            'pin' => '1234',
-            'pin_confirmation' => '1234',
-        ]);
-        self::assertResponseRedirects('/app');
-
-        $client->request('GET', '/app');
         self::assertResponseIsSuccessful();
-        self::assertSelectorExists('[data-vue-root]');
+        $verifyPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($verifyPayload['requiresPinSetup']);
+
+        $client->jsonRequest('POST', '/api/auth/pin/setup', [
+            'pinSetupToken' => $verifyPayload['pinSetupToken'],
+            'pin' => '1234',
+            'pinConfirmation' => '1234',
+        ]);
+        self::assertResponseIsSuccessful();
+        $pinPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$pinPayload['accessToken']);
+        $client->request('GET', '/api/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertArrayHasKey('workspaces', json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR));
     }
 }

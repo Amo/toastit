@@ -18,20 +18,10 @@ security:
             provider: app_users
             custom_authenticators:
                 - App\Security\AccessTokenAuthenticator
-        main:
-            lazy: true
-            provider: app_users
-            custom_authenticators:
-                - App\Security\OtpAuthenticator
-            logout:
-                path: app_logout
-                target: /
 
     access_control:
         - { path: ^/api/auth, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_USER }
-        - { path: ^/app, roles: ROLE_USER }
-        - { path: ^/pin, roles: ROLE_USER }
 
 when@test:
     security:

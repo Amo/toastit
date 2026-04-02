@@ -26,11 +26,10 @@ final class LoginChallengeFactory
 
     private function generateCode(): string
     {
-        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         $code = '';
 
         for ($index = 0; $index < 6; ++$index) {
-            $code .= $alphabet[random_int(0, \strlen($alphabet) - 1)];
+            $code .= (string) random_int(0, 9);
         }
 
         return $code;

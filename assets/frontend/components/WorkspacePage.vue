@@ -44,6 +44,8 @@ const editingToastId = ref(null);
 const workspaceBackgroundFile = ref(null);
 const workspaceBackgroundInput = ref(null);
 const isWorkspaceBackgroundDragOver = ref(false);
+const isDeletingWorkspace = ref(false);
+const isDeleteWorkspaceConfirmOpen = ref(false);
 const selectedToastModalId = ref(null);
 const selectedToastModalCleanState = ref(null);
 const toastModalNavigationBlocked = ref(false);
@@ -393,6 +395,32 @@ const openManageModal = () => {
 
 const closeManageModal = () => {
   isManageModalOpen.value = false;
+};
+
+const openDeleteWorkspaceConfirm = () => {
+  isDeleteWorkspaceConfirmOpen.value = true;
+};
+
+const closeDeleteWorkspaceConfirm = () => {
+  isDeleteWorkspaceConfirmOpen.value = false;
+};
+
+const deleteWorkspace = async () => {
+  if (!workspace.value) {
+    return;
+  }
+
+  isDeletingWorkspace.value = true;
+  const { ok } = await workspacesApi.deleteWorkspace(workspace.value.id);
+  isDeletingWorkspace.value = false;
+
+  if (!ok) {
+    errorMessage.value = 'Unable to delete workspace.';
+    return;
+  }
+
+  closeDeleteWorkspaceConfirm();
+  window.location.href = props.dashboardUrl;
 };
 
 const openCreateToastModal = async () => {
@@ -1156,8 +1184,61 @@ watch(() => workspace.value?.permalinkBackgroundUrl, loadWorkspaceBackground);
                   <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="inviteMember">Invite</button>
                 </div>
               </div>
+
+              <div v-if="workspace.currentUserIsOwner" class="rounded-[1.25rem] border border-rose-200 bg-rose-50 p-4">
+                <div class="space-y-3">
+                  <div>
+                    <h3 class="text-lg font-semibold text-rose-900">Delete workspace</h3>
+                    <p class="mt-1 text-sm leading-6 text-rose-800">This is a soft delete. The workspace becomes hidden from the app and can later be restored from your profile.</p>
+                  </div>
+                  <div class="flex justify-end">
+                    <button
+                      type="button"
+                      class="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:opacity-60"
+                      :disabled="isDeletingWorkspace"
+                      @click="openDeleteWorkspaceConfirm"
+                    >
+                      {{ isDeletingWorkspace ? 'Deleting...' : 'Delete workspace' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+      </ModalDialog>
+
+      <ModalDialog v-if="isDeleteWorkspaceConfirmOpen" max-width-class="max-w-4xl" @close="closeDeleteWorkspaceConfirm">
+        <ModalHeader
+          eyebrow="Danger zone"
+          title="Delete workspace"
+          description="This is a soft delete. The workspace can later be restored from your profile."
+          @close="closeDeleteWorkspaceConfirm"
+        />
+
+        <div class="space-y-6 px-6 py-6">
+          <div class="space-y-3 text-sm text-stone-700">
+            <p>This workspace will disappear from the app for everyone except owners.</p>
+            <p>Only owners will still see it from their profile page, with a single restore action.</p>
+          </div>
+
+          <div class="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+              @click="closeDeleteWorkspaceConfirm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:opacity-60"
+              :disabled="isDeletingWorkspace"
+              @click="deleteWorkspace"
+            >
+              {{ isDeletingWorkspace ? 'Deleting...' : 'Delete workspace' }}
+            </button>
+          </div>
+        </div>
       </ModalDialog>
 
       <CreateToastModal

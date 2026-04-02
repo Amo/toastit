@@ -8,10 +8,9 @@ use App\Security\JwtTokenService;
 use App\Security\LoginChallengeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class VerifyOtpController extends AbstractController
+final class MagicLinkController extends AbstractController
 {
     public function __construct(
         private readonly LoginChallengeService $loginChallengeManager,
@@ -20,23 +19,19 @@ final class VerifyOtpController extends AbstractController
     ) {
     }
 
-    #[Route('/api/auth/verify-otp', name: 'api_auth_verify_otp', methods: ['POST'])]
-    public function __invoke(Request $request): JsonResponse
+    #[Route('/api/auth/magic/{selector}/{token}', name: 'api_auth_magic', methods: ['GET'])]
+    public function __invoke(string $selector, string $token): JsonResponse
     {
-        $payload = $request->toArray();
-        $email = trim((string) ($payload['email'] ?? ''));
-        $code = trim((string) ($payload['code'] ?? ''));
-        $purpose = (string) ($payload['purpose'] ?? LoginChallenge::PURPOSE_LOGIN);
-        $challenge = $this->loginChallengeManager->consumeByCode($email, $code, $purpose);
+        $challenge = $this->loginChallengeManager->consumeByMagicLink($selector, $token);
 
         if (null === $challenge) {
-            return $this->json(['ok' => false, 'error' => 'invalid_otp'], 401);
+            return $this->json(['ok' => false, 'error' => 'invalid_magic_link'], 401);
         }
 
         $user = $challenge->getUser();
         $now = new \DateTimeImmutable();
 
-        if (!$user->hasPin() || LoginChallenge::PURPOSE_RESET_PIN === $purpose) {
+        if (!$user->hasPin() || LoginChallenge::PURPOSE_RESET_PIN === $challenge->getPurpose()) {
             return $this->json([
                 'ok' => true,
                 'requiresPinSetup' => true,

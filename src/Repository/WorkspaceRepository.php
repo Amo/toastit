@@ -37,6 +37,7 @@ class WorkspaceRepository extends ServiceEntityRepository
                 WHERE membership_match.workspace = workspace
                 AND membership_match.user = :user
             )')
+            ->andWhere('workspace.deletedAt IS NULL')
             ->setParameter('user', $user)
             ->orderBy('dashboardMembership.displayOrder', 'ASC')
             ->addOrderBy('workspace.createdAt', 'DESC')
@@ -65,6 +66,7 @@ class WorkspaceRepository extends ServiceEntityRepository
             ->leftJoin('item.followUpChildren', 'followUpChild')
             ->addSelect('followUpChild')
             ->where('workspace.id = :workspaceId')
+            ->andWhere('workspace.deletedAt IS NULL')
             ->andWhere('(
                 workspace.organizer = :user
                 OR EXISTS (
@@ -72,6 +74,55 @@ class WorkspaceRepository extends ServiceEntityRepository
                     FROM App\Entity\WorkspaceMember membership_match
                     WHERE membership_match.workspace = workspace
                     AND membership_match.user = :user
+                )
+            )')
+            ->setParameter('workspaceId', $workspaceId)
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * @return list<Workspace>
+     */
+    public function findDeletedOwnedByUser(User $user): array
+    {
+        return $this->createQueryBuilder('workspace')
+            ->distinct()
+            ->leftJoin('workspace.memberships', 'membership')
+            ->addSelect('membership')
+            ->leftJoin('membership.user', 'memberUser')
+            ->addSelect('memberUser')
+            ->where('workspace.deletedAt IS NOT NULL')
+            ->andWhere('(
+                workspace.organizer = :user
+                OR EXISTS (
+                    SELECT membership_match.id
+                    FROM App\Entity\WorkspaceMember membership_match
+                    WHERE membership_match.workspace = workspace
+                    AND membership_match.user = :user
+                    AND membership_match.isOwner = true
+                )
+            )')
+            ->setParameter('user', $user)
+            ->orderBy('workspace.deletedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findOneDeletedOwnedByUser(int $workspaceId, User $user): ?Workspace
+    {
+        return $this->createQueryBuilder('workspace')
+            ->where('workspace.id = :workspaceId')
+            ->andWhere('workspace.deletedAt IS NOT NULL')
+            ->andWhere('(
+                workspace.organizer = :user
+                OR EXISTS (
+                    SELECT membership_match.id
+                    FROM App\Entity\WorkspaceMember membership_match
+                    WHERE membership_match.workspace = workspace
+                    AND membership_match.user = :user
+                    AND membership_match.isOwner = true
                 )
             )')
             ->setParameter('workspaceId', $workspaceId)

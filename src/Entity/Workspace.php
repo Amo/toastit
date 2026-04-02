@@ -55,6 +55,9 @@ class Workspace
     #[ORM\Column(name: 'meeting_ended_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $meetingEndedAt = null;
 
+    #[ORM\Column(name: 'deleted_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $deletedAt = null;
+
     /** @var Collection<int, WorkspaceMember> */
     #[ORM\OneToMany(mappedBy: 'workspace', targetEntity: WorkspaceMember::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $memberships;
@@ -214,6 +217,33 @@ class Workspace
     public function setMeetingEndedAt(?\DateTimeImmutable $meetingEndedAt): self
     {
         $this->meetingEndedAt = $meetingEndedAt;
+
+        return $this;
+    }
+
+    public function getDeletedAt(): ?\DateTimeImmutable
+    {
+        return $this->deletedAt;
+    }
+
+    public function isDeleted(): bool
+    {
+        return null !== $this->deletedAt;
+    }
+
+    public function softDelete(?\DateTimeImmutable $deletedAt = null): self
+    {
+        $this->deletedAt = $deletedAt ?? new \DateTimeImmutable();
+        $this->meetingMode = self::MEETING_MODE_IDLE;
+        $this->meetingStartedAt = null;
+        $this->meetingEndedAt = null;
+
+        return $this;
+    }
+
+    public function restore(): self
+    {
+        $this->deletedAt = null;
 
         return $this;
     }

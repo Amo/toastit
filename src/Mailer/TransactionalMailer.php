@@ -35,4 +35,21 @@ final class TransactionalMailer
 
         $this->mailer->send($email);
     }
+
+    public function sendDeleteAccountChallenge(User $user, LoginChallenge $challenge): void
+    {
+        $context = [
+            'user' => $user,
+            'challenge' => $challenge,
+        ];
+
+        $email = (new Email())
+            ->from(new Address($this->defaultFrom, 'Toastit'))
+            ->to($user->getEmail())
+            ->subject('Votre code de suppression de compte Toastit')
+            ->html($this->twig->render('emails/auth/delete_account_challenge.html.twig', $context))
+            ->text($this->twig->render('emails/auth/delete_account_challenge.txt.twig', $context));
+
+        $this->mailer->send($email);
+    }
 }

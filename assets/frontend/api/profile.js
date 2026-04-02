@@ -10,4 +10,18 @@ export class ProfileApi {
   saveProfile(url, payload) {
     return this.client.putJson(url, payload);
   }
+
+  requestDeletionOtp(url) {
+    return this.client.postJson(url, {});
+  }
+
+  deleteProfile(url, payload) {
+    return this.client.request(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    }).then((response) => this.client.parseJsonResponse(response));
+  }
 }

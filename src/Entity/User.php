@@ -12,6 +12,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\UniqueConstraint(name: 'uniq_user_email', columns: ['email'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    public const DELETED_EMAIL_DOMAIN = 'deleted.toastit.local';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -91,6 +93,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getDisplayName(): string
     {
+        if ($this->isDeleted()) {
+            return 'Deleted user';
+        }
+
         $fullName = trim(sprintf('%s %s', $this->firstName ?? '', $this->lastName ?? ''));
 
         return '' !== $fullName ? $fullName : $this->email;
@@ -98,6 +104,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getInitials(): string
     {
+        if ($this->isDeleted()) {
+            return 'DU';
+        }
+
         $firstInitial = $this->firstName ? mb_strtoupper(mb_substr($this->firstName, 0, 1)) : '';
         $lastInitial = $this->lastName ? mb_strtoupper(mb_substr($this->lastName, 0, 1)) : '';
         $initials = $firstInitial.$lastInitial;
@@ -111,6 +121,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getGravatarUrl(int $size = 80): string
     {
+        if ($this->isDeleted()) {
+            return '';
+        }
+
         return sprintf(
             'https://www.gravatar.com/avatar/%s?d=404&s=%d',
             md5(mb_strtolower(trim($this->email))),
@@ -194,6 +208,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function hasPin(): bool
     {
         return null !== $this->pinHash;
+    }
+
+    public function isDeleted(): bool
+    {
+        return str_ends_with($this->email, '@'.self::DELETED_EMAIL_DOMAIN);
+    }
+
+    public function getPublicEmail(): ?string
+    {
+        return $this->isDeleted() ? null : $this->email;
+    }
+
+    public function anonymize(): self
+    {
+        $suffix = sprintf('%d-%s', $this->id ?? time(), bin2hex(random_bytes(4)));
+
+        $this->email = sprintf('deleted-user+%s@%s', $suffix, self::DELETED_EMAIL_DOMAIN);
+        $this->firstName = null;
+        $this->lastName = null;
+        $this->pinHash = null;
+        $this->pinSetAt = null;
+        $this->roles = [];
+
+        return $this;
     }
 
     public function getRoles(): array

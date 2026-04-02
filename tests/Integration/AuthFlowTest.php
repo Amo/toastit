@@ -14,15 +14,14 @@ final class AuthFlowTest extends WebTestCase
         $this->clearMailpit();
         $email = sprintf('integration-%s@example.com', time());
 
-        $client->request('POST', '/connexion', ['email' => $email]);
-
-        self::assertResponseRedirects('/connexion/verifier?email='.$email.'&purpose=login');
+        $client->jsonRequest('POST', '/api/auth/request-otp', ['email' => $email]);
+        self::assertResponseIsSuccessful();
 
         $payload = $this->fetchSingleMailpitMessage();
 
         self::assertSame('Votre code de connexion Toastit', $payload['Subject']);
         self::assertStringContainsString('/connexion/magic/', $payload['Text']);
-        self::assertMatchesRegularExpression('/\R[A-Z0-9]{6}\R\RCe code expire/', $payload['Text']);
+        self::assertMatchesRegularExpression('/\R[0-9]{3} [0-9]{3}\R\RCe code expire/', $payload['Text']);
     }
 
     public function testMagicLinkForExistingPinnedUserRedirectsToPinUnlock(): void
@@ -32,23 +31,36 @@ final class AuthFlowTest extends WebTestCase
 
         $email = sprintf('existing-%s@example.com', time());
 
-        $client->request('POST', '/connexion', ['email' => $email]);
+        $client->jsonRequest('POST', '/api/auth/request-otp', ['email' => $email]);
+        self::assertResponseIsSuccessful();
         $firstPayload = $this->fetchSingleMailpitMessage();
-        preg_match('#https?://[^\r\n]+/connexion/magic/[^\r\n]+#', $firstPayload['Text'], $firstLink);
-        $client->request('GET', trim($firstLink[0]));
-        $client->request('POST', '/pin/setup', [
-            'pin' => '1234',
-            'pin_confirmation' => '1234',
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $firstPayload['Text'], $firstMatch);
+
+        $client->jsonRequest('POST', '/api/auth/verify-otp', [
+            'email' => $email,
+            'code' => $firstMatch[1].$firstMatch[2],
+            'purpose' => 'login',
         ]);
-        $client->request('POST', '/logout');
+        $verifyPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        $client->jsonRequest('POST', '/api/auth/pin/setup', [
+            'pinSetupToken' => $verifyPayload['pinSetupToken'],
+            'pin' => '1234',
+            'pinConfirmation' => '1234',
+        ]);
+        self::assertResponseIsSuccessful();
 
         $this->clearMailpit();
-
-        $client->request('POST', '/connexion', ['email' => $email]);
+        $client->jsonRequest('POST', '/api/auth/request-otp', ['email' => $email]);
+        self::assertResponseIsSuccessful();
         $secondPayload = $this->fetchSingleMailpitMessage();
-        preg_match('#https?://[^\r\n]+/connexion/magic/[^\r\n]+#', $secondPayload['Text'], $secondLink);
-        $client->request('GET', trim($secondLink[0]));
+        preg_match('#https?://[^\r\n]+/connexion/magic/([^\r\n/]+)/([^\r\n]+)#', $secondPayload['Text'], $secondLink);
 
-        self::assertResponseRedirects('/pin/unlock');
+        $client->request('GET', sprintf('/api/auth/magic/%s/%s', $secondLink[1], trim($secondLink[2])));
+        self::assertResponseIsSuccessful();
+        $magicPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertTrue($magicPayload['ok']);
+        self::assertTrue($magicPayload['requiresPinUnlock']);
     }
 }

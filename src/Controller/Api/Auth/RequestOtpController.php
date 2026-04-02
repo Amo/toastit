@@ -25,16 +25,16 @@ final class RequestOtpController extends AbstractController
     {
         $payload = $request->toArray();
         $email = trim((string) ($payload['email'] ?? ''));
+        $purpose = (string) ($payload['purpose'] ?? LoginChallenge::PURPOSE_LOGIN);
 
         if ('' === $email || false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $this->json(['ok' => false, 'error' => 'invalid_email'], 400);
         }
 
         $user = $this->loginChallengeManager->getOrCreateUser($email);
-        $createdChallenge = $this->loginChallengeManager->issueChallenge($user, LoginChallenge::PURPOSE_LOGIN);
-        $magicLink = $this->urlGenerator->generate('app_auth_magic', [
-            'selector' => $createdChallenge->challenge->getSelector(),
-            'token' => $createdChallenge->plainToken,
+        $createdChallenge = $this->loginChallengeManager->issueChallenge($user, $purpose);
+        $magicLink = $this->urlGenerator->generate('app_spa', [
+            'path' => sprintf('connexion/magic/%s/%s', $createdChallenge->challenge->getSelector(), $createdChallenge->plainToken),
         ], UrlGeneratorInterface::ABSOLUTE_URL);
 
         $this->transactionalMailer->sendLoginChallenge($user, $createdChallenge->challenge, $magicLink);

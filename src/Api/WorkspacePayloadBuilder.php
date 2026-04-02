@@ -29,7 +29,7 @@ final class WorkspacePayloadBuilder
             'currentUser' => [
                 'id' => $currentUser->getId(),
                 'displayName' => $currentUser->getDisplayName(),
-                'email' => $currentUser->getEmail(),
+                'email' => $currentUser->getPublicEmail(),
                 'initials' => $currentUser->getInitials(),
                 'gravatarUrl' => $currentUser->getGravatarUrl(),
             ],
@@ -64,7 +64,7 @@ final class WorkspacePayloadBuilder
                     'user' => [
                         'id' => $membership->getUser()->getId(),
                         'displayName' => $membership->getUser()->getDisplayName(),
-                        'email' => $membership->getUser()->getEmail(),
+                        'email' => $membership->getUser()->getPublicEmail(),
                         'initials' => $membership->getUser()->getInitials(),
                         'gravatarUrl' => $membership->getUser()->getGravatarUrl(),
                     ],
@@ -74,7 +74,7 @@ final class WorkspacePayloadBuilder
                 static fn (User $invitee): array => [
                     'id' => $invitee->getId(),
                     'displayName' => $invitee->getDisplayName(),
-                    'email' => $invitee->getEmail(),
+                    'email' => $invitee->getPublicEmail(),
                     'initials' => $invitee->getInitials(),
                     'gravatarUrl' => $invitee->getGravatarUrl(),
                 ],
@@ -164,7 +164,7 @@ final class WorkspacePayloadBuilder
             'author' => [
                 'id' => $item->getAuthor()->getId(),
                 'displayName' => $item->getAuthor()->getDisplayName(),
-                'email' => $item->getAuthor()->getEmail(),
+                'email' => $item->getAuthor()->getPublicEmail(),
                 'initials' => $item->getAuthor()->getInitials(),
                 'gravatarUrl' => $item->getAuthor()->getGravatarUrl(),
             ],

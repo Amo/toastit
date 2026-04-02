@@ -18,6 +18,10 @@ export class ToastitApiClient {
       this.onUnauthorized(response);
     }
 
+    if (response.ok && this.accessToken && url.startsWith('/api/') && !url.startsWith('/api/auth/')) {
+      window.dispatchEvent(new CustomEvent('toastit:api-activity'));
+    }
+
     return response;
   }
 

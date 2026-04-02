@@ -33,7 +33,7 @@ final class UpdateController extends AbstractController
             'ok' => true,
             'user' => [
                 'id' => $user->getId(),
-                'email' => $user->getEmail(),
+                'email' => $user->getPublicEmail(),
                 'displayName' => $user->getDisplayName(),
                 'firstName' => $user->getFirstName(),
                 'lastName' => $user->getLastName(),

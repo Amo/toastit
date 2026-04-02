@@ -23,6 +23,15 @@ export class WorkspacesApi {
     return this.client.postJson(`/api/workspaces/${workspaceId}/settings`, payload);
   }
 
+  deleteWorkspace(workspaceId) {
+    return this.client.delete(`/api/workspaces/${workspaceId}`);
+  }
+
+  restoreWorkspace(workspaceId) {
+    return this.client.request(`/api/workspaces/${workspaceId}/restore`, { method: 'POST' })
+      .then((response) => this.client.parseJsonResponse(response));
+  }
+
   uploadWorkspaceBackground(workspaceId, formData) {
     return this.client.postFormData(`/api/workspaces/${workspaceId}/background`, formData);
   }

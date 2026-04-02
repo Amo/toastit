@@ -1,34 +1,40 @@
-import { inject } from 'vue';
+import { inject, reactive } from 'vue';
 
 export const spaContextKey = Symbol('spa-context');
 
-export const createSpaContext = (bootstrap) => ({
-  bootstrap,
-  get accessToken() {
-    return this.bootstrap.accessToken ?? '';
-  },
-  get user() {
-    return this.bootstrap.user ?? null;
-  },
-  get pinLockExpiresAt() {
-    return this.bootstrap.pinLockExpiresAt ?? null;
-  },
-  get flashes() {
-    return this.bootstrap.flashes ?? { success: [], error: [] };
-  },
-  get urls() {
-    return {
-      loginAction: this.bootstrap.loginAction ?? '/connexion',
-      verifyAction: this.bootstrap.verifyAction ?? '/connexion/verifier',
-      setupAction: this.bootstrap.setupAction ?? '/pin/setup',
-      unlockAction: this.bootstrap.unlockAction ?? '/pin/unlock',
-      forgotPinAction: this.bootstrap.forgotPinAction ?? '/pin/forgot',
-      dashboardUrl: '/app',
-      profileUrl: '/app/profile',
-      logoutUrl: this.bootstrap.logoutUrl ?? '/logout',
-    };
-  },
-});
+export const createSpaContext = (bootstrap) => {
+  const state = reactive({
+    flashes: {
+      success: [...(bootstrap.flashes?.success ?? [])],
+      error: [...(bootstrap.flashes?.error ?? [])],
+    },
+  });
+
+  return {
+    bootstrap,
+    state,
+    get flashes() {
+      return state.flashes;
+    },
+    removeFlash(type, index) {
+      if (!Array.isArray(state.flashes[type])) {
+        return;
+      }
+
+      state.flashes[type].splice(index, 1);
+    },
+    clearFlashes() {
+      state.flashes.success = [];
+      state.flashes.error = [];
+    },
+    get urls() {
+      return {
+        dashboardUrl: '/app',
+        profileUrl: '/app/profile',
+      };
+    },
+  };
+};
 
 export const useSpaContext = () => {
   const context = inject(spaContextKey);

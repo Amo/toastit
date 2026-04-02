@@ -2,9 +2,9 @@
 
 namespace App\Controller\Api\Auth;
 
+use App\Api\AuthPayloadBuilder;
 use App\Security\ApiRefreshTokenService;
 use App\Security\JwtTokenService;
-use App\Security\PinService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,7 +15,7 @@ final class RefreshController extends AbstractController
     public function __construct(
         private readonly ApiRefreshTokenService $refreshTokenManager,
         private readonly JwtTokenService $jwtTokenManager,
-        private readonly PinService $pinManager,
+        private readonly AuthPayloadBuilder $authPayloadBuilder,
     ) {
     }
 
@@ -24,7 +24,6 @@ final class RefreshController extends AbstractController
     {
         $payload = $request->toArray();
         $refreshTokenValue = (string) ($payload['refreshToken'] ?? '');
-        $pin = (string) ($payload['pin'] ?? '');
         $now = new \DateTimeImmutable();
         $validation = $this->refreshTokenManager->validate($refreshTokenValue, $now);
 
@@ -35,16 +34,13 @@ final class RefreshController extends AbstractController
         $refreshToken = $validation->refreshToken;
         $user = $refreshToken->getUser();
 
-        if (!$this->pinManager->verifyPin($user, $pin)) {
-            return $this->json(['ok' => false, 'error' => 'invalid_pin'], 401);
-        }
-
         $this->refreshTokenManager->markUsed($refreshToken, $now);
 
-        return $this->json([
-            'ok' => true,
-            'accessToken' => $this->jwtTokenManager->createAccessToken($user, $now),
-            'refreshToken' => $refreshTokenValue,
-        ]);
+        return $this->json($this->authPayloadBuilder->buildAuthenticated(
+            $user,
+            $this->jwtTokenManager->createAccessToken($user, $now),
+            $refreshTokenValue,
+            $now->getTimestamp() + 900,
+        ));
     }
 }

@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class LoginChallengeFactoryTest extends TestCase
 {
-    public function testFactoryBuildsAlphanumericCodeAndTokenizedChallenge(): void
+    public function testFactoryBuildsNumericCodeAndTokenizedChallenge(): void
     {
         $factory = new LoginChallengeFactory();
         $user = (new User())->setEmail('factory@example.com');
@@ -17,7 +17,7 @@ final class LoginChallengeFactoryTest extends TestCase
 
         self::assertSame($user, $created->challenge->getUser());
         self::assertSame(LoginChallenge::PURPOSE_LOGIN, $created->challenge->getPurpose());
-        self::assertMatchesRegularExpression('/^[A-Z0-9]{6}$/', $created->challenge->getCode());
+        self::assertMatchesRegularExpression('/^[0-9]{6}$/', $created->challenge->getCode());
         self::assertSame(32, strlen($created->plainToken));
         self::assertSame(hash('sha256', $created->plainToken), $created->challenge->getTokenHash());
     }

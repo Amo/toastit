@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api\Auth;
 
+use App\Api\AuthPayloadBuilder;
 use App\Repository\UserRepository;
 use App\Security\ApiRefreshTokenService;
 use App\Security\JwtTokenService;
@@ -19,6 +20,7 @@ final class SetupPinController extends AbstractController
         private readonly UserRepository $userRepository,
         private readonly PinService $pinManager,
         private readonly ApiRefreshTokenService $refreshTokenManager,
+        private readonly AuthPayloadBuilder $authPayloadBuilder,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -52,10 +54,11 @@ final class SetupPinController extends AbstractController
 
         $now = new \DateTimeImmutable();
 
-        return $this->json([
-            'ok' => true,
-            'accessToken' => $this->jwtTokenManager->createAccessToken($user, $now),
-            'refreshToken' => $this->refreshTokenManager->issue($user, $now),
-        ]);
+        return $this->json($this->authPayloadBuilder->buildAuthenticated(
+            $user,
+            $this->jwtTokenManager->createAccessToken($user, $now),
+            $this->refreshTokenManager->issue($user, $now),
+            $now->getTimestamp() + 900,
+        ));
     }
 }

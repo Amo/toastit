@@ -5,6 +5,7 @@ namespace App\Security;
 use App\Entity\ApiRefreshToken;
 use App\Entity\User;
 use App\Repository\ApiRefreshTokenRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class ApiRefreshTokenService
@@ -12,6 +13,7 @@ final class ApiRefreshTokenService
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ApiRefreshTokenRepository $refreshTokenRepository,
+        private readonly UserRepository $userRepository,
     ) {
     }
 
@@ -49,5 +51,10 @@ final class ApiRefreshTokenService
     {
         $refreshToken->setLastUsedAt($now);
         $this->entityManager->flush();
+    }
+
+    public function getUserRepository(): UserRepository
+    {
+        return $this->userRepository;
     }
 }

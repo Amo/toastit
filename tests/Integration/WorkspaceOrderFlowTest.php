@@ -57,14 +57,23 @@ final class WorkspaceOrderFlowTest extends WebTestCase
     {
         $this->clearMailpit();
 
-        $client->request('POST', '/connexion', ['email' => $email]);
+        $client->jsonRequest('POST', '/api/auth/request-otp', ['email' => $email]);
+        self::assertResponseIsSuccessful();
         $payload = $this->fetchSingleMailpitMessage();
-        preg_match('#https?://[^\r\n]+/connexion/magic/[^\r\n]+#', $payload['Text'], $magicLink);
-        $client->request('GET', trim($magicLink[0]));
-        $client->request('POST', '/pin/setup', [
-            'pin' => '1234',
-            'pin_confirmation' => '1234',
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $payload['Text'], $match);
+        $client->jsonRequest('POST', '/api/auth/verify-otp', [
+            'email' => $email,
+            'purpose' => 'login',
+            'code' => $match[1].$match[2],
         ]);
+        self::assertResponseIsSuccessful();
+        $verifyPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $client->jsonRequest('POST', '/api/auth/pin/setup', [
+            'pinSetupToken' => $verifyPayload['pinSetupToken'],
+            'pin' => '1234',
+            'pinConfirmation' => '1234',
+        ]);
+        self::assertResponseIsSuccessful();
     }
 
     private function createWorkspaceAndReturnId(\Symfony\Bundle\FrameworkBundle\KernelBrowser $client, string $name): int

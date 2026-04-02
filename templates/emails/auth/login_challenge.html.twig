@@ -11,6 +11,6 @@
         </a>
     </p>
     <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">Code de connection</p>
-    <p style="margin:0 0 24px;font-size:32px;font-weight:700;letter-spacing:0.12em;">{{ challenge.code }}</p>
+    <p style="margin:0 0 24px;font-size:32px;font-weight:700;letter-spacing:0.12em;">{{ challenge.code|slice(0, 3) }} {{ challenge.code|slice(3, 3) }}</p>
     <p style="margin:0;font-size:14px;color:#6b7280;">Ce code expire dans 10 minutes et ne peut être utilise qu'une seule fois.</p>
 {% endblock %}

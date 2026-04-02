@@ -14,6 +14,7 @@ use App\Repository\WorkspaceRepository;
 use App\Tests\Support\ReflectionHelper;
 use App\Workspace\WorkspaceWorkflowService;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class WorkspacePayloadBuilderTest extends TestCase
 {
@@ -85,7 +86,10 @@ final class WorkspacePayloadBuilderTest extends TestCase
             ->with($currentUser)
             ->willReturn([$workspace, $otherWorkspace]);
 
-        $builder = new WorkspacePayloadBuilder(new MeetingAgendaBuilder(), new WorkspaceWorkflowService(), $repository);
+        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $urlGenerator->expects(self::never())->method('generate');
+
+        $builder = new WorkspacePayloadBuilder(new MeetingAgendaBuilder(), new WorkspaceWorkflowService(), $repository, $urlGenerator);
         $payload = $builder->build($workspace, $currentUser);
 
         self::assertSame(1, $payload['currentUser']['id']);

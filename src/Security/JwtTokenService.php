@@ -34,6 +34,17 @@ final class JwtTokenService
         ]);
     }
 
+    public function createPinUnlockToken(User $user, \DateTimeImmutable $now): string
+    {
+        return $this->encode([
+            'typ' => 'pin_unlock',
+            'sub' => $user->getId(),
+            'email' => $user->getEmail(),
+            'iat' => $now->getTimestamp(),
+            'exp' => $now->modify('+15 minutes')->getTimestamp(),
+        ]);
+    }
+
     public function decode(string $token): ?array
     {
         $parts = explode('.', $token);

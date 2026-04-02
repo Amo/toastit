@@ -43,7 +43,7 @@ final class AccessTokenAuthenticator extends AbstractAuthenticator
         return new SelfValidatingPassport(new UserBadge((string) $payload['sub'], function (string $userId) {
             $user = $this->userRepository->find((int) $userId);
 
-            if (null === $user) {
+            if (null === $user || $user->isDeleted()) {
                 throw new AuthenticationException('Unknown user.');
             }
 

@@ -72,6 +72,20 @@ final class LoginChallengeService
         return $challenge;
     }
 
+    public function consumeForUserByCode(User $user, string $code, string $purpose): ?LoginChallenge
+    {
+        $challenge = $this->challengeRepository->findLatestActiveCodeChallenge($user, $purpose, strtoupper(trim($code)), new \DateTimeImmutable());
+
+        if (null === $challenge) {
+            return null;
+        }
+
+        $challenge->setUsedAt(new \DateTimeImmutable());
+        $this->entityManager->flush();
+
+        return $challenge;
+    }
+
     public function consumeByMagicLink(string $selector, string $token): ?LoginChallenge
     {
         $challenge = $this->challengeRepository->findActiveBySelector($selector, new \DateTimeImmutable());

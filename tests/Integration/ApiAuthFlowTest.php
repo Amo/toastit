@@ -22,8 +22,8 @@ final class ApiAuthFlowTest extends WebTestCase
         self::assertResponseIsSuccessful();
 
         $payload = $this->fetchSingleMailpitMessage();
-        preg_match('/\R([A-Z0-9]{6})\R\RCe code expire/', $payload['Text'], $match);
-        $code = $match[1];
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $payload['Text'], $match);
+        $code = $match[1].$match[2];
 
         $client->jsonRequest('POST', '/api/auth/verify-otp', [
             'email' => $email,
@@ -69,8 +69,8 @@ final class ApiAuthFlowTest extends WebTestCase
         self::assertResponseIsSuccessful();
 
         $payload = $this->fetchSingleMailpitMessage();
-        preg_match('/\R([A-Z0-9]{6})\R\RCe code expire/', $payload['Text'], $match);
-        $code = $match[1];
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $payload['Text'], $match);
+        $code = $match[1].$match[2];
 
         $client->jsonRequest('POST', '/api/auth/verify-otp', [
             'email' => $email,
@@ -99,5 +99,87 @@ final class ApiAuthFlowTest extends WebTestCase
         $refreshPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertFalse($refreshPayload['ok']);
         self::assertSame('refresh_inactive', $refreshPayload['error']);
+    }
+
+    public function testMagicLinkUnlockUsesPinUnlockTokenEvenIfARefreshTokenExists(): void
+    {
+        $client = static::createClient();
+        $this->clearMailpit();
+
+        $staleEmail = sprintf('api-auth-stale-%s@example.com', time());
+        $freshEmail = sprintf('api-auth-fresh-%s@example.com', time());
+
+        $client->jsonRequest('POST', '/api/auth/request-otp', [
+            'email' => $staleEmail,
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $staleMail = $this->fetchSingleMailpitMessage();
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $staleMail['Text'], $staleMatch);
+        $staleCode = $staleMatch[1].$staleMatch[2];
+
+        $client->jsonRequest('POST', '/api/auth/verify-otp', [
+            'email' => $staleEmail,
+            'code' => $staleCode,
+        ]);
+        $staleVerifyPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        $client->jsonRequest('POST', '/api/auth/pin/setup', [
+            'pinSetupToken' => $staleVerifyPayload['pinSetupToken'],
+            'pin' => '1111',
+            'pinConfirmation' => '1111',
+        ]);
+        $stalePinPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->clearMailpit();
+
+        $client->jsonRequest('POST', '/api/auth/request-otp', [
+            'email' => $freshEmail,
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $freshMail = $this->fetchSingleMailpitMessage();
+        preg_match('#/connexion/magic/([^/]+)/([^\\s]+)#', $freshMail['Text'], $linkMatch);
+        self::assertCount(3, $linkMatch);
+
+        $client->request('GET', sprintf('/api/auth/magic/%s/%s', $linkMatch[1], $linkMatch[2]));
+        self::assertResponseIsSuccessful();
+        $magicPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($magicPayload['ok']);
+        self::assertTrue($magicPayload['requiresPinSetup']);
+
+        $client->jsonRequest('POST', '/api/auth/pin/setup', [
+            'pinSetupToken' => $magicPayload['pinSetupToken'],
+            'pin' => '2222',
+            'pinConfirmation' => '2222',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $this->clearMailpit();
+
+        $client->jsonRequest('POST', '/api/auth/request-otp', [
+            'email' => $freshEmail,
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $loginMail = $this->fetchSingleMailpitMessage();
+        preg_match('#/connexion/magic/([^/]+)/([^\\s]+)#', $loginMail['Text'], $loginLinkMatch);
+        self::assertCount(3, $loginLinkMatch);
+
+        $client->request('GET', sprintf('/api/auth/magic/%s/%s', $loginLinkMatch[1], $loginLinkMatch[2]));
+        self::assertResponseIsSuccessful();
+        $loginMagicPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($loginMagicPayload['ok']);
+        self::assertTrue($loginMagicPayload['requiresPinUnlock']);
+
+        $client->jsonRequest('POST', '/api/auth/pin/unlock', [
+            'pin' => '2222',
+            'refreshToken' => $stalePinPayload['refreshToken'],
+            'pinUnlockToken' => $loginMagicPayload['pinUnlockToken'],
+        ]);
+        self::assertResponseIsSuccessful();
+        $unlockPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($unlockPayload['ok']);
+        self::assertSame($freshEmail, $unlockPayload['user']['email']);
     }
 }
