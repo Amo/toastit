@@ -22,21 +22,25 @@ final class WorkspaceFlowTest extends WebTestCase
         $this->loginWithMagicLink($client, $email);
 
         $client->request('POST', '/app', ['name' => 'Produit']);
-        self::assertResponseRedirects('/app/workspaces/1');
+        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($client);
 
-        $client->request('POST', '/app/workspaces/1/items', [
-            'title' => 'Sujet prioritaire',
+        $title = sprintf('Sujet prioritaire %s', microtime(true));
+
+        $client->request('POST', sprintf('/app/workspaces/%d/items', $workspaceId), [
+            'title' => $title,
             'description' => 'Discussion rapide',
         ]);
-        self::assertResponseRedirects('/app/workspaces/1');
+        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
 
-        $client->xmlHttpRequest('POST', '/app/items/1/vote', [], [], [
+        $itemId = $this->findToastIdByTitle($title);
+
+        $client->xmlHttpRequest('POST', sprintf('/app/items/%d/vote', $itemId), [], [], [
             'HTTP_ACCEPT' => 'application/json',
         ]);
         self::assertResponseIsSuccessful();
 
         $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
-        $client->request('GET', '/api/workspaces/1');
+        $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
         self::assertResponseIsSuccessful();
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $client->setServerParameter('HTTP_AUTHORIZATION', '');
@@ -53,16 +57,16 @@ final class WorkspaceFlowTest extends WebTestCase
         $this->loginWithMagicLink($client, $ownerEmail);
 
         $client->request('POST', '/app', ['name' => 'Delivery']);
-        self::assertResponseRedirects('/app/workspaces/1');
+        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($client);
 
-        $client->request('POST', '/app/workspaces/1/invite', ['email' => $memberEmail]);
-        self::assertResponseRedirects('/app/workspaces/1');
+        $client->request('POST', sprintf('/app/workspaces/%d/invite', $workspaceId), ['email' => $memberEmail]);
+        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
 
-        $client->request('POST', '/app/workspaces/1/meeting/start');
-        self::assertResponseRedirects('/app/workspaces/1');
+        $client->request('POST', sprintf('/app/workspaces/%d/meeting/start', $workspaceId));
+        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
 
         $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
-        $client->request('GET', '/api/workspaces/1');
+        $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
         self::assertResponseIsSuccessful();
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $client->setServerParameter('HTTP_AUTHORIZATION', '');
@@ -79,42 +83,46 @@ final class WorkspaceFlowTest extends WebTestCase
         $this->loginWithMagicLink($client, $ownerEmail);
 
         $client->request('POST', '/app', ['name' => 'Ops']);
-        $client->request('POST', '/app/workspaces/1/invite', ['email' => $memberEmail]);
-        $client->request('POST', '/app/workspaces/1/items', [
-            'title' => 'Sujet source',
+        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($client);
+        $sourceTitle = sprintf('Sujet source %s', microtime(true));
+        $client->request('POST', sprintf('/app/workspaces/%d/invite', $workspaceId), ['email' => $memberEmail]);
+        $client->request('POST', sprintf('/app/workspaces/%d/items', $workspaceId), [
+            'title' => $sourceTitle,
             'description' => 'Point de depart',
         ]);
-        $client->request('POST', '/app/workspaces/1/meeting/start');
+        $client->request('POST', sprintf('/app/workspaces/%d/meeting/start', $workspaceId));
 
         $memberUserId = $this->findUserIdByEmail($memberEmail);
+        $sourceToastId = $this->findToastIdByTitle($sourceTitle);
 
-        $client->request('POST', '/app/items/1/discussion', [
+        $followUpTitle = sprintf('Envoyer le recap %s', microtime(true));
+        $client->request('POST', sprintf('/app/items/%d/discussion', $sourceToastId), [
             'discussion_status' => 'treated',
             'discussion_notes' => 'Discussion finalisee.',
-            'follow_up_titles' => ['Envoyer le recap'],
+            'follow_up_titles' => [$followUpTitle],
             'follow_up_owner_ids' => [(string) $memberUserId],
             'follow_up_due_on' => ['2026-04-15'],
             'owner_id' => (string) $memberUserId,
             'due_at' => '2026-04-15',
         ]);
-        self::assertResponseRedirects('/app/workspaces/1');
+        self::assertResponseRedirects(sprintf('/app/workspaces/%d', $workspaceId));
 
         $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
-        $client->request('GET', '/api/workspaces/1');
+        $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
         self::assertResponseIsSuccessful();
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $client->setServerParameter('HTTP_AUTHORIZATION', '');
 
         self::assertSame('treated', $payload['resolvedItems'][0]['discussionStatus']);
-        self::assertSame('Envoyer le recap', $payload['resolvedItems'][0]['followUpItems'][0]['title']);
+        self::assertSame($followUpTitle, $payload['resolvedItems'][0]['followUpItems'][0]['title']);
 
         $followUp = static::getContainer()->get(EntityManagerInterface::class)
             ->getRepository(Toast::class)
-            ->findOneBy(['title' => 'Envoyer le recap']);
+            ->findOneBy(['title' => $followUpTitle]);
 
         self::assertInstanceOf(Toast::class, $followUp);
-        self::assertSame('Sujet source', $followUp->getPreviousItem()?->getTitle());
-        self::assertSame(1, $followUp->getWorkspace()->getId());
+        self::assertSame($sourceTitle, $followUp->getPreviousItem()?->getTitle());
+        self::assertSame($workspaceId, $followUp->getWorkspace()->getId());
     }
 
     public function testInvitedMemberCannotBoostOutsideOrganizerPermissions(): void
@@ -125,21 +133,24 @@ final class WorkspaceFlowTest extends WebTestCase
         $this->loginWithMagicLink($ownerClient, $ownerEmail);
 
         $ownerClient->request('POST', '/app', ['name' => 'Review']);
-        $ownerClient->request('POST', '/app/workspaces/1/invite', ['email' => $guestEmail]);
-        $ownerClient->request('POST', '/app/workspaces/1/items', [
-            'title' => 'Sujet prive',
+        $workspaceId = $this->assertWorkspaceRedirectAndReturnId($ownerClient);
+        $title = sprintf('Sujet prive %s', microtime(true));
+        $ownerClient->request('POST', sprintf('/app/workspaces/%d/invite', $workspaceId), ['email' => $guestEmail]);
+        $ownerClient->request('POST', sprintf('/app/workspaces/%d/items', $workspaceId), [
+            'title' => $title,
             'description' => 'A discuter',
         ]);
-        $ownerClient->request('POST', '/app/workspaces/1/meeting/start');
+        $ownerClient->request('POST', sprintf('/app/workspaces/%d/meeting/start', $workspaceId));
+        $itemId = $this->findToastIdByTitle($title);
 
         static::ensureKernelShutdown();
         $guestClient = static::createClient();
         $this->loginWithMagicLink($guestClient, $guestEmail);
 
-        $guestClient->request('POST', '/app/items/1/boost');
+        $guestClient->request('POST', sprintf('/app/items/%d/boost', $itemId));
         self::assertResponseStatusCodeSame(403);
 
-        $guestClient->request('POST', '/app/items/1/veto');
+        $guestClient->request('POST', sprintf('/app/items/%d/veto', $itemId));
         self::assertResponseStatusCodeSame(403);
     }
 
@@ -166,6 +177,27 @@ final class WorkspaceFlowTest extends WebTestCase
         self::assertInstanceOf(User::class, $user);
 
         return $user->getId();
+    }
+
+    private function findToastIdByTitle(string $title): int
+    {
+        $toast = static::getContainer()->get(EntityManagerInterface::class)
+            ->getRepository(Toast::class)
+            ->findOneBy(['title' => $title]);
+
+        self::assertInstanceOf(Toast::class, $toast);
+
+        return $toast->getId();
+    }
+
+    private function assertWorkspaceRedirectAndReturnId(KernelBrowser $client): int
+    {
+        self::assertResponseRedirects();
+        $target = $client->getResponse()->headers->get('Location');
+        self::assertMatchesRegularExpression('#^/app/workspaces/\d+$#', (string) $target);
+        preg_match('#/app/workspaces/(\d+)$#', (string) $target, $matches);
+
+        return (int) $matches[1];
     }
 
     private function createAccessTokenForEmail(string $email): string
