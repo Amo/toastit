@@ -1,4 +1,6 @@
 <script setup>
+import PageHero from './PageHero.vue';
+
 const props = defineProps({
   setupAction: { type: String, required: true },
   flashes: { type: Object, required: true },
@@ -9,11 +11,11 @@ const props = defineProps({
   <main class="toastit-shell">
     <section class="tw-toastit-card mx-auto w-full max-w-xl p-8">
       <div class="space-y-6">
-        <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">PIN</p>
-          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Set your 4-digit PIN.</h1>
-          <p class="text-base leading-7 text-stone-600">This PIN will be required for each new session and whenever the session locks again.</p>
-        </div>
+        <PageHero
+          eyebrow="PIN"
+          title="Set your 4-digit PIN."
+          description="This PIN will be required for each new session and whenever the session locks again."
+        />
 
         <p v-for="(message, index) in flashes.error" :key="index" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ message }}</p>
 

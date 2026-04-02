@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import AvatarBadge from './AvatarBadge.vue';
 import ModalDialog from './ModalDialog.vue';
+import PageHero from './PageHero.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -148,10 +149,9 @@ onUnmounted(() => {
 <template>
   <section class="tw-toastit-shell space-y-6">
     <div class="flex items-start justify-between gap-4">
-      <div class="space-y-2">
-        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Workspace</p>
+      <div>
+        <PageHero eyebrow="Workspace" title="Your workspaces." />
         <div class="flex flex-wrap items-center gap-3">
-          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Your workspaces.</h1>
           <div class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-stone-600">
             <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
             <span>{{ payload.workspaces.length }} workspace<span v-if="payload.workspaces.length > 1">s</span></span>

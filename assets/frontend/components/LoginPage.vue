@@ -1,4 +1,6 @@
 <script setup>
+import PageHero from './PageHero.vue';
+
 const props = defineProps({
   email: { type: String, default: '' },
   loginAction: { type: String, required: true },
@@ -13,13 +15,11 @@ const props = defineProps({
   <main class="toastit-shell">
     <section class="tw-toastit-card mx-auto w-full max-w-xl p-8">
       <div class="space-y-6">
-        <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Toastit</p>
-          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Toast it. Get it done.</h1>
-          <p class="text-base leading-7 text-stone-600">
-            Turn sticky notes into shared plans and real results. One workspace for solo work, 1:1s, and team meetings.
-          </p>
-        </div>
+        <PageHero
+          eyebrow="Toastit"
+          title="Toast it. Get it done."
+          description="Turn sticky notes into shared plans and real results. One workspace for solo work, 1:1s, and team meetings."
+        />
 
         <div class="space-y-3">
           <p v-for="(message, index) in flashes.success" :key="`success-${index}`" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</p>

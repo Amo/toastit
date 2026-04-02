@@ -1,4 +1,6 @@
 <script setup>
+import PageHero from './PageHero.vue';
+
 const props = defineProps({
   email: { type: String, default: '' },
   unlockAction: { type: String, required: true },
@@ -11,11 +13,11 @@ const props = defineProps({
   <main class="toastit-shell">
     <section class="tw-toastit-card mx-auto w-full max-w-xl p-8">
       <div class="space-y-6">
-        <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Unlock</p>
-          <h1 class="text-4xl font-semibold tracking-tight text-stone-950">Enter your PIN.</h1>
-          <p class="text-base leading-7 text-stone-600">The session is authenticated for {{ email }}, but the PIN is required to access the app.</p>
-        </div>
+        <PageHero
+          eyebrow="Unlock"
+          title="Enter your PIN."
+          :description="`The session is authenticated for ${email}, but the PIN is required to access the app.`"
+        />
 
         <div class="space-y-3">
           <p v-for="(message, index) in flashes.success" :key="`success-${index}`" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ message }}</p>

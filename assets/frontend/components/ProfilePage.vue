@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
+import PageHero from './PageHero.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -39,11 +40,7 @@ onMounted(fetchProfile);
 
 <template>
   <section class="tw-toastit-shell space-y-6">
-    <div class="space-y-2">
-      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Profile</p>
-      <h1 class="text-4xl font-semibold tracking-tight text-stone-950">{{ profile.displayName || 'My profile' }}</h1>
-      <p class="text-base leading-7 text-stone-600">Set your first and last name to improve lists, avatars, and invitations.</p>
-    </div>
+    <PageHero eyebrow="Profile" :title="profile.displayName || 'My profile'" description="Set your first and last name to improve lists, avatars, and invitations." />
 
     <div class="tw-toastit-card max-w-2xl p-6">
       <div v-if="isLoading" class="text-sm text-stone-500">Loading...</div>
