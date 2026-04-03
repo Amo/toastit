@@ -177,7 +177,6 @@ final class TransactionalMailer
         $this->applyReplyHeaders($email, $messageId, $references);
         $this->mailer->send($email);
     }
-
     /**
      * @param list<User> $recipients
      * @param array<int, string> $toastUrlsById
