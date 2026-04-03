@@ -48,12 +48,6 @@ const featureCards = [
   },
 ];
 
-const outcomes = [
-  'Fewer “who owns this?” moments',
-  'Cleaner weekly meetings and executive reviews',
-  'Visible follow-through instead of forgotten action items',
-];
-
 const submit = async () => {
   const { ok, data } = await api.requestOtp(emailValue.value);
 
@@ -154,21 +148,7 @@ const logout = () => {
         </article>
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-3">
-        <div class="rounded-[2rem] border border-stone-200 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_48%,#f5f5f4_100%)] p-6">
-          <div class="flex items-start justify-between gap-6">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">What teams achieve</p>
-              <ul class="mt-4 space-y-3">
-                <li v-for="outcome in outcomes" :key="outcome" class="flex items-start gap-3 text-sm leading-6 text-stone-700">
-                  <span class="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400"></span>
-                  <span>{{ outcome }}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
+      <div class="grid gap-4 lg:grid-cols-2">
         <div class="rounded-[2rem] border border-stone-900 bg-stone-950 p-6 text-stone-50 shadow-xl shadow-stone-900/15">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Why it works</p>
           <p class="mt-4 text-2xl font-semibold leading-tight">One flow for capture, prioritization, toasting, and follow-up.</p>
