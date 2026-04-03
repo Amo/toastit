@@ -31,6 +31,15 @@ class ToastingSession
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $endedAt = null;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $summary = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $summaryGeneratedAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $summaryUpdatedAt = null;
+
     public function __construct()
     {
         $this->startedAt = new \DateTimeImmutable();
@@ -104,5 +113,48 @@ class ToastingSession
     public function isActive(): bool
     {
         return null === $this->endedAt;
+    }
+
+    public function getSummary(): ?string
+    {
+        return $this->summary;
+    }
+
+    public function setSummary(?string $summary, ?\DateTimeImmutable $updatedAt = null): self
+    {
+        $summary = null !== $summary ? trim($summary) : null;
+        $this->summary = '' === $summary ? null : $summary;
+        $this->summaryUpdatedAt = null !== $this->summary ? ($updatedAt ?? new \DateTimeImmutable()) : null;
+
+        return $this;
+    }
+
+    public function hasSummary(): bool
+    {
+        return null !== $this->summary && '' !== trim($this->summary);
+    }
+
+    public function getSummaryGeneratedAt(): ?\DateTimeImmutable
+    {
+        return $this->summaryGeneratedAt;
+    }
+
+    public function setSummaryGeneratedAt(?\DateTimeImmutable $summaryGeneratedAt): self
+    {
+        $this->summaryGeneratedAt = $summaryGeneratedAt;
+
+        return $this;
+    }
+
+    public function getSummaryUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->summaryUpdatedAt;
+    }
+
+    public function setSummaryUpdatedAt(?\DateTimeImmutable $summaryUpdatedAt): self
+    {
+        $this->summaryUpdatedAt = $summaryUpdatedAt;
+
+        return $this;
     }
 }

@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 final class MeetingAgendaBuilderTest extends TestCase
 {
-    public function testBuildOrdersLateItemsBeforeBoostedItemsAndSeparatesOtherStates(): void
+    public function testBuildOrdersBoostedItemsThenVotesThenNearestDueDateAndSeparatesOtherStates(): void
     {
         $workspace = (new Workspace())
             ->setOrganizer((new User())->setEmail('owner@example.com'))
@@ -29,23 +29,24 @@ final class MeetingAgendaBuilderTest extends TestCase
             ->setTitle('Boosted')
             ->setIsBoosted(true)
             ->setBoostRank(1)
-            ->setDueAt(new \DateTimeImmutable('2999-04-01'));
+            ->setDueAt(new \DateTimeImmutable('2026-04-05'));
         $this->setCreatedAt($boosted, '2026-04-01 10:00:00');
+        $boosted->addVote((new Vote())->setItem($boosted)->setUser((new User())->setEmail('boosted-vote@example.com')));
 
         $boostedOlder = (new Toast())
             ->setWorkspace($workspace)
             ->setAuthor((new User())->setEmail('boosted-older@example.com'))
             ->setTitle('Boosted older')
             ->setIsBoosted(true)
-            ->setDueAt(new \DateTimeImmutable('2999-04-02'));
+            ->setDueAt(new \DateTimeImmutable('2026-04-03'));
         $this->setCreatedAt($boostedOlder, '2026-04-01 08:00:00');
 
-        $late = (new Toast())
+        $nearestDue = (new Toast())
             ->setWorkspace($workspace)
-            ->setAuthor((new User())->setEmail('late@example.com'))
-            ->setTitle('Late')
-            ->setDueAt(new \DateTimeImmutable('2000-01-01'));
-        $this->setCreatedAt($late, '2026-04-01 11:00:00');
+            ->setAuthor((new User())->setEmail('nearest@example.com'))
+            ->setTitle('Nearest due')
+            ->setDueAt(new \DateTimeImmutable('2026-04-02'));
+        $this->setCreatedAt($nearestDue, '2026-04-01 11:00:00');
 
         $vetoed = (new Toast())
             ->setWorkspace($workspace)
@@ -69,17 +70,27 @@ final class MeetingAgendaBuilderTest extends TestCase
         $this->setCreatedAt($olderLessVoted, '2026-04-01 07:00:00');
         $olderLessVoted->addVote((new Vote())->setItem($olderLessVoted)->setUser((new User())->setEmail('vote-older@example.com')));
 
+        $sameVotesLaterDue = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor((new User())->setEmail('later-due@example.com'))
+            ->setTitle('Later due')
+            ->setDueAt(new \DateTimeImmutable('2026-04-20'));
+        $this->setCreatedAt($sameVotesLaterDue, '2026-04-01 06:00:00');
+        $sameVotesLaterDue->addVote((new Vote())->setItem($sameVotesLaterDue)->setUser((new User())->setEmail('later-due-vote@example.com')));
+        $sameVotesLaterDue->addVote((new Vote())->setItem($sameVotesLaterDue)->setUser((new User())->setEmail('later-due-vote-2@example.com')));
+
         $workspace->getItems()->add($normal);
         $workspace->getItems()->add($boosted);
         $workspace->getItems()->add($boostedOlder);
-        $workspace->getItems()->add($late);
+        $workspace->getItems()->add($nearestDue);
         $workspace->getItems()->add($olderLessVoted);
+        $workspace->getItems()->add($sameVotesLaterDue);
         $workspace->getItems()->add($vetoed);
         $workspace->getItems()->add($resolved);
 
         $agenda = (new MeetingAgendaBuilder())->build($workspace);
 
-        self::assertSame(['Late', 'Boosted', 'Boosted older', 'Normal', 'Older less voted'], array_map(
+        self::assertSame(['Boosted', 'Boosted older', 'Later due', 'Normal', 'Older less voted', 'Nearest due'], array_map(
             static fn (Toast $item): string => $item->getTitle(),
             $agenda->activeItems
         ));

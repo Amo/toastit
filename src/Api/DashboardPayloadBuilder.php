@@ -4,12 +4,14 @@ namespace App\Api;
 
 use App\Entity\User;
 use App\Entity\Workspace;
+use App\Profile\AvatarUrlService;
 use App\Repository\WorkspaceRepository;
 
 final class DashboardPayloadBuilder
 {
     public function __construct(
         private readonly WorkspaceRepository $workspaceRepository,
+        private readonly AvatarUrlService $avatarUrl,
     ) {
     }
 
@@ -62,12 +64,12 @@ final class DashboardPayloadBuilder
             'assignedOpenItemCount' => $assignedOpenItems,
             'lateOpenItemCount' => $lateOpenItems,
             'membersPreview' => array_slice(array_map(
-                static fn (User $member): array => [
+                fn (User $member): array => [
                     'id' => $member->getId(),
                     'displayName' => $member->getDisplayName(),
                     'email' => $member->getEmail(),
                     'initials' => $member->getInitials(),
-                    'gravatarUrl' => $member->getGravatarUrl(),
+                    'gravatarUrl' => $this->avatarUrl->resolve($member),
                 ],
                 $this->buildWorkspaceMembers($workspace)
             ), 0, 7),

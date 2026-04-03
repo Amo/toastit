@@ -8,6 +8,22 @@
   body {
     @apply bg-white text-stone-950 antialiased;
   }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: rgb(28 25 23);
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+    box-shadow: 0 0 0 1000px #ffffff inset;
+    caret-color: rgb(28 25 23);
+    transition: background-color 9999s ease-in-out 0s;
+  }
 }
 
 @layer components {
@@ -166,11 +182,133 @@
   margin-top: 0.5rem;
 }
 
+.datepicker-header .datepicker-controls,
+.datepicker-footer .datepicker-controls {
+  padding: 0.75rem;
+}
+
+.datepicker-main {
+  padding: 0 0.75rem 0.75rem;
+}
+
+.datepicker-view .days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.datepicker-grid .dow {
+  display: grid;
+  place-items: center;
+  min-height: 2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(120 113 108);
+}
+
+.datepicker-cell {
+  border-radius: 0.85rem !important;
+  color: rgb(68 64 60);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.datepicker-cell:not(.disabled):not(.selected):not(.range):not(.range-start):not(.range-end):hover {
+  background-color: rgb(245 245 244) !important;
+  box-shadow: inset 0 0 0 1px rgb(231 229 228);
+}
+
+.datepicker-cell.focused:not(.selected):not(.range-start) {
+  background-color: rgb(255 251 235) !important;
+  box-shadow: inset 0 0 0 1px rgb(252 211 77);
+}
+
+.datepicker-cell.today:not(.selected):not(.range-start) {
+  background-color: rgb(255 247 237) !important;
+  color: rgb(180 83 9) !important;
+  box-shadow: inset 0 0 0 1px rgb(251 191 36);
+}
+
+.datepicker-cell.selected,
+.datepicker-cell.range-start {
+  background-color: rgb(245 158 11) !important;
+  color: rgb(28 25 23) !important;
+  box-shadow: 0 10px 24px rgba(245, 158, 11, 0.28);
+}
+
+.datepicker-cell.selected:hover,
+.datepicker-cell.range-start:hover,
+.datepicker-cell.selected.today,
+.datepicker-cell.range-start.today {
+  background-color: rgb(217 119 6) !important;
+  color: rgb(255 255 255) !important;
+}
+
+.datepicker-cell.range,
+.datepicker-cell.range-end {
+  background-color: rgb(255 247 237) !important;
+}
+
 .datepicker-footer .datepicker-controls .button {
   color: rgb(41 37 36) !important;
 }
 
 .datepicker-footer .datepicker-controls .button:hover,
 .datepicker-footer .datepicker-controls .button:focus {
+  color: rgb(28 25 23) !important;
+}
+
+@keyframes toastit-ai-pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.tw-ai-pending {
+  animation: toastit-ai-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes toastit-rainbow-slide {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.tw-ai-rainbow-action {
+  background-image: linear-gradient(135deg, rgba(252, 165, 165, 0.92) 0%, rgba(253, 224, 71, 0.92) 22%, rgba(134, 239, 172, 0.92) 44%, rgba(147, 197, 253, 0.92) 68%, rgba(216, 180, 254, 0.92) 100%) !important;
+  background-size: 200% 200%;
+  animation: toastit-rainbow-slide 5.5s ease-in-out infinite;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+  color: rgb(41 37 36) !important;
+}
+
+.tw-ai-rainbow-action:hover,
+.tw-ai-rainbow-action:focus-visible {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  filter: brightness(0.98);
+}
+
+.tw-ai-rainbow-action i {
   color: rgb(28 25 23) !important;
 }

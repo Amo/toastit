@@ -1,0 +1,21 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block email_body %}
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Toast received</h1>
+    <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
+        Your email created a new toast in your hidden Inbox workspace.
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#1f1209;">
+        <strong>Title:</strong> {{ toast.title }}
+    </p>
+    {% if workspace_suggestion %}
+        <div style="margin:0 0 24px;padding:20px;border:1px solid #dbeafe;border-radius:20px;background:#eff6ff;font-size:15px;line-height:1.7;color:#1e3a8a;">
+            <p style="margin:0 0 8px;font-weight:700;">Suggested workspace</p>
+            <p style="margin:0 0 8px;"><strong>{{ workspace_suggestion.name }}</strong></p>
+            <p style="margin:0;">{{ workspace_suggestion.reason }}</p>
+        </div>
+    {% endif %}
+    <p style="margin:0;font-size:15px;line-height:1.7;color:#1f1209;">
+        Reply with <strong>reword</strong> to receive an xAI reformulation proposal, <strong>transfer</strong> to move the toast to the suggested workspace when possible, or both words to trigger both actions.
+    </p>
+{% endblock %}

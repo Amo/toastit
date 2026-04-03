@@ -24,6 +24,10 @@ final class UpdateSettingsController extends AbstractController
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $this->workspaceAccess->assertOwner($workspace);
 
+        if ($workspace->isInboxWorkspace()) {
+            return $this->json(['ok' => false, 'error' => 'inbox_workspace_not_configurable'], 400);
+        }
+
         $payload = $request->toArray();
         $name = trim((string) ($payload['name'] ?? ''));
 

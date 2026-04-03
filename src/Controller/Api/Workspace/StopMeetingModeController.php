@@ -2,6 +2,9 @@
 
 namespace App\Controller\Api\Workspace;
 
+use App\Api\WorkspacePayloadBuilder;
+use App\Meeting\SessionSummaryUnavailableException;
+use App\Meeting\ToastingSessionSummaryService;
 use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -14,6 +17,8 @@ final class StopMeetingModeController extends AbstractController
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ToastingSessionSummaryService $sessionSummary,
+        private readonly WorkspacePayloadBuilder $workspacePayloadBuilder,
     ) {
     }
 
@@ -21,15 +26,38 @@ final class StopMeetingModeController extends AbstractController
     public function __invoke(int $id): JsonResponse
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
+        $currentUser = $this->workspaceAccess->getUserOrFail();
         $this->workspaceAccess->assertOwner($workspace);
 
         if ($workspace->isSoloWorkspace()) {
             throw new AccessDeniedHttpException();
         }
 
-        $workspace->stopMeetingMode($this->workspaceAccess->getUserOrFail());
+        $activeSession = $workspace->getActiveToastingSession();
+        $workspace->stopMeetingMode($currentUser);
         $this->entityManager->flush();
 
-        return $this->json(['ok' => true]);
+        $summaryPayload = null;
+        $summaryError = null;
+
+        if (null !== $activeSession) {
+            try {
+                $session = $this->sessionSummary->generateSessionSummary($workspace, $activeSession, $currentUser);
+                $this->entityManager->flush();
+                $summaryPayload = $this->workspacePayloadBuilder->buildSessionPayload($session);
+            } catch (SessionSummaryUnavailableException $exception) {
+                $summaryError = [
+                    'error' => $exception->getReason(),
+                    'message' => $exception->getMessage(),
+                ];
+            }
+        }
+
+        return $this->json([
+            'ok' => true,
+            'sessionId' => $activeSession?->getId(),
+            'summary' => $summaryPayload,
+            'summaryError' => $summaryError,
+        ]);
     }
 }

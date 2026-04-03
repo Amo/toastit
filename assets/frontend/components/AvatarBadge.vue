@@ -7,6 +7,7 @@ const props = defineProps({
   gravatarUrl: { type: String, default: '' },
   alt: { type: String, default: '' },
   title: { type: String, default: '' },
+  sizeClass: { type: String, default: 'h-8 w-8 text-xs' },
 });
 
 const imageFailed = ref(false);
@@ -51,10 +52,18 @@ const onImageError = () => {
 
 <template>
   <span
-    class="inline-grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-semibold uppercase"
-    :class="shouldShowImage ? 'bg-stone-100 text-stone-700' : [fallbackTone.background, fallbackTone.text]"
+    class="inline-grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold uppercase"
+    :class="sizeClass"
     :title="title || alt"
   >
+    <span
+      v-if="!shouldShowImage"
+      class="inline-grid h-full w-full place-items-center"
+      :class="[fallbackTone.background, fallbackTone.text]"
+      :title="title || alt"
+    >
+      {{ fallbackInitials }}
+    </span>
     <img
       v-if="shouldShowImage"
       :src="gravatarUrl"
@@ -62,6 +71,5 @@ const onImageError = () => {
       class="h-full w-full object-cover"
       @error="onImageError"
     >
-    <span v-else>{{ fallbackInitials }}</span>
   </span>
 </template>

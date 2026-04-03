@@ -40,6 +40,8 @@ onMounted(() => {
     autohide: true,
     format: 'yyyy-mm-dd',
     buttons: true,
+    todayHighlight: true,
+    weekStart: 1,
   });
 
   inputRef.value.addEventListener('changeDate', syncFromPicker);

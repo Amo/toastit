@@ -38,6 +38,7 @@ class WorkspaceRepository extends ServiceEntityRepository
                 AND membership_match.user = :user
             )')
             ->andWhere('workspace.deletedAt IS NULL')
+            ->andWhere('workspace.isInboxWorkspace = false')
             ->setParameter('user', $user)
             ->orderBy('dashboardMembership.displayOrder', 'ASC')
             ->addOrderBy('workspace.createdAt', 'DESC')
@@ -94,6 +95,7 @@ class WorkspaceRepository extends ServiceEntityRepository
             ->leftJoin('membership.user', 'memberUser')
             ->addSelect('memberUser')
             ->where('workspace.deletedAt IS NOT NULL')
+            ->andWhere('workspace.isInboxWorkspace = false')
             ->andWhere('(
                 workspace.organizer = :user
                 OR EXISTS (
@@ -127,6 +129,19 @@ class WorkspaceRepository extends ServiceEntityRepository
             )')
             ->setParameter('workspaceId', $workspaceId)
             ->setParameter('user', $user)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findInboxWorkspaceForUser(User $user): ?Workspace
+    {
+        return $this->createQueryBuilder('workspace')
+            ->where('workspace.organizer = :user')
+            ->andWhere('workspace.deletedAt IS NULL')
+            ->andWhere('workspace.isInboxWorkspace = true')
+            ->setParameter('user', $user)
+            ->orderBy('workspace.id', 'ASC')
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
     }

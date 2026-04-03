@@ -12,4 +12,18 @@ services:
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  inbound-smtp:
+    build:
+      context: .
+      dockerfile: docker/inbound-smtp/Dockerfile
+    environment:
+      INBOUND_SMTP_HOST: 0.0.0.0
+      INBOUND_SMTP_PORT: 2525
+      TOASTIT_INBOUND_URL: http://php/api/inbound/email
+      TOASTIT_INBOUND_SECRET: ${INBOUND_EMAIL_SECRET:-}
+    ports:
+      - "2525:2525"
+    depends_on:
+      - php
 ###< symfony/mailer ###

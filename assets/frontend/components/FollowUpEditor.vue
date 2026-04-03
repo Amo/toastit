@@ -5,9 +5,11 @@ defineProps({
   followUps: { type: Array, default: () => [] },
   participants: { type: Array, default: () => [] },
   blocked: { type: Boolean, default: false },
+  canGenerate: { type: Boolean, default: false },
+  isGenerating: { type: Boolean, default: false },
 });
 
-defineEmits(['add', 'remove', 'update']);
+defineEmits(['add', 'remove', 'update', 'generate']);
 </script>
 
 <template>
@@ -17,7 +19,24 @@ defineEmits(['add', 'remove', 'update']);
   >
     <div class="flex items-center justify-between gap-4">
       <p class="text-sm font-medium text-stone-700">Create follow-ups in this workspace</p>
-      <button type="button" class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700" @click="$emit('add')">Add</button>
+      <div class="flex items-center gap-3">
+        <button
+          v-if="canGenerate"
+          type="button"
+          :class="['tw-ai-rainbow-action inline-grid h-10 w-10 place-items-center rounded-full border text-sm transition disabled:opacity-60', isGenerating ? 'tw-ai-pending' : '']"
+          :disabled="isGenerating"
+          title="Generate follow-up plan with xAI"
+          @click="$emit('generate')"
+        >
+          <i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i>
+          <span class="sr-only">Generate follow-up plan with xAI</span>
+        </button>
+        <button type="button" class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700" @click="$emit('add')">Add</button>
+      </div>
+    </div>
+
+    <div v-if="!followUps.length" class="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-500">
+      No manual follow-up yet.
     </div>
 
     <div

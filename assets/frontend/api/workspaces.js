@@ -32,6 +32,14 @@ export class WorkspacesApi {
       .then((response) => this.client.parseJsonResponse(response));
   }
 
+  generateToastCurationDraft(workspaceId) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/curation/draft`, {});
+  }
+
+  applyToastCurationDraft(workspaceId, actions) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/curation/apply`, { actions });
+  }
+
   uploadWorkspaceBackground(workspaceId, formData) {
     return this.client.postFormData(`/api/workspaces/${workspaceId}/background`, formData);
   }
@@ -60,6 +68,10 @@ export class WorkspacesApi {
     return this.client.postJson(`/api/workspaces/${workspaceId}/items`, payload);
   }
 
+  refineToastDraft(workspaceId, payload) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/items/draft/refine`, payload);
+  }
+
   updateToast(itemId, payload) {
     return this.client.putJson(`/api/items/${itemId}`, payload);
   }
@@ -69,7 +81,24 @@ export class WorkspacesApi {
   }
 
   stopMeetingMode(workspaceId) {
-    return this.client.request(`/api/workspaces/${workspaceId}/meeting/stop`, { method: 'POST' });
+    return this.client.request(`/api/workspaces/${workspaceId}/meeting/stop`, { method: 'POST' })
+      .then((response) => this.client.parseJsonResponse(response));
+  }
+
+  generateMeetingSummary(workspaceId) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/meeting/summary`, {});
+  }
+
+  generateSessionSummary(workspaceId, sessionId) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/sessions/${sessionId}/summary/generate`, {});
+  }
+
+  updateSessionSummary(workspaceId, sessionId, summary) {
+    return this.client.putJson(`/api/workspaces/${workspaceId}/sessions/${sessionId}/summary`, { summary });
+  }
+
+  sendSessionSummary(workspaceId, sessionId) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/sessions/${sessionId}/summary/send`, {});
   }
 
   addComment(itemId, content) {
@@ -102,5 +131,17 @@ export class WorkspacesApi {
 
   saveDiscussion(itemId, payload) {
     return this.client.postJson(`/api/items/${itemId}/discussion`, payload);
+  }
+
+  saveDecisionNotes(itemId, payload) {
+    return this.client.postJson(`/api/items/${itemId}/decision-notes`, payload);
+  }
+
+  generateExecutionPlan(itemId) {
+    return this.client.postJson(`/api/items/${itemId}/execution-plan/draft`, {});
+  }
+
+  applyExecutionPlanAction(itemId, action) {
+    return this.client.postJson(`/api/items/${itemId}/execution-plan/apply`, { action });
   }
 }

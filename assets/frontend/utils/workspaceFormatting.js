@@ -9,8 +9,13 @@ const markdown = new MarkdownIt({
 
 markdown.renderer.rules.link_open = (tokens, index, options, env, self) => {
   const token = tokens[index];
-  token.attrSet('target', '_blank');
-  token.attrSet('rel', 'noopener noreferrer');
+  const href = token.attrGet('href') ?? '';
+
+  if (href.startsWith('http://') || href.startsWith('https://')) {
+    token.attrSet('target', '_blank');
+    token.attrSet('rel', 'noopener noreferrer');
+  }
+
   token.attrJoin('class', 'font-medium text-amber-700 underline');
 
   return self.renderToken(tokens, index, options);
@@ -22,6 +27,17 @@ export const renderToastDescription = (value) => {
   if (!value) return '';
 
   return DOMPurify.sanitize(markdown.render(value));
+};
+
+export const renderSessionSummary = (value) => {
+  if (!value) return '';
+
+  const linkifiedValue = value
+    .replace(/#\{(\d+)\}/g, '[#{$1}](/app/toasts/$1)')
+    .replace(/(^|[^\w/])#(\d+)\b/g, (_, prefix, toastId) => `${prefix}[#${toastId}](/app/toasts/${toastId})`);
+
+  return renderToastDescription(linkifiedValue)
+    .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
 };
 
 export const truncateDescription = (value, limit = 140) => {

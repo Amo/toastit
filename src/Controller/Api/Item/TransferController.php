@@ -3,10 +3,8 @@
 namespace App\Controller\Api\Item;
 
 use App\Entity\Toast;
-use App\Entity\Workspace;
-use App\Entity\User;
+use App\Workspace\ToastTransferService;
 use App\Workspace\WorkspaceAccessService;
-use App\Workspace\WorkspaceWorkflowService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,7 +15,7 @@ final class TransferController extends AbstractController
 {
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
-        private readonly WorkspaceWorkflowService $workspaceWorkflow,
+        private readonly ToastTransferService $toastTransfer,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -41,10 +39,7 @@ final class TransferController extends AbstractController
         }
 
         $targetWorkspace = $this->workspaceAccess->getWorkspaceOrFail($targetWorkspaceId);
-        $transferredToast = $this->duplicateToast($source, $targetWorkspace, $this->workspaceAccess->getUserOrFail());
-
-        $this->entityManager->persist($transferredToast);
-        $this->entityManager->remove($source);
+        $transferredToast = $this->toastTransfer->transfer($source, $targetWorkspace, $this->workspaceAccess->getUserOrFail());
         $this->entityManager->flush();
 
         return $this->json([
@@ -52,27 +47,5 @@ final class TransferController extends AbstractController
             'toastId' => $transferredToast->getId(),
             'workspaceId' => $targetWorkspace->getId(),
         ]);
-    }
-
-    private function duplicateToast(Toast $source, Workspace $targetWorkspace, User $author): Toast
-    {
-        $owner = $source->getOwner();
-
-        if ($owner && null === $this->workspaceWorkflow->findWorkspaceInviteeById($targetWorkspace, $owner->getId() ?? 0)) {
-            $owner = null;
-        }
-
-        return (new Toast())
-            ->setWorkspace($targetWorkspace)
-            ->setAuthor($author)
-            ->setTitle($source->getTitle())
-            ->setDescription($source->getDescription())
-            ->setStatus(Toast::STATUS_OPEN)
-            ->setDiscussionStatus(Toast::DISCUSSION_PENDING)
-            ->setDiscussionNotes(null)
-            ->setIsBoosted(false)
-            ->setOwner($owner)
-            ->setDueAt($source->getDueAt())
-            ->setStatusChangedAt(null);
     }
 }

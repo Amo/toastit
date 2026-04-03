@@ -13,7 +13,10 @@ defineEmits(['close']);
 <template>
   <div class="relative border-b border-stone-100 px-6 py-5 pr-20">
     <div>
-      <EyebrowLabel v-if="eyebrow">{{ eyebrow }}</EyebrowLabel>
+      <div v-if="eyebrow || $slots.eyebrow" class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <EyebrowLabel v-if="eyebrow">{{ eyebrow }}</EyebrowLabel>
+        <slot name="eyebrow" />
+      </div>
       <h2 class="mt-2 text-2xl font-semibold text-stone-950">{{ title }}</h2>
       <p v-if="description" class="mt-2 text-sm text-stone-500">{{ description }}</p>
       <slot />

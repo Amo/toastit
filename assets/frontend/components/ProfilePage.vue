@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { authStore } from '../authStore';
 import { ProfileApi } from '../api/profile';
+import AvatarBadge from './AvatarBadge.vue';
 import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -21,6 +22,7 @@ const props = defineProps({
 
 const isLoading = ref(true);
 const isSaving = ref(false);
+const isUploadingAvatar = ref(false);
 const isDeleting = ref(false);
 const isRequestingDeletionOtp = ref(false);
 const deleteModalOpen = ref(false);
@@ -30,6 +32,7 @@ const deletionOtpSent = ref(false);
 const deleteErrorMessage = ref('');
 const isRestoringWorkspaceId = ref(null);
 const restoreErrorMessage = ref('');
+const avatarErrorMessage = ref('');
 const profile = ref({ displayName: '', firstName: '', lastName: '', deletedWorkspaces: [] });
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
@@ -37,6 +40,82 @@ const apiClient = new ToastitApiClient(props.accessToken, {
   },
 });
 const profileApi = new ProfileApi(apiClient);
+const MIN_AVATAR_SIZE = 64;
+const MAX_AVATAR_SIZE = 256;
+
+const loadImageElement = (file) => {
+  const objectUrl = URL.createObjectURL(file);
+
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => resolve({ image, objectUrl });
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Unable to read image.'));
+    };
+    image.src = objectUrl;
+  });
+};
+
+const canvasToBlob = (canvas, mimeType) => new Promise((resolve, reject) => {
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      reject(new Error('Unable to process image.'));
+      return;
+    }
+
+    resolve(blob);
+  }, mimeType);
+});
+
+const buildProcessedAvatarFile = async (file) => {
+  const { image, objectUrl } = await loadImageElement(file);
+
+  try {
+    const cropSize = Math.min(image.naturalWidth, image.naturalHeight);
+    const sourceX = Math.floor((image.naturalWidth - cropSize) / 2);
+    const sourceY = Math.floor((image.naturalHeight - cropSize) / 2);
+    const targetSize = Math.min(MAX_AVATAR_SIZE, Math.max(MIN_AVATAR_SIZE, cropSize));
+    const canvas = document.createElement('canvas');
+    canvas.width = targetSize;
+    canvas.height = targetSize;
+
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      throw new Error('Unable to process image.');
+    }
+
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      cropSize,
+      cropSize,
+      0,
+      0,
+      targetSize,
+      targetSize,
+    );
+
+    const outputMimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+      ? file.type
+      : 'image/png';
+    const outputExtension = outputMimeType === 'image/jpeg'
+      ? 'jpg'
+      : outputMimeType === 'image/webp'
+        ? 'webp'
+        : 'png';
+    const blob = await canvasToBlob(canvas, outputMimeType);
+
+    return new File([blob], `avatar.${outputExtension}`, { type: outputMimeType });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
 
 const fetchProfile = async () => {
   isLoading.value = true;
@@ -59,6 +138,41 @@ const saveProfile = async () => {
     lastName: profile.value.lastName,
   });
   isSaving.value = false;
+  await fetchProfile();
+};
+
+const uploadAvatar = async (event) => {
+  const [file] = event.target.files ?? [];
+  event.target.value = '';
+  avatarErrorMessage.value = '';
+
+  if (!file) {
+    return;
+  }
+
+  isUploadingAvatar.value = true;
+
+  let processedFile;
+
+  try {
+    processedFile = await buildProcessedAvatarFile(file);
+  } catch (error) {
+    isUploadingAvatar.value = false;
+    avatarErrorMessage.value = error instanceof Error ? error.message : 'Unable to process image.';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('avatar', processedFile);
+
+  const { ok, data } = await profileApi.uploadAvatar(`${props.updateUrl}/avatar`, formData);
+  isUploadingAvatar.value = false;
+
+  if (!ok || !data?.ok) {
+    avatarErrorMessage.value = data?.message ?? 'Unable to upload avatar.';
+    return;
+  }
+
   await fetchProfile();
 };
 
@@ -133,12 +247,60 @@ onMounted(fetchProfile);
     <div class="tw-toastit-card max-w-2xl p-6">
       <EmptyState v-if="isLoading" message="Loading..." />
       <div v-else class="space-y-8">
+        <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center gap-4">
+              <AvatarBadge
+                :seed="profile.id ?? profile.displayName"
+                :initials="profile.initials"
+                :gravatar-url="profile.gravatarUrl"
+                :alt="profile.displayName"
+                :title="profile.displayName || profile.email || ''"
+                size-class="h-16 w-16 text-lg"
+              />
+              <div>
+                <h3 class="text-base font-semibold text-stone-950">Avatar</h3>
+                <p class="mt-1 text-sm text-stone-600">The image is cropped to a centered square and resampled to stay between 64x64 and 256x256 pixels.</p>
+              </div>
+            </div>
+
+            <label class="inline-flex cursor-pointer items-center justify-center rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400">
+              {{ isUploadingAvatar ? 'Uploading...' : 'Upload avatar' }}
+              <input
+                class="sr-only"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                :disabled="isUploadingAvatar"
+                @change="uploadAvatar"
+              >
+            </label>
+          </div>
+
+          <p v-if="avatarErrorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ avatarErrorMessage }}</p>
+        </div>
+
         <div class="space-y-4">
           <TextInputField v-model="profile.firstName" label="First name" />
           <TextInputField v-model="profile.lastName" label="Last name" />
           <PrimaryActionButton :disabled="isSaving" @click="saveProfile">
             {{ isSaving ? 'Saving...' : 'Save' }}
           </PrimaryActionButton>
+        </div>
+
+        <div v-if="profile.inboxEmailAddress" class="rounded-[1.5rem] border border-sky-200 bg-sky-50/70 p-5">
+          <div class="space-y-3">
+            <div>
+              <h3 class="text-base font-semibold text-sky-950">Inbound email</h3>
+              <p class="mt-1 text-sm text-sky-900">
+                Send an email to this address to create a new toast automatically in your hidden Inbox workspace.
+              </p>
+            </div>
+
+            <div class="rounded-2xl border border-sky-200 bg-white px-4 py-3">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Your Toastit inbox address</p>
+              <p class="mt-2 break-all font-mono text-sm text-sky-950">{{ profile.inboxEmailAddress }}</p>
+            </div>
+          </div>
         </div>
 
         <div class="rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5">

@@ -24,6 +24,11 @@ final class UploadBackgroundController extends AbstractController
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $this->workspaceAccess->assertOwner($workspace);
+
+        if ($workspace->isInboxWorkspace()) {
+            return $this->json(['ok' => false, 'error' => 'inbox_workspace_not_configurable'], 400);
+        }
+
         $uploadedFile = $request->files->get('background');
 
         if (!$uploadedFile instanceof \Symfony\Component\HttpFoundation\File\UploadedFile) {

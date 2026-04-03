@@ -2,11 +2,12 @@
 
 namespace App\Entity;
 
+use App\Repository\ToastRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: ToastRepository::class)]
 #[ORM\Table(name: 'parking_lot_item')]
 class Toast
 {

@@ -7,9 +7,13 @@ use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
+use App\Profile\AvatarStorageService;
+use App\Profile\AvatarUrlService;
 use App\Repository\WorkspaceRepository;
 use App\Tests\Support\ReflectionHelper;
+use League\Flysystem\FilesystemOperator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class DashboardPayloadBuilderTest extends TestCase
 {
@@ -40,7 +44,11 @@ final class DashboardPayloadBuilderTest extends TestCase
             ->with($user)
             ->willReturn([$workspace]);
 
-        $builder = new DashboardPayloadBuilder($repository);
+        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $filesystem = $this->createMock(FilesystemOperator::class);
+        $avatarUrl = new AvatarUrlService($urlGenerator, new AvatarStorageService($filesystem, sys_get_temp_dir()));
+
+        $builder = new DashboardPayloadBuilder($repository, $avatarUrl);
 
         self::assertSame([
             'workspaces' => [[

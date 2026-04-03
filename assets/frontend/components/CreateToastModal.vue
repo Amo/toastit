@@ -11,9 +11,11 @@ defineProps({
   participants: { type: Array, default: () => [] },
   title: { type: String, default: 'Toast details' },
   actionLabel: { type: String, default: 'Create toast' },
+  isRefining: { type: Boolean, default: false },
+  canUndoRefinement: { type: Boolean, default: false },
 });
 
-defineEmits(['close', 'create', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
+defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
 
 const titleInput = ref(null);
 
@@ -68,6 +70,24 @@ defineExpose({
       <div class="flex items-center justify-between gap-3">
         <KeyboardHint>Press Cmd+Enter or Ctrl+Enter to create this toast.</KeyboardHint>
         <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            :class="['inline-grid h-12 w-12 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60', isRefining ? 'tw-ai-pending' : '']"
+            :disabled="isRefining"
+            title="Improve draft with xAI"
+            @click="$emit('refine')"
+          >
+            <i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i>
+            <span class="sr-only">Improve draft with xAI</span>
+          </button>
+          <button
+            v-if="canUndoRefinement"
+            type="button"
+            class="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+            @click="$emit('undo-refine')"
+          >
+            Undo AI change
+          </button>
           <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="$emit('close')">Cancel</button>
           <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="$emit('create')">{{ actionLabel }}</button>
         </div>

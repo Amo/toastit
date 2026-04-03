@@ -40,13 +40,19 @@ final class EntityBehaviorTest extends TestCase
         $user
             ->setFirstName(null)
             ->setLastName(null)
-            ->setPinHash('hash');
+            ->setPinHash('hash')
+            ->setAvatarPath(' avatar.png ');
 
         self::assertSame('  jane@example.com ', $user->getDisplayName());
         self::assertSame('  ', $user->getInitials());
         self::assertTrue($user->hasPin());
+        self::assertSame('avatar.png', $user->getAvatarPath());
         self::assertSame('  jane@example.com ', $user->getUserIdentifier());
         self::assertSame('hash', $user->getPassword());
+
+        $user->anonymize();
+
+        self::assertNull($user->getAvatarPath());
     }
 
     public function testWorkspaceHandlesMembershipsMeetingModeAndItems(): void
@@ -122,6 +128,14 @@ final class EntityBehaviorTest extends TestCase
         self::assertSame(Workspace::MEETING_MODE_IDLE, $workspace->getMeetingMode());
         self::assertNull($workspace->getMeetingStartedAt());
         self::assertNull($workspace->getMeetingEndedAt());
+
+        $workspace->setIsInboxWorkspace(true);
+        $workspace->setIsSoloWorkspace(false);
+        $workspace->setMeetingMode(Workspace::MEETING_MODE_LIVE);
+
+        self::assertTrue($workspace->isInboxWorkspace());
+        self::assertTrue($workspace->isSoloWorkspace());
+        self::assertSame(Workspace::MEETING_MODE_IDLE, $workspace->getMeetingMode());
     }
 
     public function testToastSanitizesFollowUpsAndTracksVotesCommentsAndFlags(): void

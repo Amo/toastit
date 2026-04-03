@@ -111,10 +111,17 @@ Do not use Vue for:
 
 ### 2. Component discipline
 
+- Front-end code must be split between page components and reusable components.
+- Target structure:
+  - `assets/frontend/pages` for route-level pages
+  - `assets/frontend/components` for reusable UI or feature components
 - Pages compose focused components.
-- Shared presentation logic should move into reusable components before duplication spreads.
-- Keep route-level components thin; move repeated blocks into `assets/frontend/components`.
+- Shared presentation logic must move into reusable components before duplication spreads.
+- Before creating any new component, always verify that an equivalent or extensible component does not already exist.
+- If a close existing component exists, extend or adapt it instead of creating a parallel one.
+- Keep route-level components thin; pages must orchestrate and compose, not contain large repeated UI blocks.
 - Avoid giant single-file components that mix fetching, mutations, rendering, and formatting without structure.
+- New UI work must default to component extraction, not inline local markup inside a page.
 
 ### 3. Styling discipline
 
@@ -213,6 +220,9 @@ At minimum, review:
 - returning raw entity data directly from API controllers
 - duplicating permission logic between front and back
 - embedding formatting and orchestration logic directly in entities
+- creating new page-local UI blocks without first checking whether an existing component already covers the need
+- creating near-duplicate front-end components instead of extending an existing one
+- keeping reusable UI inside page files when it should be extracted to `assets/frontend/components`
 - adding new UI patterns without aligning them with the existing design system
 - changing payload keys without updating the consumers and tests
 - introducing new dependencies for problems already solved by the current stack
@@ -224,6 +234,8 @@ Before merging a change, verify:
 1. The solution follows the existing architectural boundary instead of creating a parallel path.
 2. Back-end business rules remain server-owned.
 3. Front-end code stays component-oriented and does not absorb domain logic.
-4. API payload changes are deliberate, minimal, and fully consumed.
-5. Tests cover the changed behavior at the correct level.
-6. Documentation was updated if the change altered a standing rule.
+4. Any new page-level work respects the `pages/` vs `components/` separation target.
+5. An existing reusable component was checked before creating a new one.
+6. API payload changes are deliberate, minimal, and fully consumed.
+7. Tests cover the changed behavior at the correct level.
+8. Documentation was updated if the change altered a standing rule.

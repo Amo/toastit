@@ -86,6 +86,17 @@ The project currently standardizes local actions through:
 
 These are intended to remain the primary developer entrypoints for common tasks.
 
+## External AI Integrations
+
+Toastit can call xAI for server-side meeting recaps.
+
+Current integration rules:
+
+- xAI calls must stay on the Symfony side
+- Vue must only trigger explicit API endpoints and render the returned recap
+- the xAI configuration is environment-driven through `XAI_API_KEY`, `XAI_BASE_URL`, `XAI_MODEL`, and `XAI_TIMEOUT_SECONDS`
+- meeting recap prompts must be grounded in Toastit workspace and session data, never in ad hoc client-side state
+
 ## Security and Authentication Model
 
 Toastit uses a two-step authentication and unlock model.
@@ -195,6 +206,35 @@ Important invariant:
 - every email must use the shared HTML template system, even if the visual design is still temporary
 
 No email should be assembled as ad hoc raw HTML inside controllers or services.
+
+### Inbound mail
+
+Toastit can also ingest inbound email and convert it into toasts.
+
+Current inbound rules:
+
+- inbound email is mapped to a dedicated hidden `Inbox` workspace mode
+- the inbox workspace is created on demand if missing
+- the inbox workspace must not appear in the standard workspace list
+- the inbox workspace is accessible through dedicated app navigation, not normal workspace discovery
+- the inbox workspace is non-configurable: it cannot be renamed, shared, or deleted through the product flows
+- inbound delivery is protected server-side through environment-driven configuration
+
+Current inbound configuration is environment-driven through:
+
+- `INBOUND_EMAIL_DOMAIN`
+- `INBOUND_EMAIL_SECRET`
+
+### Local prototype
+
+The local development stack can run a dedicated inbound SMTP bridge container.
+
+Current local prototype rules:
+
+- the `inbound-smtp` container accepts SMTP on port `2525`
+- it parses the inbound message and forwards JSON to Toastit at `/api/inbound/email`
+- Toastit validates the shared secret using `INBOUND_EMAIL_SECRET`
+- the target user is derived from the recipient address, not the sender address
 
 ## Design System Discipline
 

@@ -3,10 +3,13 @@
 namespace App\Api;
 
 use App\Entity\Toast;
+use App\Entity\ToastingSession;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Meeting\MeetingAgendaBuilder;
+use App\Profile\AvatarUrlService;
 use App\Repository\WorkspaceRepository;
+use App\Workspace\InboundEmailAddressService;
 use App\Workspace\WorkspaceWorkflowService;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -16,6 +19,8 @@ final class WorkspacePayloadBuilder
         private readonly MeetingAgendaBuilder $agendaBuilder,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly WorkspaceRepository $workspaceRepository,
+        private readonly AvatarUrlService $avatarUrl,
+        private readonly InboundEmailAddressService $inboundEmailAddress,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
@@ -31,12 +36,14 @@ final class WorkspacePayloadBuilder
                 'displayName' => $currentUser->getDisplayName(),
                 'email' => $currentUser->getPublicEmail(),
                 'initials' => $currentUser->getInitials(),
-                'gravatarUrl' => $currentUser->getGravatarUrl(),
+                'gravatarUrl' => $this->avatarUrl->resolve($currentUser),
+                'inboxEmailAddress' => $this->inboundEmailAddress->buildAddressForUser($currentUser),
             ],
             'workspace' => [
                 'id' => $workspace->getId(),
                 'name' => $workspace->getName(),
                 'isDefault' => $workspace->isDefault(),
+                'isInboxWorkspace' => $workspace->isInboxWorkspace(),
                 'defaultDuePreset' => $workspace->getDefaultDuePreset(),
                 'permalinkBackgroundUrl' => $this->resolvePermalinkBackgroundUrl($workspace),
                 'isSoloWorkspace' => $workspace->isSoloWorkspace(),
@@ -51,13 +58,14 @@ final class WorkspacePayloadBuilder
                     'id' => $candidate->getId(),
                     'name' => $candidate->getName(),
                     'isSoloWorkspace' => $candidate->isSoloWorkspace(),
+                    'isInboxWorkspace' => $candidate->isInboxWorkspace(),
                 ],
                 array_values(array_filter(
                     $this->workspaceRepository->findForUser($currentUser),
                     static fn (Workspace $candidate): bool => $candidate->getId() !== $workspace->getId(),
                 ))
             ),
-            'memberships' => array_map(static function ($membership): array {
+            'memberships' => array_map(function ($membership): array {
                 return [
                     'id' => $membership->getId(),
                     'isOwner' => $membership->isOwner(),
@@ -66,19 +74,23 @@ final class WorkspacePayloadBuilder
                         'displayName' => $membership->getUser()->getDisplayName(),
                         'email' => $membership->getUser()->getPublicEmail(),
                         'initials' => $membership->getUser()->getInitials(),
-                        'gravatarUrl' => $membership->getUser()->getGravatarUrl(),
+                        'gravatarUrl' => $this->avatarUrl->resolve($membership->getUser()),
                     ],
                 ];
             }, $workspace->getMemberships()->toArray()),
             'participants' => array_map(
-                static fn (User $invitee): array => [
+                fn (User $invitee): array => [
                     'id' => $invitee->getId(),
                     'displayName' => $invitee->getDisplayName(),
                     'email' => $invitee->getPublicEmail(),
                     'initials' => $invitee->getInitials(),
-                    'gravatarUrl' => $invitee->getGravatarUrl(),
+                    'gravatarUrl' => $this->avatarUrl->resolve($invitee),
                 ],
                 $invitees
+            ),
+            'toastingSessions' => array_map(
+                fn (ToastingSession $session): array => $this->buildSessionPayload($session),
+                $workspace->getToastingSessions()->toArray()
             ),
             'agendaItems' => array_map(
                 fn (Toast $item): array => $this->buildItemPayload($item, $currentUser, $workspace),
@@ -139,7 +151,7 @@ final class WorkspacePayloadBuilder
                 $followUps
             ),
             'comments' => array_map(
-                static fn (\App\Entity\ToastComment $comment): array => [
+                fn (\App\Entity\ToastComment $comment): array => [
                     'id' => $comment->getId(),
                     'content' => $comment->getContent(),
                     'createdAt' => $comment->getCreatedAt()->format(\DateTimeInterface::ATOM),
@@ -148,7 +160,7 @@ final class WorkspacePayloadBuilder
                         'id' => $comment->getAuthor()->getId(),
                         'displayName' => $comment->getAuthor()->getDisplayName(),
                         'initials' => $comment->getAuthor()->getInitials(),
-                        'gravatarUrl' => $comment->getAuthor()->getGravatarUrl(),
+                        'gravatarUrl' => $this->avatarUrl->resolve($comment->getAuthor()),
                     ],
                 ],
                 $item->getComments()->toArray()
@@ -156,6 +168,8 @@ final class WorkspacePayloadBuilder
             'owner' => $item->getOwner() ? [
                 'id' => $item->getOwner()->getId(),
                 'displayName' => $item->getOwner()->getDisplayName(),
+                'initials' => $item->getOwner()->getInitials(),
+                'gravatarUrl' => $this->avatarUrl->resolve($item->getOwner()),
             ] : null,
             'dueOn' => $item->getDueAt()?->format('Y-m-d'),
             'dueOnDisplay' => $item->getDueAt()?->format('d/m/Y'),
@@ -166,12 +180,37 @@ final class WorkspacePayloadBuilder
                 'displayName' => $item->getAuthor()->getDisplayName(),
                 'email' => $item->getAuthor()->getPublicEmail(),
                 'initials' => $item->getAuthor()->getInitials(),
-                'gravatarUrl' => $item->getAuthor()->getGravatarUrl(),
+                'gravatarUrl' => $this->avatarUrl->resolve($item->getAuthor()),
             ],
             'voteCount' => $item->getVoteCount(),
             'currentUserHasVoted' => $hasVoted,
             'currentUserCanEdit' => $item->isNew() && ($workspace->isOwnedBy($currentUser) || $item->getAuthor()->getId() === $currentUser->getId()),
             'ownerName' => $item->getOwner()?->getDisplayName() ?? ($item->getOwner()?->getId() ? ($inviteeNames[$item->getOwner()->getId()] ?? null) : null),
+        ];
+    }
+
+    public function buildSessionPayload(ToastingSession $session): array
+    {
+        return [
+            'id' => $session->getId(),
+            'startedAt' => $session->getStartedAt()->format(\DateTimeInterface::ATOM),
+            'startedAtDisplay' => $session->getStartedAt()->format('d/m/Y H:i'),
+            'endedAt' => $session->getEndedAt()?->format(\DateTimeInterface::ATOM),
+            'endedAtDisplay' => $session->getEndedAt()?->format('d/m/Y H:i'),
+            'isActive' => $session->isActive(),
+            'startedBy' => [
+                'id' => $session->getStartedBy()->getId(),
+                'displayName' => $session->getStartedBy()->getDisplayName(),
+            ],
+            'endedBy' => $session->getEndedBy() ? [
+                'id' => $session->getEndedBy()?->getId(),
+                'displayName' => $session->getEndedBy()?->getDisplayName(),
+            ] : null,
+            'summary' => $session->getSummary(),
+            'summaryGeneratedAt' => $session->getSummaryGeneratedAt()?->format(\DateTimeInterface::ATOM),
+            'summaryGeneratedAtDisplay' => $session->getSummaryGeneratedAt()?->format('d/m/Y H:i'),
+            'summaryUpdatedAt' => $session->getSummaryUpdatedAt()?->format(\DateTimeInterface::ATOM),
+            'summaryUpdatedAtDisplay' => $session->getSummaryUpdatedAt()?->format('d/m/Y H:i'),
         ];
     }
 

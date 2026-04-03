@@ -36,11 +36,6 @@ final class MeetingAgendaBuilder
 
     private function compareItems(Toast $left, Toast $right): int
     {
-        $lateComparison = $this->compareLateItems($left, $right);
-        if (0 !== $lateComparison) {
-            return $lateComparison;
-        }
-
         if ($left->isBoosted() !== $right->isBoosted()) {
             return $left->isBoosted() ? -1 : 1;
         }
@@ -48,6 +43,11 @@ final class MeetingAgendaBuilder
         $voteComparison = $right->getVoteCount() <=> $left->getVoteCount();
         if (0 !== $voteComparison) {
             return $voteComparison;
+        }
+
+        $dueDateComparison = $this->compareDueDate($left, $right);
+        if (0 !== $dueDateComparison) {
+            return $dueDateComparison;
         }
 
         return $this->compareId($left, $right);
@@ -75,20 +75,23 @@ final class MeetingAgendaBuilder
         return ($left->getId() ?? PHP_INT_MAX) <=> ($right->getId() ?? PHP_INT_MAX);
     }
 
-    private function compareLateItems(Toast $left, Toast $right): int
+    private function compareDueDate(Toast $left, Toast $right): int
     {
-        $leftIsLate = $this->isLate($left);
-        $rightIsLate = $this->isLate($right);
+        $leftDueAt = $left->getDueAt();
+        $rightDueAt = $right->getDueAt();
 
-        if ($leftIsLate === $rightIsLate) {
+        if (null === $leftDueAt && null === $rightDueAt) {
             return 0;
         }
 
-        return $leftIsLate ? -1 : 1;
-    }
+        if (null === $leftDueAt) {
+            return 1;
+        }
 
-    private function isLate(Toast $item): bool
-    {
-        return null !== $item->getDueAt() && $item->getDueAt() < new \DateTimeImmutable('today');
+        if (null === $rightDueAt) {
+            return -1;
+        }
+
+        return $leftDueAt <=> $rightDueAt;
     }
 }

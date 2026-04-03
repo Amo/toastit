@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps({
   maxWidthClass: { type: String, default: 'max-w-2xl' },
+  zIndexClass: { type: String, default: 'z-[70]' },
 });
 
 const emit = defineEmits(['close']);
@@ -44,7 +45,8 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="!mt-0 fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/20 px-4 py-[5vh] backdrop-blur-[9px]"
+    class="!mt-0 fixed inset-0 flex items-center justify-center bg-stone-950/20 px-4 py-[5vh] backdrop-blur-[9px]"
+    :class="zIndexClass"
     @pointerdown.self="handleBackdropPointerDown"
     @pointerup.self="handleBackdropPointerUp"
     @pointerleave="resetBackdropPointerState"

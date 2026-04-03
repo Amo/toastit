@@ -1,0 +1,10 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block email_body %}
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Toast rephrase proposal</h1>
+    <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#1f1209;"><strong>Current title:</strong> {{ toast.title }}</p>
+    <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#1f1209;"><strong>Proposed title:</strong> {{ proposed_title }}</p>
+    <div style="margin:0;padding:20px;border:1px solid #eceff3;border-radius:20px;background:#faf8f4;font-size:15px;line-height:1.7;color:#1f1209;">
+        {{ proposed_description_html|raw }}
+    </div>
+{% endblock %}

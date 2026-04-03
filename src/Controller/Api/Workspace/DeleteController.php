@@ -22,6 +22,10 @@ final class DeleteController extends AbstractController
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $this->workspaceAccess->assertOwner($workspace);
 
+        if ($workspace->isInboxWorkspace()) {
+            return $this->json(['ok' => false, 'error' => 'inbox_workspace_not_deletable'], 400);
+        }
+
         $workspace->softDelete();
         $this->entityManager->flush();
 

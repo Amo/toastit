@@ -8,7 +8,13 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     app.mailer_from: '%env(MAILER_FROM)%'
+    app.inbound_email_domain: '%env(default::INBOUND_EMAIL_DOMAIN)%'
+    app.inbound_email_secret: '%env(default::INBOUND_EMAIL_SECRET)%'
+    app.profile_avatar_storage_path: '%kernel.project_dir%/var/storage/profile/avatar'
     app.workspace_background_storage_path: '%kernel.project_dir%/var/storage/workspace/background'
+    app.xai_base_url: '%env(XAI_BASE_URL)%'
+    app.xai_model: '%env(XAI_MODEL)%'
+    app.xai_timeout_seconds: '%env(int:XAI_TIMEOUT_SECONDS)%'
 
 services:
     # default configuration for services in *this* file
@@ -24,6 +30,36 @@ services:
     App\Mailer\TransactionalMailer:
         arguments:
             $defaultFrom: '%app.mailer_from%'
+
+    App\Workspace\InboundEmailAddressService:
+        arguments:
+            $inboundEmailDomain: '%app.inbound_email_domain%'
+
+    App\Workspace\InboundReplyAddressService:
+        arguments:
+            $inboundEmailDomain: '%app.inbound_email_domain%'
+
+    App\Controller\Api\Inbound\ReceiveEmailController:
+        arguments:
+            $inboundEmailSecret: '%app.inbound_email_secret%'
+
+    app.profile_avatar_adapter:
+        class: League\Flysystem\Local\LocalFilesystemAdapter
+        arguments:
+            - '%app.profile_avatar_storage_path%'
+
+    app.profile_avatar_filesystem:
+        class: League\Flysystem\Filesystem
+        arguments:
+            - '@app.profile_avatar_adapter'
+
+    App\Profile\AvatarStorageService:
+        arguments:
+            $filesystem: '@app.profile_avatar_filesystem'
+            $storagePath: '%app.profile_avatar_storage_path%'
+
+    League\CommonMark\CommonMarkConverter:
+        class: League\CommonMark\CommonMarkConverter
 
     app.workspace_background_adapter:
         class: League\Flysystem\Local\LocalFilesystemAdapter
@@ -43,3 +79,10 @@ services:
     App\Security\JwtTokenService:
         arguments:
             $secret: '%env(APP_SECRET)%'
+
+    App\Meeting\XaiTextService:
+        arguments:
+            $apiKey: '%env(default::XAI_API_KEY)%'
+            $baseUrl: '%app.xai_base_url%'
+            $model: '%app.xai_model%'
+            $timeoutSeconds: '%app.xai_timeout_seconds%'

@@ -93,14 +93,14 @@ const logout = () => {
     </div>
 
     <aside class="mx-auto w-full max-w-5xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-xl shadow-stone-200/70 lg:p-7">
-      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,44%)] lg:items-center">
+      <div class="grid gap-6 lg:grid-cols-2 lg:items-center">
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Access</p>
           <h2 class="text-2xl font-semibold tracking-tight text-stone-950">Open your workspace.</h2>
           <p class="text-sm leading-6 text-stone-600">Use your email to receive a login code or magic link. No password to remember.</p>
         </div>
 
-        <div class="space-y-4 lg:justify-self-end">
+        <div class="w-full space-y-4">
           <FlashMessages :success="flashes.success" :error="flashes.error" @dismiss="$emit('dismiss-flash', $event)" />
           <p v-if="errorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ errorMessage }}</p>
 
@@ -114,26 +114,26 @@ const logout = () => {
             </div>
           </div>
 
-          <form v-else class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end" @submit.prevent="submit">
-            <label class="grid gap-2 text-sm font-medium text-stone-700">
+          <form v-else class="w-full" @submit.prevent="submit">
+            <label class="relative block rounded-[1.75rem] border border-stone-200 bg-white p-2 transition focus-within:border-amber-400">
               <span class="sr-only">Email address</span>
               <input
                 v-model="emailValue"
-                class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base"
+                class="h-12 w-full appearance-none border-0 bg-transparent px-4 pr-20 text-base leading-none outline-none shadow-none ring-0 focus:border-0 focus:ring-0"
                 type="email"
                 name="email"
                 placeholder="fullname@company.com"
                 required
               >
-            </label>
 
-            <button
-              type="submit"
-              class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500 text-stone-950 shadow-sm transition hover:bg-amber-400"
-              aria-label="Continue"
-            >
-              <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            </button>
+              <button
+                type="submit"
+                class="absolute right-2 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-amber-500 text-stone-950 shadow-sm transition hover:bg-amber-400"
+                aria-label="Continue"
+              >
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+              </button>
+            </label>
           </form>
         </div>
       </div>

@@ -55,7 +55,7 @@ const actionClass = (action, inverted) => {
           v-for="action in actions"
           :key="action.id"
           type="button"
-          :class="actionClass(action, inverted)"
+          :class="[actionClass(action, inverted), action.blinking ? 'tw-ai-pending' : '', action.className ?? '']"
           :disabled="action.disabled"
           @click="$emit('action', action.id)"
         >

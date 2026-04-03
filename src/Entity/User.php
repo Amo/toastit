@@ -40,6 +40,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $pinSetAt = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $avatarPath = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -210,6 +213,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return null !== $this->pinHash;
     }
 
+    public function getAvatarPath(): ?string
+    {
+        return $this->avatarPath;
+    }
+
+    public function setAvatarPath(?string $avatarPath): self
+    {
+        $this->avatarPath = null !== $avatarPath ? trim($avatarPath) : null;
+
+        return $this;
+    }
+
     public function isDeleted(): bool
     {
         return str_ends_with($this->email, '@'.self::DELETED_EMAIL_DOMAIN);
@@ -229,6 +244,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->lastName = null;
         $this->pinHash = null;
         $this->pinSetAt = null;
+        $this->avatarPath = null;
         $this->roles = [];
 
         return $this;

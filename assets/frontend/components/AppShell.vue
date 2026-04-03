@@ -44,6 +44,10 @@ const handleGlobalAppKeydown = (event) => {
   window.location.href = props.dashboardUrl;
 };
 
+const openInbox = () => {
+  window.location.href = '/app/inbox';
+};
+
 const logout = () => {
   authStore.logout();
   window.location.href = '/';
@@ -94,6 +98,19 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
               <button
                 type="button"
+                class="inline-flex h-11 w-11 items-center justify-center rounded-full border transition"
+                :class="currentSection === 'inbox'
+                  ? 'border-sky-300 bg-sky-100 text-sky-700'
+                  : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:text-stone-950'"
+                @click="openInbox"
+                title="Inbox"
+              >
+                <i class="fa-solid fa-inbox" aria-hidden="true"></i>
+                <span class="sr-only">Open inbox</span>
+              </button>
+
+              <button
+                type="button"
                 class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
                 @click="lockSession"
                 title="Lock session"
@@ -130,6 +147,7 @@ onUnmounted(() => {
                   <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
                 </div>
                 <div class="space-y-2">
+                  <a href="/app/inbox" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Inbox</a>
                   <a :href="dashboardUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Workspace</a>
                   <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
                   <button class="flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" type="button" @click="logout">
@@ -144,6 +162,7 @@ onUnmounted(() => {
               <div class="space-y-1">
                 <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
               </div>
+              <a href="/app/inbox" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Inbox</a>
               <a :href="dashboardUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Workspace</a>
               <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
               <button class="w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950" type="button" @click="logout">Sign out</button>

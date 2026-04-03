@@ -1,0 +1,31 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block email_body %}
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Toast actions processed</h1>
+    <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
+        Toastit processed your email reply for <strong>{{ toast.title }}</strong>.
+    </p>
+
+    <ul style="margin:0 0 24px 20px;padding:0;font-size:15px;line-height:1.7;color:#1f1209;">
+        <li>Transfer: <strong>{{ transfer_applied ? 'done' : 'not applied' }}</strong></li>
+        <li>Reword: <strong>{{ reword_applied ? 'done' : 'not applied' }}</strong></li>
+    </ul>
+
+    {% if transfer_applied and workspace_suggestion %}
+        <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#1f1209;">
+            The toast was transferred to <strong>{{ workspace_suggestion.name }}</strong>.
+        </p>
+    {% elseif workspace_suggestion %}
+        <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#1f1209;">
+            Suggested workspace: <strong>{{ workspace_suggestion.name }}</strong><br>
+            {{ workspace_suggestion.reason }}
+        </p>
+    {% endif %}
+
+    {% if reword_applied and proposed_title %}
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#1f1209;"><strong>Proposed title:</strong> {{ proposed_title }}</p>
+        <div style="margin:0;padding:20px;border:1px solid #eceff3;border-radius:20px;background:#faf8f4;font-size:15px;line-height:1.7;color:#1f1209;">
+            {{ proposed_description_html|raw }}
+        </div>
+    {% endif %}
+{% endblock %}

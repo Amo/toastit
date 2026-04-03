@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api\Profile;
 
+use App\Api\ProfilePayloadBuilder;
 use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -14,6 +15,7 @@ final class UpdateController extends AbstractController
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ProfilePayloadBuilder $profilePayloadBuilder,
     ) {
     }
 
@@ -31,15 +33,7 @@ final class UpdateController extends AbstractController
 
         return $this->json([
             'ok' => true,
-            'user' => [
-                'id' => $user->getId(),
-                'email' => $user->getPublicEmail(),
-                'displayName' => $user->getDisplayName(),
-                'firstName' => $user->getFirstName(),
-                'lastName' => $user->getLastName(),
-                'initials' => $user->getInitials(),
-                'gravatarUrl' => $user->getGravatarUrl(),
-            ],
+            'user' => $this->profilePayloadBuilder->buildUser($user),
         ]);
     }
 }

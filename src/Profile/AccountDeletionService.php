@@ -13,6 +13,7 @@ final class AccountDeletionService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly AvatarStorageService $avatarStorage,
     ) {
     }
 
@@ -68,6 +69,7 @@ final class AccountDeletionService
             ->setParameter('user', $user)
             ->execute();
 
+        $this->avatarStorage->delete($user->getAvatarPath());
         $user->anonymize();
 
         $this->entityManager->flush();

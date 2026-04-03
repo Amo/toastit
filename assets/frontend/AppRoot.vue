@@ -28,7 +28,7 @@ let accessRefreshTimerId = null;
 const authRefreshPending = ref(false);
 const authApi = new AuthApi(new ToastitApiClient(''));
 
-const protectedRouteNames = ['dashboard', 'workspace', 'toast', 'profile'];
+const protectedRouteNames = ['dashboard', 'inbox', 'workspace', 'toast', 'profile'];
 const accessTokenExpired = computed(() => {
   const expiresAt = authStore.getAccessTokenExpiresAt();
 
@@ -296,6 +296,17 @@ watch(() => authState.accessToken, syncAccessRefresh);
     content-html=""
   >
     <DashboardPage api-url="/api/dashboard" :access-token="authState.accessToken" />
+  </AppShell>
+
+  <AppShell
+    v-else-if="routeName === 'inbox'"
+    current-section="inbox"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="authState.user"
+    content-html=""
+  >
+    <WorkspacePage api-url="/api/inbox/workspace" :dashboard-url="spa.urls.dashboardUrl" :access-token="authState.accessToken" />
   </AppShell>
 
   <AppShell

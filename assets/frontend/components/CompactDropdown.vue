@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
+import AvatarBadge from './AvatarBadge.vue';
 
 const model = defineModel({ default: '' });
 
@@ -11,7 +12,7 @@ const props = defineProps({
 const open = ref(false);
 const root = ref(null);
 
-const selectedOptionLabel = () => props.options.find((option) => option.value === model.value)?.label ?? '';
+const selectedOption = () => props.options.find((option) => option.value === model.value) ?? null;
 
 const closeOnOutsideClick = (event) => {
   if (!root.value || root.value.contains(event.target)) {
@@ -25,6 +26,8 @@ const selectOption = (value) => {
   model.value = value;
   open.value = false;
 };
+
+const hasIdentity = (option) => !!option && (!!option.initials || !!option.gravatarUrl || !!option.secondaryLabel);
 
 onMounted(() => {
   window.addEventListener('click', closeOnOutsideClick);
@@ -43,8 +46,22 @@ onUnmounted(() => {
       @click="open = !open"
     >
       <span class="inline-flex items-center gap-2">
-        <i v-if="icon" :class="icon" class="text-sm text-stone-400" aria-hidden="true"></i>
-        <span>{{ selectedOptionLabel() }}</span>
+        <i
+          v-if="icon && !(selectedOption() && hasIdentity(selectedOption()))"
+          :class="icon"
+          class="text-sm text-stone-400"
+          aria-hidden="true"
+        ></i>
+        <AvatarBadge
+          v-if="selectedOption() && hasIdentity(selectedOption())"
+          :seed="selectedOption().seed ?? selectedOption().value ?? selectedOption().label"
+          :initials="selectedOption().initials"
+          :gravatar-url="selectedOption().gravatarUrl"
+          :alt="selectedOption().label"
+          :title="selectedOption().label"
+          size-class="h-6 w-6 text-[0.65rem]"
+        />
+        <span>{{ selectedOption()?.label ?? '' }}</span>
       </span>
       <i class="fa-solid fa-chevron-down text-xs text-stone-400" aria-hidden="true"></i>
     </button>
@@ -61,7 +78,21 @@ onUnmounted(() => {
         :class="model === option.value ? 'bg-amber-50 text-amber-800' : ''"
         @click="selectOption(option.value)"
       >
-        <span>{{ option.label }}</span>
+        <span class="inline-flex min-w-0 items-center gap-3">
+          <AvatarBadge
+            v-if="hasIdentity(option)"
+            :seed="option.seed ?? option.value ?? option.label"
+            :initials="option.initials"
+            :gravatar-url="option.gravatarUrl"
+            :alt="option.label"
+            :title="option.label"
+            size-class="h-7 w-7 text-[0.65rem]"
+          />
+          <span class="min-w-0">
+            <span class="block truncate">{{ option.label }}</span>
+            <span v-if="option.secondaryLabel" class="block truncate text-xs text-stone-400">{{ option.secondaryLabel }}</span>
+          </span>
+        </span>
         <i v-if="model === option.value" class="fa-solid fa-check text-xs" aria-hidden="true"></i>
       </button>
     </div>

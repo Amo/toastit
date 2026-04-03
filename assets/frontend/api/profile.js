@@ -11,6 +11,10 @@ export class ProfileApi {
     return this.client.putJson(url, payload);
   }
 
+  uploadAvatar(url, formData) {
+    return this.client.postFormData(url, formData);
+  }
+
   requestDeletionOtp(url) {
     return this.client.postJson(url, {});
   }

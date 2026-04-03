@@ -46,6 +46,9 @@ class Workspace
     #[ORM\Column(name: 'is_solo_workspace', options: ['default' => false])]
     private bool $isSoloWorkspace = false;
 
+    #[ORM\Column(name: 'is_inbox_workspace', options: ['default' => false])]
+    private bool $isInboxWorkspace = false;
+
     #[ORM\Column(name: 'meeting_mode', length: 16, options: ['default' => self::MEETING_MODE_IDLE])]
     private string $meetingMode = self::MEETING_MODE_IDLE;
 
@@ -171,8 +174,19 @@ class Workspace
         return $this->isSoloWorkspace;
     }
 
+    public function isInboxWorkspace(): bool
+    {
+        return $this->isInboxWorkspace;
+    }
+
     public function setIsSoloWorkspace(bool $isSoloWorkspace): self
     {
+        if ($this->isInboxWorkspace && !$isSoloWorkspace) {
+            $this->isSoloWorkspace = true;
+
+            return $this;
+        }
+
         $this->isSoloWorkspace = $isSoloWorkspace;
 
         if ($isSoloWorkspace) {
@@ -184,9 +198,23 @@ class Workspace
         return $this;
     }
 
+    public function setIsInboxWorkspace(bool $isInboxWorkspace): self
+    {
+        $this->isInboxWorkspace = $isInboxWorkspace;
+
+        if ($isInboxWorkspace) {
+            $this->isSoloWorkspace = true;
+            $this->meetingMode = self::MEETING_MODE_IDLE;
+            $this->meetingStartedAt = null;
+            $this->meetingEndedAt = null;
+        }
+
+        return $this;
+    }
+
     public function setMeetingMode(string $meetingMode): self
     {
-        if ($this->isSoloWorkspace) {
+        if ($this->isSoloWorkspace || $this->isInboxWorkspace) {
             $this->meetingMode = self::MEETING_MODE_IDLE;
 
             return $this;
@@ -282,7 +310,7 @@ class Workspace
 
     public function startMeetingMode(User $startedBy, ?\DateTimeImmutable $startedAt = null): self
     {
-        if ($this->isSoloWorkspace) {
+        if ($this->isSoloWorkspace || $this->isInboxWorkspace) {
             return $this;
         }
 

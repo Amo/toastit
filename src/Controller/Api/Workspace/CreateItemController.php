@@ -3,6 +3,7 @@
 namespace App\Controller\Api\Workspace;
 
 use App\Entity\Toast;
+use App\Workspace\ToastCreationService;
 use App\Workspace\WorkspaceAccessService;
 use App\Workspace\WorkspaceWorkflowService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -16,6 +17,7 @@ final class CreateItemController extends AbstractController
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
+        private readonly ToastCreationService $toastCreation,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -43,15 +45,15 @@ final class CreateItemController extends AbstractController
             }
         }
 
-        $item = (new Toast())
-            ->setWorkspace($workspace)
-            ->setAuthor($this->workspaceAccess->getUserOrFail())
-            ->setTitle($title)
-            ->setDescription(trim((string) ($payload['description'] ?? '')) ?: null)
-            ->setOwner($owner)
-            ->setDueAt($dueAt);
+        $item = $this->toastCreation->createToast(
+            $workspace,
+            $this->workspaceAccess->getUserOrFail(),
+            $title,
+            trim((string) ($payload['description'] ?? '')) ?: null,
+            $owner,
+            $dueAt,
+        );
 
-        $this->entityManager->persist($item);
         $this->entityManager->flush();
 
         return $this->json(['ok' => true, 'itemId' => $item->getId()]);

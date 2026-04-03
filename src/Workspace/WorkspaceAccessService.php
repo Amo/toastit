@@ -3,6 +3,7 @@
 namespace App\Workspace;
 
 use App\Entity\Toast;
+use App\Entity\ToastingSession;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Repository\WorkspaceRepository;
@@ -53,6 +54,17 @@ final class WorkspaceAccessService
         $this->getWorkspaceOrFail($item->getWorkspace()->getId());
 
         return $item;
+    }
+
+    public function getToastingSessionOrFail(Workspace $workspace, int $sessionId): ToastingSession
+    {
+        $session = $this->entityManager->getRepository(ToastingSession::class)->find($sessionId);
+
+        if (!$session instanceof ToastingSession || $session->getWorkspace()->getId() !== $workspace->getId()) {
+            throw new NotFoundHttpException();
+        }
+
+        return $session;
     }
 
     public function assertOwner(Workspace $workspace): void

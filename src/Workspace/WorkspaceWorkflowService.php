@@ -47,6 +47,22 @@ final class WorkspaceWorkflowService
         return null;
     }
 
+    public function findWorkspaceInviteeByDisplayName(Workspace $workspace, string $displayName): ?User
+    {
+        $displayName = trim($displayName);
+        if ('' === $displayName) {
+            return null;
+        }
+
+        foreach ($this->getWorkspaceInvitees($workspace) as $invitee) {
+            if (0 === strcasecmp($invitee->getDisplayName(), $displayName)) {
+                return $invitee;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @return array<int, string>
      */

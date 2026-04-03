@@ -9,10 +9,14 @@ use App\Entity\User;
 use App\Entity\Vote;
 use App\Entity\Workspace;
 use App\Entity\WorkspaceMember;
+use App\Profile\AvatarStorageService;
+use App\Profile\AvatarUrlService;
 use App\Meeting\MeetingAgendaBuilder;
 use App\Repository\WorkspaceRepository;
 use App\Tests\Support\ReflectionHelper;
+use App\Workspace\InboundEmailAddressService;
 use App\Workspace\WorkspaceWorkflowService;
+use League\Flysystem\FilesystemOperator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -88,8 +92,17 @@ final class WorkspacePayloadBuilderTest extends TestCase
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->expects(self::never())->method('generate');
+        $filesystem = $this->createMock(FilesystemOperator::class);
+        $avatarUrl = new AvatarUrlService($urlGenerator, new AvatarStorageService($filesystem, sys_get_temp_dir()));
 
-        $builder = new WorkspacePayloadBuilder(new MeetingAgendaBuilder(), new WorkspaceWorkflowService(), $repository, $urlGenerator);
+        $builder = new WorkspacePayloadBuilder(
+            new MeetingAgendaBuilder(),
+            new WorkspaceWorkflowService(),
+            $repository,
+            $avatarUrl,
+            new InboundEmailAddressService('inbound.toastit.test'),
+            $urlGenerator,
+        );
         $payload = $builder->build($workspace, $currentUser);
 
         self::assertSame(1, $payload['currentUser']['id']);
@@ -100,6 +113,7 @@ final class WorkspacePayloadBuilderTest extends TestCase
             'id' => 11,
             'name' => 'Other',
             'isSoloWorkspace' => true,
+            'isInboxWorkspace' => false,
         ]], $payload['otherWorkspaces']);
         self::assertCount(2, $payload['memberships']);
         self::assertCount(2, $payload['participants']);
