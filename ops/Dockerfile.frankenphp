@@ -1,0 +1,42 @@
+FROM dunglas/frankenphp:1-php8.5-bookworm
+
+RUN install-php-extensions \
+    intl \
+    opcache \
+    pdo_mysql \
+    zip
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+COPY composer.json composer.lock symfony.lock ./
+RUN composer install \
+    --no-dev \
+    --no-scripts \
+    --prefer-dist \
+    --no-interaction \
+    --no-progress \
+    --optimize-autoloader \
+    --classmap-authoritative
+
+COPY . .
+
+RUN composer dump-autoload \
+    --no-dev \
+    --optimize \
+    --classmap-authoritative \
+    --no-interaction \
+    && mkdir -p var/cache var/log public/media/profile/avatar public/media/workspace/background \
+    && chown -R www-data:www-data var public/media
+
+COPY docker/frankenphp/php/conf.d/zz-uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
+COPY ops/frankenphp/Caddyfile /etc/frankenphp/Caddyfile
+COPY ops/frankenphp/entrypoint.sh /usr/local/bin/app-entrypoint
+RUN chmod +x /usr/local/bin/app-entrypoint
+
+ENV APP_ENV=prod
+
+ENTRYPOINT ["/usr/local/bin/app-entrypoint"]
+
+EXPOSE 80

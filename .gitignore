@@ -13,6 +13,11 @@
 /.idea/
 /.DS_Store
 */.DS_Store
+/ops/env/*.env
+/ops/env/.env.*
+!/ops/env/*.dist
+!/ops/env/*.example
+!/ops/env/encrypted/.gitkeep
 ###< symfony/framework-bundle ###
 
 ###> phpunit/phpunit ###
