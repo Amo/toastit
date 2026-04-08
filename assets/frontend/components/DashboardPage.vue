@@ -271,8 +271,8 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <aside class="tw-toastit-card h-fit overflow-hidden p-5 xl:sticky xl:top-24">
-        <div class="mb-4 flex items-start justify-between gap-3">
+      <aside class="tw-toastit-card h-fit overflow-hidden p-0 xl:sticky xl:top-24">
+        <div class="mb-1 flex items-start justify-between gap-3 px-5 pt-5 pb-4">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">My workspaces</p>
             <h2 class="mt-2 text-xl font-semibold tracking-tight text-stone-950">Keep the room in view.</h2>
@@ -285,7 +285,7 @@ onUnmounted(() => {
 
         <EmptyState v-if="isLoading" message="Loading..." />
         <EmptyState v-else-if="!payload.workspaces.length" message="No workspaces yet." />
-        <div v-else class="space-y-3">
+        <div v-else class="border-t border-stone-200/80">
           <WorkspaceCompactRow
             v-for="workspace in payload.workspaces"
             :key="workspace.id"

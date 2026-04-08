@@ -34,6 +34,7 @@ final class DashboardPayloadBuilder
         $openItems = 0;
         $resolvedItems = 0;
         $assignedOpenItems = 0;
+        $assignedLateOpenItems = 0;
         $lateOpenItems = 0;
         $today = new \DateTimeImmutable('today');
 
@@ -49,12 +50,18 @@ final class DashboardPayloadBuilder
 
             ++$openItems;
 
-            if (($item->getOwner()?->getId()) === $currentUser->getId()) {
+            $isAssignedToCurrentUser = ($item->getOwner()?->getId()) === $currentUser->getId();
+
+            if ($isAssignedToCurrentUser) {
                 ++$assignedOpenItems;
             }
 
             if (null !== $item->getDueAt() && $item->getDueAt() < $today) {
                 ++$lateOpenItems;
+
+                if ($isAssignedToCurrentUser) {
+                    ++$assignedLateOpenItems;
+                }
             }
         }
 
@@ -63,12 +70,14 @@ final class DashboardPayloadBuilder
             'name' => $workspace->getName(),
             'isDefault' => $workspace->isDefault(),
             'isSoloWorkspace' => $workspace->isSoloWorkspace(),
+            'currentUserIsOwner' => $workspace->isOwnedBy($currentUser),
             'meetingMode' => $workspace->getMeetingMode(),
             'meetingStartedAt' => $workspace->getMeetingStartedAt()?->format(\DateTimeInterface::ATOM),
             'memberCount' => $workspace->getMemberships()->count(),
             'openItemCount' => $openItems,
             'resolvedItemCount' => $resolvedItems,
             'assignedOpenItemCount' => $assignedOpenItems,
+            'assignedLateOpenItemCount' => $assignedLateOpenItems,
             'lateOpenItemCount' => $lateOpenItems,
             'membersPreview' => array_slice(array_map(
                 fn (User $member): array => [

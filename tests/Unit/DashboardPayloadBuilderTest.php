@@ -118,12 +118,14 @@ final class DashboardPayloadBuilderTest extends TestCase
                 'name' => 'Delivery',
                 'isDefault' => false,
                 'isSoloWorkspace' => false,
+                'currentUserIsOwner' => true,
                 'meetingMode' => Workspace::MEETING_MODE_IDLE,
                 'meetingStartedAt' => '2026-04-02T09:00:00+00:00',
                 'memberCount' => 2,
                 'openItemCount' => 1,
                 'resolvedItemCount' => 1,
                 'assignedOpenItemCount' => 1,
+                'assignedLateOpenItemCount' => 1,
                 'lateOpenItemCount' => 1,
                 'membersPreview' => [
                     [
