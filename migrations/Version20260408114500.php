@@ -17,9 +17,13 @@ final class Version20260408114500 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE user ADD inbound_email_alias VARCHAR(36) DEFAULT NULL');
+        $userTable = $schema->getTable('user');
 
-        $userIds = $this->connection->fetchFirstColumn('SELECT id FROM user');
+        if (!$userTable->hasColumn('inbound_email_alias')) {
+            $this->addSql('ALTER TABLE user ADD inbound_email_alias VARCHAR(36) DEFAULT NULL');
+        }
+
+        $userIds = $this->connection->fetchFirstColumn('SELECT id FROM user WHERE inbound_email_alias IS NULL OR inbound_email_alias = \'\'');
 
         foreach ($userIds as $userId) {
             $this->addSql(
@@ -30,12 +34,22 @@ final class Version20260408114500 extends AbstractMigration
         }
 
         $this->addSql('ALTER TABLE user MODIFY inbound_email_alias VARCHAR(36) NOT NULL');
-        $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D649AE1278B3 ON user (inbound_email_alias)');
+
+        if (!$userTable->hasIndex('UNIQ_8D93D649AE1278B3')) {
+            $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D649AE1278B3 ON user (inbound_email_alias)');
+        }
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP INDEX UNIQ_8D93D649AE1278B3 ON user');
-        $this->addSql('ALTER TABLE user DROP inbound_email_alias');
+        $userTable = $schema->getTable('user');
+
+        if ($userTable->hasIndex('UNIQ_8D93D649AE1278B3')) {
+            $this->addSql('DROP INDEX UNIQ_8D93D649AE1278B3 ON user');
+        }
+
+        if ($userTable->hasColumn('inbound_email_alias')) {
+            $this->addSql('ALTER TABLE user DROP inbound_email_alias');
+        }
     }
 }

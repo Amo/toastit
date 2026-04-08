@@ -5,6 +5,7 @@ namespace App\Controller\Api\Auth;
 use App\Api\AuthPayloadBuilder;
 use App\Repository\UserRepository;
 use App\Security\ApiRefreshTokenService;
+use App\Security\AppEventLogger;
 use App\Security\JwtTokenService;
 use App\Security\PinService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,6 +22,7 @@ final class SetupPinController extends AbstractController
         private readonly PinService $pinManager,
         private readonly ApiRefreshTokenService $refreshTokenManager,
         private readonly AuthPayloadBuilder $authPayloadBuilder,
+        private readonly AppEventLogger $eventLogger,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -53,11 +55,13 @@ final class SetupPinController extends AbstractController
         $this->entityManager->flush();
 
         $now = new \DateTimeImmutable();
+        $refreshToken = $this->refreshTokenManager->issue($user, $now);
+        $this->eventLogger->log('auth.login_succeeded', $user->getId(), $user->getEmail(), 'pin_setup', 'succeeded');
 
         return $this->json($this->authPayloadBuilder->buildAuthenticated(
             $user,
             $this->jwtTokenManager->createAccessToken($user, $now),
-            $this->refreshTokenManager->issue($user, $now),
+            $refreshToken,
             $now->getTimestamp() + 900,
         ));
     }

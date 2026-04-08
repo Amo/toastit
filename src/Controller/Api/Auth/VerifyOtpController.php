@@ -4,6 +4,8 @@ namespace App\Controller\Api\Auth;
 
 use App\Api\AuthPayloadBuilder;
 use App\Entity\LoginChallenge;
+use App\Security\AppEventLogger;
+use App\Security\AuthRateLimitService;
 use App\Security\JwtTokenService;
 use App\Security\LoginChallengeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,6 +19,8 @@ final class VerifyOtpController extends AbstractController
         private readonly LoginChallengeService $loginChallengeManager,
         private readonly JwtTokenService $jwtTokenManager,
         private readonly AuthPayloadBuilder $authPayloadBuilder,
+        private readonly AuthRateLimitService $authRateLimit,
+        private readonly AppEventLogger $eventLogger,
     ) {
     }
 
@@ -27,14 +31,28 @@ final class VerifyOtpController extends AbstractController
         $email = trim((string) ($payload['email'] ?? ''));
         $code = trim((string) ($payload['code'] ?? ''));
         $purpose = (string) ($payload['purpose'] ?? LoginChallenge::PURPOSE_LOGIN);
+
+        if (!$this->authRateLimit->allowOtpVerify($request, $email)) {
+            $this->eventLogger->log('auth.otp_verified', null, $email, 'verify_otp', 'rate_limited', [
+                'purpose' => $purpose,
+            ]);
+            return $this->json(['ok' => false, 'error' => 'too_many_attempts'], 429);
+        }
+
         $challenge = $this->loginChallengeManager->consumeByCode($email, $code, $purpose);
 
         if (null === $challenge) {
+            $this->eventLogger->log('auth.otp_verified', null, $email, 'verify_otp', 'failed', [
+                'purpose' => $purpose,
+            ]);
             return $this->json(['ok' => false, 'error' => 'invalid_otp'], 401);
         }
 
         $user = $challenge->getUser();
         $now = new \DateTimeImmutable();
+        $this->eventLogger->log('auth.otp_verified', $user->getId(), $email, 'verify_otp', 'succeeded', [
+            'purpose' => $purpose,
+        ]);
 
         if (!$user->hasPin() || LoginChallenge::PURPOSE_RESET_PIN === $purpose) {
             return $this->json([

@@ -5,6 +5,8 @@ namespace App\Controller\Api\Auth;
 use App\Entity\LoginChallenge;
 use App\Mailer\TransactionalMailer;
 use App\Routing\AppUrlGenerator;
+use App\Security\AppEventLogger;
+use App\Security\AuthRateLimitService;
 use App\Security\LoginChallengeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,6 +19,8 @@ final class RequestOtpController extends AbstractController
         private readonly LoginChallengeService $loginChallengeManager,
         private readonly TransactionalMailer $transactionalMailer,
         private readonly AppUrlGenerator $appUrlGenerator,
+        private readonly AuthRateLimitService $authRateLimit,
+        private readonly AppEventLogger $eventLogger,
     ) {
     }
 
@@ -26,6 +30,13 @@ final class RequestOtpController extends AbstractController
         $payload = $request->toArray();
         $email = trim((string) ($payload['email'] ?? ''));
         $purpose = (string) ($payload['purpose'] ?? LoginChallenge::PURPOSE_LOGIN);
+
+        if (!$this->authRateLimit->allowOtpRequest($request, $email)) {
+            $this->eventLogger->log('auth.otp_requested', null, $email, 'request_otp', 'rate_limited', [
+                'purpose' => $purpose,
+            ]);
+            return $this->json(['ok' => false, 'error' => 'too_many_requests'], 429);
+        }
 
         if ('' === $email || false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $this->json(['ok' => false, 'error' => 'invalid_email'], 400);
@@ -40,6 +51,9 @@ final class RequestOtpController extends AbstractController
         ));
 
         $this->transactionalMailer->sendLoginChallenge($user, $createdChallenge->challenge, $magicLink);
+        $this->eventLogger->log('auth.otp_requested', $user->getId(), $email, 'request_otp', 'succeeded', [
+            'purpose' => $purpose,
+        ]);
 
         return $this->json(['ok' => true]);
     }

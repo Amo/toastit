@@ -34,6 +34,10 @@ final class WorkspaceSuggestionService
             $response = $this->xaiText->generateText(
                 $this->buildSystemPrompt(),
                 $this->buildUserPrompt($title, $description, $workspaces),
+                [
+                    'source' => 'workspace_suggestion',
+                    'userId' => $user->getId(),
+                ],
             );
         } catch (SessionSummaryUnavailableException) {
             return null;

@@ -3,6 +3,7 @@
 namespace App\Workspace;
 
 use App\Entity\Toast;
+use App\Entity\User;
 use App\Entity\Workspace;
 use App\Meeting\MeetingAgendaBuilder;
 use App\Meeting\SessionSummaryUnavailableException;
@@ -24,7 +25,7 @@ final class ToastCurationDraftService
      *   activeToastCount: int
      * }
      */
-    public function generateDraft(Workspace $workspace): array
+    public function generateDraft(Workspace $workspace, ?User $requestedBy = null): array
     {
         $agenda = $this->meetingAgendaBuilder->build($workspace);
         $activeItems = $agenda->activeItems;
@@ -80,6 +81,10 @@ Rules:
 - Every action must include a non-empty "reason".
 PROMPT,
             $this->buildWorkspaceContext($workspace, $activeItems),
+            [
+                'source' => 'toast_curation_draft',
+                'userId' => $requestedBy?->getId(),
+            ],
         );
 
         return $this->parseDraftResponse($response, count($activeItems));

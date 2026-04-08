@@ -3,6 +3,7 @@
 namespace App\Workspace;
 
 use App\Entity\Toast;
+use App\Entity\User;
 use App\Meeting\SessionSummaryUnavailableException;
 use App\Meeting\XaiTextService;
 
@@ -17,7 +18,7 @@ final class ToastExecutionPlanDraftService
     /**
      * @return array{summary: string, actions: list<array<string, mixed>>}
      */
-    public function generate(Toast $toast): array
+    public function generate(Toast $toast, ?User $requestedBy = null): array
     {
         $workspace = $toast->getWorkspace();
         $decisionNotes = trim((string) $toast->getDiscussionNotes());
@@ -64,6 +65,10 @@ Rules:
 - descriptions should clarify expected outcome, constraints, and next move
 PROMPT,
             $this->buildContext($toast),
+            [
+                'source' => 'toast_execution_plan',
+                'userId' => $requestedBy?->getId(),
+            ],
         );
 
         return $this->parseResponse($response, $toast->getId() ?? 0);

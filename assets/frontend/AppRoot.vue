@@ -13,6 +13,8 @@ import PinUnlockPage from './components/PinUnlockPage.vue';
 import DashboardPage from './components/DashboardPage.vue';
 import WorkspacePage from './components/WorkspacePage.vue';
 import ProfilePage from './components/ProfilePage.vue';
+import AdminDashboardPage from './components/AdminDashboardPage.vue';
+import AdminUsersPage from './components/AdminUsersPage.vue';
 import { useSpaContext } from './spaContext';
 
 const props = defineProps({
@@ -28,7 +30,8 @@ let accessRefreshTimerId = null;
 const authRefreshPending = ref(false);
 const authApi = new AuthApi(new ToastitApiClient(''));
 
-const protectedRouteNames = ['dashboard', 'inbox', 'workspace', 'toast', 'profile'];
+const protectedRouteNames = ['dashboard', 'inbox', 'workspace', 'toast', 'profile', 'admin-dashboard', 'admin-users'];
+const rootRouteNames = ['admin-dashboard', 'admin-users'];
 const accessTokenExpired = computed(() => {
   const expiresAt = authStore.getAccessTokenExpiresAt();
 
@@ -69,6 +72,11 @@ const handleApiActivity = () => {
 
 const redirectToPinUnlock = () => {
   if (!protectedRouteNames.includes(String(routeName.value))) {
+    return;
+  }
+
+  if (rootRouteNames.includes(String(routeName.value)) && !authState.user?.isRoot) {
+    router.replace('/app');
     return;
   }
 
@@ -285,6 +293,28 @@ watch(() => authState.accessToken, syncAccessRefresh);
       :flashes="spa.flashes"
       @dismiss-flash="dismissFlash"
     />
+  </AppShell>
+
+  <AppShell
+    v-else-if="routeName === 'admin-dashboard'"
+    current-section="workspace"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="authState.user"
+    content-html=""
+  >
+    <AdminDashboardPage :access-token="authState.accessToken" />
+  </AppShell>
+
+  <AppShell
+    v-else-if="routeName === 'admin-users'"
+    current-section="workspace"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="authState.user"
+    content-html=""
+  >
+    <AdminUsersPage :access-token="authState.accessToken" />
   </AppShell>
 
   <AppShell

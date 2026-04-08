@@ -2,6 +2,7 @@
 
 namespace App\Meeting;
 
+use App\Security\AppEventLogger;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -13,6 +14,7 @@ class XaiTextService
         private readonly string $baseUrl,
         private readonly string $model,
         private readonly int $timeoutSeconds,
+        private readonly ?AppEventLogger $eventLogger = null,
     ) {
     }
 
@@ -21,9 +23,16 @@ class XaiTextService
         return '' !== trim($this->apiKey);
     }
 
-    public function generateText(string $systemPrompt, string $userPrompt): string
+    /**
+     * @param array{source?: string, userId?: int|null}|null $context
+     */
+    public function generateText(string $systemPrompt, string $userPrompt, ?array $context = null): string
     {
+        $source = $context['source'] ?? 'xai';
+        $userId = isset($context['userId']) ? (int) $context['userId'] : null;
+
         if (!$this->isConfigured()) {
+            $this->logEvent($userId, $source, 'not_configured');
             throw new SessionSummaryUnavailableException('xai_not_configured', 'xAI is not configured.');
         }
 
@@ -52,29 +61,38 @@ class XaiTextService
             ]);
 
             if ($response->getStatusCode() >= 400) {
+                $this->logEvent($userId, $source, 'failed');
                 throw new SessionSummaryUnavailableException('xai_request_failed', 'xAI returned an error response.');
             }
 
             $payload = $response->toArray(false);
             if (!is_array($payload)) {
+                $this->logEvent($userId, $source, 'failed');
                 throw new SessionSummaryUnavailableException('xai_empty_response', 'xAI returned an invalid response.');
             }
         } catch (ExceptionInterface $exception) {
+            $this->logEvent($userId, $source, 'failed');
             throw new SessionSummaryUnavailableException('xai_request_failed', 'Unable to contact xAI.', $exception);
         }
 
         $text = $this->extractOutputText($payload);
 
         if ('' === $text) {
+            $this->logEvent($userId, $source, 'failed');
             throw new SessionSummaryUnavailableException('xai_empty_response', 'xAI returned an empty summary.');
         }
+
+        $this->logEvent($userId, $source, 'succeeded');
 
         return $text;
     }
 
-    public function generateSummary(string $systemPrompt, string $userPrompt): string
+    /**
+     * @param array{source?: string, userId?: int|null}|null $context
+     */
+    public function generateSummary(string $systemPrompt, string $userPrompt, ?array $context = null): string
     {
-        return $this->generateText($systemPrompt, $userPrompt);
+        return $this->generateText($systemPrompt, $userPrompt, $context);
     }
 
     /**
@@ -113,5 +131,14 @@ class XaiTextService
         }
 
         return trim(implode("\n\n", array_values(array_unique($chunks))));
+    }
+
+    private function logEvent(?int $userId, string $source, string $status): void
+    {
+        if (!$this->eventLogger instanceof AppEventLogger) {
+            return;
+        }
+
+        $this->eventLogger->log('xai.call', $userId, null, $source, $status);
     }
 }

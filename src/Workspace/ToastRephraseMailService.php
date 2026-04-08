@@ -23,6 +23,7 @@ final class ToastRephraseMailService
             $toast->getWorkspace(),
             $toast->getTitle(),
             $toast->getDescription(),
+            $toast->getAuthor(),
         );
 
         $this->transactionalMailer->sendToastRephraseProposal(

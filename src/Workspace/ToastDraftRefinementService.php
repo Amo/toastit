@@ -3,6 +3,7 @@
 namespace App\Workspace;
 
 use App\Entity\Workspace;
+use App\Entity\User;
 use App\Meeting\SessionSummaryUnavailableException;
 use App\Meeting\XaiTextService;
 
@@ -17,7 +18,7 @@ final class ToastDraftRefinementService
     /**
      * @return array{title: string, description: string, ownerId: ?int, dueOn: ?string}
      */
-    public function refine(Workspace $workspace, string $title, ?string $description): array
+    public function refine(Workspace $workspace, string $title, ?string $description, ?User $requestedBy = null): array
     {
         $title = trim($title);
         $description = trim((string) $description);
@@ -58,6 +59,10 @@ PROMPT,
                 '' !== $title ? $title : '(empty)',
                 '' !== $description ? $description : '(empty)',
             ),
+            [
+                'source' => 'toast_draft_refinement',
+                'userId' => $requestedBy?->getId(),
+            ],
         );
 
         return $this->parseResponse($workspace, $response);

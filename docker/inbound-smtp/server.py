@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import time
+from collections import defaultdict, deque
 from email import policy
 from email.parser import BytesParser
 
@@ -97,8 +98,46 @@ class ToastitInboundHandler:
         self.inbound_url = os.environ["TOASTIT_INBOUND_URL"]
         self.inbound_secret = os.getenv("TOASTIT_INBOUND_SECRET", "")
         self.timeout_seconds = int(os.getenv("TOASTIT_INBOUND_TIMEOUT_SECONDS", "10"))
+        self.max_recipients_per_message = int(os.getenv("INBOUND_SMTP_MAX_RECIPIENTS_PER_MESSAGE", "1"))
+        self.max_messages_per_minute = int(os.getenv("INBOUND_SMTP_MAX_MESSAGES_PER_MINUTE", "10"))
+        self.rate_window_seconds = int(os.getenv("INBOUND_SMTP_RATE_WINDOW_SECONDS", "60"))
+        self.message_attempts = defaultdict(deque)
+
+    def _peer_ip(self, session):
+        peer = getattr(session, "peer", None)
+        if isinstance(peer, tuple) and peer:
+            return str(peer[0])
+        return "unknown-peer"
+
+    def _allow(self, bucket, key, limit):
+        now = time.time()
+        window = bucket[key]
+
+        while window and now - window[0] > self.rate_window_seconds:
+            window.popleft()
+
+        if len(window) >= limit:
+            return False
+
+        window.append(now)
+        return True
+
+    async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
+        peer_ip = self._peer_ip(session)
+
+        if len(envelope.rcpt_tos) >= self.max_recipients_per_message:
+            logging.warning("Rejected recipient from peer=%s because too many recipients were supplied for one message", peer_ip)
+            return "452 Too many recipients for one message"
+
+        envelope.rcpt_tos.append(address)
+        return "250 OK"
 
     async def handle_DATA(self, server, session, envelope):
+        peer_ip = self._peer_ip(session)
+        if not self._allow(self.message_attempts, peer_ip, self.max_messages_per_minute):
+            logging.warning("Rejected message from peer=%s because message rate limit was exceeded", peer_ip)
+            return "421 Too many messages, try again later"
+
         message = BytesParser(policy=policy.default).parsebytes(envelope.original_content)
         sender = envelope.mail_from or message.get("From", "")
         subject = message.get("Subject", "")
@@ -140,6 +179,13 @@ class ToastitInboundHandler:
             )
 
             if response.status_code >= 400:
+                if response.status_code == 404:
+                    logging.warning(
+                        "Toastit rejected recipient=%s as unknown inbox",
+                        recipient,
+                    )
+                    return "550 No such user here"
+
                 logging.error(
                     "Toastit inbound API rejected email recipient=%s status=%s body=%s",
                     recipient,

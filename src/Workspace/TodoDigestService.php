@@ -45,6 +45,10 @@ final class TodoDigestService
         $summary = $this->xaiText->generateText(
             $this->buildSystemPrompt(),
             $this->buildUserPrompt($user, $assignedToasts),
+            [
+                'source' => 'todo_digest',
+                'userId' => $user->getId(),
+            ],
         );
 
         $this->transactionalMailer->sendTodoDigest(

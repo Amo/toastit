@@ -26,7 +26,7 @@ final class ExecutionPlanDraftController extends AbstractController
         $this->workspaceAccess->assertMeetingModeActive($workspace);
 
         try {
-            $draft = $this->executionPlanDraft->generate($item);
+            $draft = $this->executionPlanDraft->generate($item, $this->workspaceAccess->getUserOrFail());
         } catch (SessionSummaryUnavailableException $exception) {
             $statusCode = match ($exception->getReason()) {
                 'missing_decision_notes' => 400,

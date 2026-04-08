@@ -29,6 +29,7 @@ export const createSpaContext = (bootstrap) => {
     },
     get urls() {
       return {
+        adminUrl: '/admin',
         dashboardUrl: '/app',
         profileUrl: '/app/profile',
       };

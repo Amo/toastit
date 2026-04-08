@@ -1,10 +1,18 @@
 framework:
     rate_limiter:
-        auth_request:
+        auth_request_ip:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '15 minutes'
+        auth_request_email:
             policy: 'sliding_window'
             limit: 5
             interval: '15 minutes'
-        auth_verify:
+        auth_verify_ip:
             policy: 'sliding_window'
-            limit: 10
+            limit: 30
+            interval: '15 minutes'
+        auth_verify_email:
+            policy: 'sliding_window'
+            limit: 5
             interval: '15 minutes'

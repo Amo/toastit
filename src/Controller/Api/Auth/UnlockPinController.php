@@ -4,6 +4,7 @@ namespace App\Controller\Api\Auth;
 
 use App\Api\AuthPayloadBuilder;
 use App\Security\ApiRefreshTokenService;
+use App\Security\AppEventLogger;
 use App\Security\JwtTokenService;
 use App\Security\PinService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,6 +19,7 @@ final class UnlockPinController extends AbstractController
         private readonly ApiRefreshTokenService $refreshTokenService,
         private readonly PinService $pinService,
         private readonly AuthPayloadBuilder $authPayloadBuilder,
+        private readonly AppEventLogger $eventLogger,
     ) {
     }
 
@@ -44,6 +46,7 @@ final class UnlockPinController extends AbstractController
             }
 
             $refreshToken = $this->refreshTokenService->issue($user, $now);
+            $this->eventLogger->log('auth.login_succeeded', $user->getId(), $user->getEmail(), 'pin_unlock', 'succeeded');
 
             return $this->json($this->authPayloadBuilder->buildAuthenticated(
                 $user,
@@ -68,6 +71,7 @@ final class UnlockPinController extends AbstractController
             }
 
             $this->refreshTokenService->markUsed($refreshToken, $now);
+            $this->eventLogger->log('auth.login_succeeded', $user->getId(), $user->getEmail(), 'refresh_unlock', 'succeeded');
 
             return $this->json($this->authPayloadBuilder->buildAuthenticated(
                 $user,

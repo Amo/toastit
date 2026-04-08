@@ -24,7 +24,7 @@ final class ToastCurationDraftController extends AbstractController
         $this->workspaceAccess->assertOwner($workspace);
 
         try {
-            $draft = $this->toastCurationDraft->generateDraft($workspace);
+            $draft = $this->toastCurationDraft->generateDraft($workspace, $this->workspaceAccess->getUserOrFail());
         } catch (SessionSummaryUnavailableException $exception) {
             $statusCode = match ($exception->getReason()) {
                 'xai_not_configured' => 503,

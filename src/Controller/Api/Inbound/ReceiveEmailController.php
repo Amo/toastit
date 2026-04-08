@@ -3,6 +3,8 @@
 namespace App\Controller\Api\Inbound;
 
 use App\Workspace\InboundEmailMessage;
+use App\Workspace\InboundRecipientAccessService;
+use App\Security\AppEventLogger;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,6 +15,8 @@ final class ReceiveEmailController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $messageBus,
+        private readonly InboundRecipientAccessService $inboundRecipientAccess,
+        private readonly AppEventLogger $eventLogger,
         private readonly string $inboundEmailSecret,
     ) {
     }
@@ -32,6 +36,13 @@ final class ReceiveEmailController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'missing_email_metadata'], 400);
         }
 
+        if (!$this->inboundRecipientAccess->isAccepted($recipient)) {
+            $this->eventLogger->log('inbound.email_rejected', null, $from, 'inbound_email', 'unknown_recipient', [
+                'recipient' => $recipient,
+            ]);
+            return $this->json(['ok' => false, 'error' => 'unknown_inbox'], 404);
+        }
+
         $this->messageBus->dispatch(new InboundEmailMessage(
             $recipient,
             $from,
@@ -42,6 +53,9 @@ final class ReceiveEmailController extends AbstractController
             isset($payload['inReplyTo']) ? (string) $payload['inReplyTo'] : null,
             isset($payload['references']) ? (string) $payload['references'] : null,
         ));
+        $this->eventLogger->log('inbound.email_received', null, $from, 'inbound_email', 'queued', [
+            'recipient' => $recipient,
+        ]);
 
         return $this->json([
             'ok' => true,

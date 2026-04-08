@@ -165,6 +165,7 @@ final class InboundEmailService
                 $toast->getWorkspace(),
                 $toast->getTitle(),
                 $toast->getDescription(),
+                $actor,
             );
 
             $proposedTitle = $proposal['title'];

@@ -46,7 +46,11 @@ Do not invent decisions, owners, dates, or follow-ups.
 When information is ambiguous or missing, call it out explicitly.
 Keep the recap concise, actionable, and suitable for sharing with the team.
 PROMPT,
-            $summaryContext['prompt'].sprintf("\n\nRequested by: %s", $requestedBy->getDisplayName())
+            $summaryContext['prompt'].sprintf("\n\nRequested by: %s", $requestedBy->getDisplayName()),
+            [
+                'source' => 'session_summary',
+                'userId' => $requestedBy->getId(),
+            ],
         ), $generatedAt);
         $session
             ->setSummaryGeneratedAt($generatedAt)

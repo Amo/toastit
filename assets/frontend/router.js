@@ -8,6 +8,8 @@ export const createSpaRouter = () => createRouter({
     { path: '/connexion/magic/:selector/:token', name: 'auth-magic' },
     { path: '/pin/setup', name: 'pin-setup' },
     { path: '/pin/unlock', name: 'pin-unlock' },
+    { path: '/admin', name: 'admin-dashboard' },
+    { path: '/admin/users', name: 'admin-users' },
     { path: '/app', name: 'dashboard' },
     { path: '/app/inbox', name: 'inbox' },
     { path: '/app/workspaces/:id', name: 'workspace' },
