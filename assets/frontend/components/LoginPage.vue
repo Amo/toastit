@@ -8,7 +8,6 @@ import FlashMessages from './FlashMessages.vue';
 import PageHero from './PageHero.vue';
 import PrimaryActionButton from './PrimaryActionButton.vue';
 import SecondaryActionButton from './SecondaryActionButton.vue';
-import TextInputField from './TextInputField.vue';
 
 defineEmits(['dismiss-flash']);
 
@@ -25,26 +24,44 @@ const emailValue = ref(props.email);
 const errorMessage = ref('');
 
 const benefitPills = [
-  'From idea to owner in minutes',
-  'Great for solo work, 1:1s, team rituals',
-  'Keeps decisions and follow-ups in the same place',
+  'Meeting todo tracking built-in',
+  'AI powered summaries',
+  'AI assistant for execution',
+  'Email commands to update tasks fast',
+  'Secure confirmations for uncertain actions',
+  'My Actions first dashboard',
 ];
 
-const featureCards = [
+const changelogHighlights = [
   {
-    icon: 'fa-solid fa-bread-slice',
-    title: 'Capture the right toast',
-    description: 'Collect issues, ideas, decisions, follow-ups, and context before they vanish in chat or sticky notes.',
+    icon: 'fa-solid fa-square-check',
+    title: 'Meeting todo flow',
+    description: 'Capture decisions and follow-ups during meetings, with clear owners and due dates.',
   },
   {
-    icon: 'fa-solid fa-users',
-    title: 'Toast together',
-    description: 'Run structured meetings with votes, boosts, ownership, deadlines, and a clear record of what was decided.',
+    icon: 'fa-solid fa-sparkles',
+    title: 'AI powered summary',
+    description: 'Generate concise meeting summaries from the full discussion context.',
   },
   {
-    icon: 'fa-regular fa-calendar-check',
-    title: 'Turn momentum into execution',
-    description: 'Carry the action forward with due dates, responsible owners, history, and the next follow-up already lined up.',
+    icon: 'fa-solid fa-robot',
+    title: 'AI assistant',
+    description: 'Get guided next actions and execution support directly in your workflow.',
+  },
+  {
+    icon: 'fa-solid fa-envelope-open-text',
+    title: 'Command-based email workflow',
+    description: 'Reply with concise commands like assign, due, comment, move, update, and reword.',
+  },
+  {
+    icon: 'fa-solid fa-shield-halved',
+    title: 'Confidence-gated actions',
+    description: 'Clear commands apply instantly, and lower-confidence actions are confirmed with authenticated links.',
+  },
+  {
+    icon: 'fa-solid fa-list-check',
+    title: 'Simplified dashboard',
+    description: 'My Actions is now the main focus, with a compact workspace rail for quick navigation.',
   },
 ];
 
@@ -71,8 +88,8 @@ const logout = () => {
     <div class="mx-auto max-w-4xl space-y-6">
       <PageHero
         eyebrow="Toastit"
-        title="Turn rough notes into shared decisions, owners, and real follow-through."
-        description="ToastIt gives your ideas a place to land, your meetings a structure to run, and your team a lightweight system to make decisions stick."
+        title="Decisions, owners, and follow-through. Without process overhead."
+        description="Toastit keeps the path from note to accountable action simple, and now works faster from both inbox and dashboard."
       />
 
       <div class="flex flex-wrap justify-center gap-2.5">
@@ -133,38 +150,24 @@ const logout = () => {
       </div>
     </aside>
 
-    <div class="space-y-8">
+    <aside class="mx-auto w-full max-w-5xl space-y-4 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm shadow-stone-200/70 lg:p-7">
+      <div class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">What changed recently</p>
+        <h2 class="text-2xl font-semibold tracking-tight text-stone-950">Latest product updates</h2>
+      </div>
       <div class="grid gap-4 md:grid-cols-3">
         <article
-          v-for="card in featureCards"
-          :key="card.title"
-          class="rounded-[1.75rem] border border-stone-200 bg-white/90 p-5 shadow-sm shadow-stone-200/60"
+          v-for="highlight in changelogHighlights"
+          :key="highlight.title"
+          class="rounded-[1.5rem] border border-stone-200 bg-white p-5"
         >
           <div class="inline-grid h-11 w-11 place-items-center rounded-2xl bg-stone-950 text-sm text-white">
-            <i :class="card.icon" aria-hidden="true"></i>
+            <i :class="highlight.icon" aria-hidden="true"></i>
           </div>
-          <h2 class="mt-4 text-lg font-semibold text-stone-950">{{ card.title }}</h2>
-          <p class="mt-2 text-sm leading-6 text-stone-600">{{ card.description }}</p>
+          <h2 class="mt-4 text-lg font-semibold text-stone-950">{{ highlight.title }}</h2>
+          <p class="mt-2 text-sm leading-6 text-stone-600">{{ highlight.description }}</p>
         </article>
       </div>
-
-      <div class="grid gap-4 lg:grid-cols-2">
-        <div class="rounded-[2rem] border border-stone-900 bg-stone-950 p-6 text-stone-50 shadow-xl shadow-stone-900/15">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Why it works</p>
-          <p class="mt-4 text-2xl font-semibold leading-tight">One flow for capture, prioritization, toasting, and follow-up.</p>
-          <p class="mt-4 text-sm leading-6 text-stone-300">
-            No split between “brain dump” and “project tracking”. ToastIt keeps the messy beginning and the accountable ending in the same workspace.
-          </p>
-        </div>
-
-        <div class="rounded-[2rem] border border-amber-200 bg-amber-500 p-6 text-stone-950 shadow-xl shadow-amber-200/50">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-950/70">Why ToastIt</p>
-          <p class="mt-4 text-2xl font-semibold leading-tight">It starts like a Post-it, but it does not stop at the idea.</p>
-          <p class="mt-4 text-sm leading-6 text-amber-950/85">
-            ToastIt is the moment a rough note gets prepared, selected, cooked, and turned into something that creates real value. A thought lands fast, then gets clarified, prioritized, assigned, and followed through until it delivers.
-          </p>
-        </div>
-      </div>
-    </div>
+    </aside>
   </section>
 </template>
