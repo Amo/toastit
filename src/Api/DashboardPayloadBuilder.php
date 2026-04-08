@@ -12,12 +12,19 @@ final class DashboardPayloadBuilder
     public function __construct(
         private readonly WorkspaceRepository $workspaceRepository,
         private readonly AvatarUrlService $avatarUrl,
+        private readonly MyActionsPayloadBuilder $myActionsPayloadBuilder,
     ) {
     }
 
     public function build(User $user): array
     {
+        $myActions = $this->myActionsPayloadBuilder->build($user);
+
         return [
+            'myActions' => [
+                'summary' => $myActions['summary'],
+                'actions' => $myActions['actions'],
+            ],
             'workspaces' => array_map(fn (Workspace $workspace): array => $this->buildWorkspaceSummary($workspace, $user), $this->workspaceRepository->findForUser($user)),
         ];
     }

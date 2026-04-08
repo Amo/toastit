@@ -69,4 +69,42 @@ final class AuthFlowTest extends WebTestCase
         self::assertTrue($magicPayload['ok']);
         self::assertTrue($magicPayload['requiresPinUnlock']);
     }
+
+    public function testFirstPinSetupSendsOnboardingEmail(): void
+    {
+        $client = static::createClient();
+        $this->clearMailpit();
+        $email = sprintf('onboarding-%s@example.com', time());
+
+        $client->jsonRequest('POST', '/api/auth/request-otp', ['email' => $email]);
+        self::assertResponseIsSuccessful();
+        $payload = $this->fetchSingleMailpitMessage();
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $payload['Text'], $match);
+
+        $client->jsonRequest('POST', '/api/auth/verify-otp', [
+            'email' => $email,
+            'code' => $match[1].$match[2],
+            'purpose' => 'login',
+        ]);
+        self::assertResponseIsSuccessful();
+        $verifyPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->clearMailpit();
+
+        $client->jsonRequest('POST', '/api/auth/pin/setup', [
+            'pinSetupToken' => $verifyPayload['pinSetupToken'],
+            'pin' => '1234',
+            'pinConfirmation' => '1234',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $onboardingMail = $this->fetchSingleMailpitMessage();
+
+        self::assertSame('Welcome to Toastit', $onboardingMail['Subject']);
+        self::assertStringContainsString('Add this address to your contacts', $onboardingMail['Text']);
+        self::assertStringContainsString('subject "todo"', $onboardingMail['Text']);
+        self::assertStringContainsString('"reword"', $onboardingMail['Text']);
+        self::assertStringContainsString('"transfer"', $onboardingMail['Text']);
+        self::assertStringContainsString('hello@toastit.cc', $onboardingMail['Text']);
+    }
 }

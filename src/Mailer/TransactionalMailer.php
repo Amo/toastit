@@ -58,6 +58,24 @@ final class TransactionalMailer
         $this->mailer->send($email);
     }
 
+    public function sendOnboarding(User $user, string $inboxEmailAddress): void
+    {
+        $context = [
+            'user' => $user,
+            'inbox_email_address' => $inboxEmailAddress,
+            'contact_email' => 'hello@toastit.cc',
+        ];
+
+        $email = (new Email())
+            ->from(new Address($this->defaultFrom, 'Toastit'))
+            ->to($user->getEmail())
+            ->subject('Welcome to Toastit')
+            ->html($this->twig->render('emails/onboarding.html.twig', $context))
+            ->text($this->twig->render('emails/onboarding.txt.twig', $context));
+
+        $this->mailer->send($email);
+    }
+
     public function sendTodoDigest(
         User $user,
         string $summary,

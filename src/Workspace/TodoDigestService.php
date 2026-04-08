@@ -14,6 +14,7 @@ final class TodoDigestService
         private readonly ToastRepository $toastRepository,
         private readonly XaiTextService $xaiText,
         private readonly TransactionalMailer $transactionalMailer,
+        private readonly AssignedToastPriorityService $assignedToastPriority,
     ) {
     }
 
@@ -88,7 +89,7 @@ final class TodoDigestService
             'Assigned active actions:',
         ];
 
-        foreach ($this->sortToasts($assignedToasts) as $toast) {
+        foreach ($this->assignedToastPriority->sort($assignedToasts) as $toast) {
             $lines[] = sprintf('- title: %s', $toast->getTitle());
             $lines[] = sprintf('  workspace: %s', $toast->getWorkspace()->getName());
             $lines[] = sprintf('  due_on: %s', $toast->getDueAt()?->format('Y-m-d') ?? 'none');
@@ -99,35 +100,5 @@ final class TodoDigestService
         }
 
         return implode("\n", $lines);
-    }
-
-    /**
-     * @param list<Toast> $assignedToasts
-     *
-     * @return list<Toast>
-     */
-    private function sortToasts(array $assignedToasts): array
-    {
-        usort($assignedToasts, static function (Toast $left, Toast $right): int {
-            if ($left->isBoosted() !== $right->isBoosted()) {
-                return $left->isBoosted() ? -1 : 1;
-            }
-
-            if (null !== $left->getDueAt() && null !== $right->getDueAt() && $left->getDueAt() != $right->getDueAt()) {
-                return $left->getDueAt() <=> $right->getDueAt();
-            }
-
-            if (null !== $left->getDueAt() xor null !== $right->getDueAt()) {
-                return null !== $left->getDueAt() ? -1 : 1;
-            }
-
-            if ($left->getVoteCount() !== $right->getVoteCount()) {
-                return $right->getVoteCount() <=> $left->getVoteCount();
-            }
-
-            return $left->getCreatedAt() <=> $right->getCreatedAt();
-        });
-
-        return $assignedToasts;
     }
 }

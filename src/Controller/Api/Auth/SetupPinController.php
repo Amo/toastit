@@ -3,6 +3,7 @@
 namespace App\Controller\Api\Auth;
 
 use App\Api\AuthPayloadBuilder;
+use App\Mailer\TransactionalMailer;
 use App\Repository\UserRepository;
 use App\Security\ApiRefreshTokenService;
 use App\Security\AppEventLogger;
@@ -22,6 +23,7 @@ final class SetupPinController extends AbstractController
         private readonly PinService $pinManager,
         private readonly ApiRefreshTokenService $refreshTokenManager,
         private readonly AuthPayloadBuilder $authPayloadBuilder,
+        private readonly TransactionalMailer $transactionalMailer,
         private readonly AppEventLogger $eventLogger,
         private readonly EntityManagerInterface $entityManager,
     ) {
@@ -45,6 +47,8 @@ final class SetupPinController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'unknown_user'], 404);
         }
 
+        $isFirstPinSetup = !$user->hasPin();
+
         if (!preg_match('/^\d{4}$/', $pin) || $pin !== $pinConfirmation) {
             return $this->json(['ok' => false, 'error' => 'invalid_pin'], 400);
         }
@@ -53,6 +57,13 @@ final class SetupPinController extends AbstractController
             ->setPinHash($this->pinManager->hashPin($user, $pin))
             ->setPinSetAt(new \DateTimeImmutable());
         $this->entityManager->flush();
+
+        if ($isFirstPinSetup) {
+            $this->transactionalMailer->sendOnboarding(
+                $user,
+                (string) $this->authPayloadBuilder->buildUser($user)['inboxEmailAddress'],
+            );
+        }
 
         $now = new \DateTimeImmutable();
         $refreshToken = $this->refreshTokenManager->issue($user, $now);

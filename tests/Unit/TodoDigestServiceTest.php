@@ -8,6 +8,7 @@ use App\Entity\Workspace;
 use App\Mailer\TransactionalMailer;
 use App\Meeting\XaiTextService;
 use App\Repository\ToastRepository;
+use App\Workspace\AssignedToastPriorityService;
 use App\Workspace\TodoDigestService;
 use League\CommonMark\CommonMarkConverter;
 use PHPUnit\Framework\TestCase;
@@ -69,7 +70,7 @@ final class TodoDigestServiceTest extends TestCase
             'no-reply@toastit.local',
         );
 
-        (new TodoDigestService($toastRepository, $xaiText, $mailer))->sendTodoDigest($user);
+        (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService()))->sendTodoDigest($user);
     }
 
     public function testSendTodoDigestFallsBackWhenNoAssignedActionsExist(): void
@@ -103,6 +104,6 @@ final class TodoDigestServiceTest extends TestCase
             'no-reply@toastit.local',
         );
 
-        (new TodoDigestService($toastRepository, $xaiText, $mailer))->sendTodoDigest($user);
+        (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService()))->sendTodoDigest($user);
     }
 }

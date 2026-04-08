@@ -1,0 +1,33 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block email_body %}
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Welcome to Toastit</h1>
+    <p style="margin:0 0 20px;font-size:16px;line-height:1.6;">
+        Your inbox contact is <strong>{{ inbox_email_address }}</strong>.
+    </p>
+
+    <p style="margin:0 0 12px;font-size:16px;line-height:1.6;">
+        Add this address to your contacts so your ideas can reach Toastit quickly when they happen.
+    </p>
+
+    <p style="margin:20px 0 8px;font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">
+        What you can do by emailing this contact
+    </p>
+    <ul style="margin:0 0 16px 20px;padding:0;font-size:16px;line-height:1.7;color:#1f1209;">
+        <li>Send any email to turn it into a new toast in your Inbox workspace.</li>
+        <li>Use the subject <strong>todo</strong> to receive your current todo digest by email.</li>
+    </ul>
+
+    <p style="margin:20px 0 8px;font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">
+        What you can do in replies
+    </p>
+    <ul style="margin:0 0 16px 20px;padding:0;font-size:16px;line-height:1.7;color:#1f1209;">
+        <li>Reply with <strong>reword</strong> to get an improved rewrite proposal.</li>
+        <li>Reply with <strong>transfer</strong> to move the toast to the suggested workspace when Toastit can resolve one.</li>
+        <li>Reply with both words to apply both actions in the same email.</li>
+    </ul>
+
+    <p style="margin:20px 0 0;font-size:16px;line-height:1.6;">
+        Toastit is under heavy development. Suggestions, feedback, and help are very welcome at <a href="mailto:{{ contact_email }}" style="color:#b45309;text-decoration:none;font-weight:700;">{{ contact_email }}</a>.
+    </p>
+{% endblock %}

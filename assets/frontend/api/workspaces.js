@@ -19,6 +19,10 @@ export class WorkspacesApi {
     return this.client.getJson(url);
   }
 
+  getMyActions(url) {
+    return this.client.getJson(url);
+  }
+
   saveWorkspaceSettings(workspaceId, payload) {
     return this.client.postJson(`/api/workspaces/${workspaceId}/settings`, payload);
   }
