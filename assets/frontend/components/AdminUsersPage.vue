@@ -23,6 +23,10 @@ const fetchUsers = async () => {
   isLoading.value = false;
 };
 
+const openOverview = () => {
+  window.location.href = '/admin';
+};
+
 onMounted(() => {
   fetchUsers();
 });
@@ -35,7 +39,7 @@ onMounted(() => {
       title="ROOT users."
       :stats="[{ label: `${users.length} users`, className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold' }]"
       :actions="[{ id: 'overview', label: 'Overview', icon: 'fa-solid fa-chart-column', theme: 'secondary' }]"
-      @action="window.location.href = '/admin'"
+      @action="openOverview"
     />
 
     <div class="tw-toastit-card overflow-hidden p-6">

@@ -49,6 +49,10 @@ const statCards = computed(() => [
   },
 ]);
 
+const openUsers = () => {
+  window.location.href = '/admin/users';
+};
+
 onMounted(() => {
   fetchDashboard();
 });
@@ -61,7 +65,7 @@ onMounted(() => {
       title="ROOT overview."
       :stats="statCards.map((item) => ({ label: `${item.value} ${item.label}`, className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold' }))"
       :actions="[{ id: 'users', label: 'User list', icon: 'fa-solid fa-users', theme: 'secondary' }]"
-      @action="window.location.href = '/admin/users'"
+      @action="openUsers"
     />
 
     <div class="tw-toastit-card p-6">
