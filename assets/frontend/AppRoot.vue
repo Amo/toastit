@@ -6,6 +6,7 @@ import { ToastitApiClient } from './api/ToastitApiClient';
 import { AuthApi } from './api/auth';
 import AppShell from './components/AppShell.vue';
 import AuthMagicPage from './components/AuthMagicPage.vue';
+import EmailActionConfirmPage from './components/EmailActionConfirmPage.vue';
 import LoginPage from './components/LoginPage.vue';
 import AuthVerifyPage from './components/AuthVerifyPage.vue';
 import PinSetupPage from './components/PinSetupPage.vue';
@@ -259,6 +260,18 @@ watch(() => authState.accessToken, syncAccessRefresh);
     content-html=""
   >
     <AuthMagicPage />
+  </AppShell>
+
+  <AppShell
+    v-else-if="routeName === 'email-action-confirm'"
+    current-section="workspace"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="null"
+    :show-app-navigation="false"
+    content-html=""
+  >
+    <EmailActionConfirmPage :token="String(route.params.token ?? '')" />
   </AppShell>
 
   <main v-else-if="authRefreshPending || (protectedRouteNames.includes(String(routeName)) && accessTokenExpired)" class="toastit-shell">

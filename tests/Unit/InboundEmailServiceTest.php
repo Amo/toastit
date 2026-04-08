@@ -20,6 +20,7 @@ use App\Workspace\InboundEmailResult;
 use App\Workspace\InboundEmailService;
 use App\Workspace\InboundReplyAddressService;
 use App\Workspace\InboxWorkspaceService;
+use App\Workspace\AssignedToastPriorityService;
 use App\Workspace\TodoDigestService;
 use App\Workspace\ToastCreationService;
 use App\Workspace\ToastDraftRefinementService;
@@ -27,8 +28,11 @@ use App\Workspace\ToastReplyTokenService;
 use App\Workspace\ToastTransferService;
 use App\Workspace\WorkspaceSuggestionService;
 use App\Workspace\WorkspaceWorkflowService;
+use App\Routing\AppUrlGenerator;
+use App\Security\JwtTokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\Mailer\MailerInterface;
@@ -68,7 +72,7 @@ final class InboundEmailServiceTest extends TestCase
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager
-            ->expects(self::exactly(2))
+            ->expects(self::once())
             ->method('flush');
 
         $replyTokenRepository = $this->createMock(ToastReplyTokenRepository::class);
@@ -107,10 +111,16 @@ JSON),
             'no-reply@toastit.local',
         );
 
+        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $urlGenerator
+            ->method('generate')
+            ->willReturn('/email/action/mock-token');
+
         $service = new InboundEmailService(
             new InboundEmailAddressService('in.toastit.cc'),
             $this->createMock(UserRepository::class),
             $this->createMock(WorkspaceRepository::class),
+            $this->createMock(ToastRepository::class),
             new InboxWorkspaceService(
                 $this->createMock(WorkspaceRepository::class),
                 $this->createMock(WorkspaceMemberRepository::class),
@@ -121,6 +131,7 @@ JSON),
                 $this->createMock(ToastRepository::class),
                 new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
                 $transactionalMailer,
+                new AssignedToastPriorityService(),
             ),
             $toastDraftRefinement,
             $toastReplyToken,
@@ -132,6 +143,8 @@ JSON),
             $transactionalMailer,
             new ToastTransferService(new WorkspaceWorkflowService(), $this->createMock(EntityManagerInterface::class)),
             new WorkspaceWorkflowService(),
+            new JwtTokenService('unit-test-secret'),
+            new AppUrlGenerator($urlGenerator, 'https://toastit.test'),
             $entityManager,
         );
 

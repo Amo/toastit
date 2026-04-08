@@ -68,12 +68,14 @@ final class TodoDigestService
             'Review only the active actions assigned to that user.',
             'Return a markdown answer titled "## Top 10 actions".',
             'List at most 10 actions, in priority order.',
-            'For each action, include:',
-            '- the action title',
-            '- the workspace name',
-            '- a short reason for the ranking',
-            '- the due date when available',
-            'Be concise and practical.',
+            'Use exactly one concise line per action in this format:',
+            '- [<id>] <title>, <date>, <assignee>',
+            'Rules:',
+            '- <id> is the task id as an integer',
+            '- <date> is YYYY-MM-DD or "none"',
+            '- <assignee> is the assignee display name',
+            '- Do not include workspace, rationale, prose, or extra sections',
+            '- Do not add any text before or after the list',
         ]);
     }
 
@@ -90,9 +92,11 @@ final class TodoDigestService
         ];
 
         foreach ($this->assignedToastPriority->sort($assignedToasts) as $toast) {
+            $lines[] = sprintf('  id: %d', $toast->getId() ?? 0);
             $lines[] = sprintf('- title: %s', $toast->getTitle());
             $lines[] = sprintf('  workspace: %s', $toast->getWorkspace()->getName());
             $lines[] = sprintf('  due_on: %s', $toast->getDueAt()?->format('Y-m-d') ?? 'none');
+            $lines[] = sprintf('  assignee: %s', $toast->getOwner()?->getDisplayName() ?? $user->getDisplayName());
             $lines[] = sprintf('  created_at: %s', $toast->getCreatedAt()->format('Y-m-d H:i'));
             $lines[] = sprintf('  boosted: %s', $toast->isBoosted() ? 'yes' : 'no');
             $lines[] = sprintf('  vote_count: %d', $toast->getVoteCount());

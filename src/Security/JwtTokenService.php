@@ -45,6 +45,24 @@ final class JwtTokenService
         ]);
     }
 
+    public function createInboundActionConfirmToken(
+        User $user,
+        int $toastId,
+        string $action,
+        array $actionPayload,
+        \DateTimeImmutable $now,
+    ): string {
+        return $this->encode([
+            'typ' => 'inbound_action_confirm',
+            'sub' => $user->getId(),
+            'tid' => $toastId,
+            'act' => $action,
+            'ap' => $actionPayload,
+            'iat' => $now->getTimestamp(),
+            'exp' => $now->modify('+48 hours')->getTimestamp(),
+        ]);
+    }
+
     public function decode(string $token): ?array
     {
         $parts = explode('.', $token);

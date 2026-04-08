@@ -161,34 +161,51 @@ final class TransactionalMailer
         $this->mailer->send($email);
     }
 
-    /**
-     * @param array{id: int, name: string, reason: string}|null $workspaceSuggestion
-     */
     public function sendToastReplyActionResult(
         Toast $toast,
-        bool $rewordApplied,
-        bool $transferApplied,
-        ?array $workspaceSuggestion,
-        ?string $proposedTitle,
-        ?string $proposedDescription,
+        array $actionResults,
         ?string $originalSubject = null,
         ?string $messageId = null,
         ?string $references = null,
     ): void {
+        $this->sendInboundActionSummary(
+            $toast->getAuthor(),
+            sprintf('Task #%d — %s', $toast->getId(), $toast->getTitle()),
+            $actionResults,
+            $originalSubject ?: sprintf('Task #%d', $toast->getId()),
+            $messageId,
+            $references,
+        );
+    }
+
+    public function sendInboundActionSummary(
+        User $recipient,
+        string $contextLabel,
+        array $actionResults,
+        ?string $originalSubject = null,
+        ?string $messageId = null,
+        ?string $references = null,
+    ): void {
+        $pendingCount = count(array_filter(
+            $actionResults,
+            static fn (array $result): bool => 'pending_confirmation' === ($result['status'] ?? null),
+        ));
+        $appliedCount = count(array_filter(
+            $actionResults,
+            static fn (array $result): bool => 'applied' === ($result['status'] ?? null),
+        ));
+
         $context = [
-            'toast' => $toast,
-            'reword_applied' => $rewordApplied,
-            'transfer_applied' => $transferApplied,
-            'workspace_suggestion' => $workspaceSuggestion,
-            'proposed_title' => $proposedTitle,
-            'proposed_description_html' => null !== $proposedDescription ? $this->markdownConverter->convert(trim($proposedDescription))->getContent() : null,
-            'proposed_description_text' => null !== $proposedDescription ? trim($proposedDescription) : null,
+            'context_label' => $contextLabel,
+            'action_results' => $actionResults,
+            'pending_count' => $pendingCount,
+            'applied_count' => $appliedCount,
         ];
 
         $email = (new Email())
             ->from(new Address($this->defaultFrom, 'Toastit'))
-            ->to($toast->getAuthor()->getEmail())
-            ->subject($this->buildReplySubject($originalSubject ?: $toast->getTitle()))
+            ->to($recipient->getEmail())
+            ->subject($this->buildReplySubject($originalSubject ?: $contextLabel))
             ->html($this->twig->render('emails/toast_reply_action_result.html.twig', $context))
             ->text($this->twig->render('emails/toast_reply_action_result.txt.twig', $context));
 

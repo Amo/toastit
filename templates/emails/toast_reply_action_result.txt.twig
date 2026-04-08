@@ -1,19 +1,24 @@
 Toast actions processed
 
-Toastit processed your email reply for "{{ toast.title }}".
+{{ context_label }}
+Applied: {{ applied_count }}
+Pending confirmation: {{ pending_count }}
 
-Transfer: {{ transfer_applied ? 'done' : 'not applied' }}
-Reword: {{ reword_applied ? 'done' : 'not applied' }}
-
-{% if transfer_applied and workspace_suggestion %}
-Transferred to: {{ workspace_suggestion.name }}
-{% elseif workspace_suggestion %}
-Suggested workspace: {{ workspace_suggestion.name }}
-{{ workspace_suggestion.reason }}
+{% for result in action_results %}
+- [{{ result.status|upper }}] #{{ result.taskId }} {{ result.summary }}
+  {{ result.details }}
+{% if result.options is defined and result.options|length > 0 %}
+{% for option in result.options %}
+  - Option: {{ option.label }}
+    {{ option.url }}
+{% endfor %}
 {% endif %}
+{% endfor %}
 
-{% if reword_applied and proposed_title %}
-Proposed title: {{ proposed_title }}
-
-{{ proposed_description_text }}
+{% if pending_count > 0 %}
+Some commands were not applied because confidence was low.
+Reply with explicit commands (one per line), for example:
+- #123 assign owner@example.com
+- #123 due 2026-04-20
+- #123 move Product Board
 {% endif %}

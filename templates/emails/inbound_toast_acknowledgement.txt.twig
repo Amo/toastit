@@ -1,12 +1,19 @@
 Toast received
 
-Your email created a new toast in your hidden Inbox workspace.
-
+Task #{{ toast.id }} created in your Inbox workspace.
 Title: {{ toast.title }}
+
+Reply commands (one per line, optional prefix: #{{ toast.id }}):
+- assign me
+- assign owner@example.com
+- due 2026-04-20
+- comment: quick update
+- note: same as comment
+- move Product Board
+- update
+- reword
 
 {% if workspace_suggestion %}
 Suggested workspace: {{ workspace_suggestion.name }}
 {{ workspace_suggestion.reason }}
-
 {% endif %}
-Reply with "reword" to receive an xAI reformulation proposal, "transfer" to move the toast to the suggested workspace when possible, or both words to trigger both actions.

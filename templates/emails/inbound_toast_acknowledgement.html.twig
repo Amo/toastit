@@ -1,21 +1,31 @@
 {% extends 'emails/base.html.twig' %}
 
 {% block email_body %}
-    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Toast received</h1>
-    <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
-        Your email created a new toast in your hidden Inbox workspace.
+    <h1 style="margin:0 0 12px;font-size:24px;line-height:1.2;">Toast received</h1>
+    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;">
+        <strong>Task #{{ toast.id }}</strong> created in your Inbox workspace.
     </p>
-    <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#1f1209;">
-        <strong>Title:</strong> {{ toast.title }}
-    </p>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f1209;"><strong>Title:</strong> {{ toast.title }}</p>
+
+    <div style="margin:0 0 18px;padding:14px;border:1px solid #eceff3;border-radius:14px;background:#faf8f4;font-size:14px;line-height:1.6;color:#1f1209;">
+        <p style="margin:0 0 8px;font-weight:700;">Reply commands (one per line, optional prefix: #{{ toast.id }})</p>
+        <ul style="margin:0 0 0 18px;padding:0;">
+            <li>assign me</li>
+            <li>assign owner@example.com</li>
+            <li>due 2026-04-20</li>
+            <li>comment: quick update</li>
+            <li>note: same as comment</li>
+            <li>move Product Board</li>
+            <li>update</li>
+            <li>reword</li>
+        </ul>
+    </div>
+
     {% if workspace_suggestion %}
-        <div style="margin:0 0 24px;padding:20px;border:1px solid #dbeafe;border-radius:20px;background:#eff6ff;font-size:15px;line-height:1.7;color:#1e3a8a;">
-            <p style="margin:0 0 8px;font-weight:700;">Suggested workspace</p>
+        <div style="margin:0;padding:14px;border:1px solid #dbeafe;border-radius:14px;background:#eff6ff;font-size:14px;line-height:1.6;color:#1e3a8a;">
+            <p style="margin:0 0 6px;font-weight:700;">Suggested workspace</p>
             <p style="margin:0 0 8px;"><strong>{{ workspace_suggestion.name }}</strong></p>
             <p style="margin:0;">{{ workspace_suggestion.reason }}</p>
         </div>
     {% endif %}
-    <p style="margin:0;font-size:15px;line-height:1.7;color:#1f1209;">
-        Reply with <strong>reword</strong> to receive an xAI reformulation proposal, <strong>transfer</strong> to move the toast to the suggested workspace when possible, or both words to trigger both actions.
-    </p>
 {% endblock %}

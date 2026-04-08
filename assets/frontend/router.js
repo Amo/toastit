@@ -6,6 +6,7 @@ export const createSpaRouter = () => createRouter({
     { path: '/', name: 'home' },
     { path: '/connexion/verifier', name: 'auth-verify' },
     { path: '/connexion/magic/:selector/:token', name: 'auth-magic' },
+    { path: '/email/action/:token', name: 'email-action-confirm' },
     { path: '/pin/setup', name: 'pin-setup' },
     { path: '/pin/unlock', name: 'pin-unlock' },
     { path: '/admin', name: 'admin-dashboard' },
