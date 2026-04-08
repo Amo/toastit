@@ -1,5 +1,9 @@
 FROM dunglas/frankenphp:1-php8.5-bookworm
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN install-php-extensions \
     intl \
     opcache \
@@ -33,7 +37,10 @@ RUN composer dump-autoload \
 COPY docker/frankenphp/php/conf.d/zz-uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
 COPY ops/frankenphp/Caddyfile /etc/frankenphp/Caddyfile
 COPY ops/frankenphp/entrypoint.sh /usr/local/bin/app-entrypoint
+COPY ops/frankenphp/worker-entrypoint.sh /usr/local/bin/worker-entrypoint
+COPY ops/supervisor/messenger-worker.conf /etc/supervisor/conf.d/messenger-worker.conf
 RUN chmod +x /usr/local/bin/app-entrypoint
+RUN chmod +x /usr/local/bin/worker-entrypoint
 
 ENV APP_ENV=prod
 

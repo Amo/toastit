@@ -26,4 +26,32 @@ services:
       - "2525:2525"
     depends_on:
       - php
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["worker-entrypoint"]
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_DEBUG: 1
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      DEFAULT_URI: ${DEFAULT_URI}
+      MAILER_DSN: ${MAILER_DSN}
+      MAILER_FROM: ${MAILER_FROM}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN}
+      INBOUND_EMAIL_DOMAIN: ${INBOUND_EMAIL_DOMAIN}
+      INBOUND_EMAIL_SECRET: ${INBOUND_EMAIL_SECRET}
+      XAI_API_KEY: ${XAI_API_KEY}
+      XAI_BASE_URL: ${XAI_BASE_URL}
+      XAI_MODEL: ${XAI_MODEL}
+      XAI_TIMEOUT_SECONDS: ${XAI_TIMEOUT_SECONDS}
+    volumes:
+      - ./:/app
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      database:
+        condition: service_healthy
 ###< symfony/mailer ###

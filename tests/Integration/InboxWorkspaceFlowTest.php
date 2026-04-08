@@ -53,9 +53,9 @@ final class InboxWorkspaceFlowTest extends WebTestCase
             'subject' => 'Inbox-created toast',
             'text' => "This email should become a toast.\n\nWith the mail body kept as description.",
         ], JSON_THROW_ON_ERROR));
-        self::assertResponseIsSuccessful();
+        self::assertResponseStatusCodeSame(202);
         $ingestPayload = $this->decodeJsonResponse($client);
-        self::assertSame($workspaceId, $ingestPayload['workspaceId']);
+        self::assertSame('queued', $ingestPayload['kind']);
 
         $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
         $client->request('GET', '/api/dashboard');

@@ -5,6 +5,7 @@ namespace App\Workspace;
 use App\Entity\Toast;
 use App\Entity\ToastReplyToken;
 use App\Entity\User;
+use App\Entity\Workspace;
 use App\Repository\WorkspaceRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -25,6 +26,7 @@ final class InboundEmailService
         private readonly WorkspaceSuggestionService $workspaceSuggestion,
         private readonly TransactionalMailer $transactionalMailer,
         private readonly ToastTransferService $toastTransfer,
+        private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -167,6 +169,7 @@ final class InboundEmailService
 
             $proposedTitle = $proposal['title'];
             $proposedDescription = $proposal['description'];
+            $this->applyRewordProposal($toast, $proposal);
             $rewordApplied = true;
         }
 
@@ -258,5 +261,36 @@ final class InboundEmailService
     private function workspaceAccessWorkspaceOrNull(int $workspaceId, User $user): ?\App\Entity\Workspace
     {
         return $this->workspaceRepository->findOneForUser($workspaceId, $user);
+    }
+
+    /**
+     * @param array{title: string, description: string, ownerId: ?int, dueOn: ?string} $proposal
+     */
+    private function applyRewordProposal(Toast $toast, array $proposal): void
+    {
+        $toast
+            ->setTitle(trim($proposal['title']))
+            ->setDescription(trim((string) $proposal['description']) ?: null)
+            ->setOwner($this->resolveWorkspaceOwner($toast->getWorkspace(), $proposal['ownerId']))
+            ->setDueAt($this->resolveDueAt($proposal['dueOn']));
+    }
+
+    private function resolveWorkspaceOwner(Workspace $workspace, ?int $ownerId): ?User
+    {
+        if (null === $ownerId) {
+            return null;
+        }
+
+        return $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, $ownerId);
+    }
+
+    private function resolveDueAt(?string $dueOn): ?\DateTimeImmutable
+    {
+        $dueOn = trim((string) $dueOn);
+        if ('' === $dueOn) {
+            return null;
+        }
+
+        return new \DateTimeImmutable($dueOn);
     }
 }

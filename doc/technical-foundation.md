@@ -219,11 +219,13 @@ Current inbound rules:
 - the inbox workspace is accessible through dedicated app navigation, not normal workspace discovery
 - the inbox workspace is non-configurable: it cannot be renamed, shared, or deleted through the product flows
 - inbound delivery is protected server-side through environment-driven configuration
+- inbound SMTP receipt must stay fast and queue the heavy processing asynchronously
 
 Current inbound configuration is environment-driven through:
 
 - `INBOUND_EMAIL_DOMAIN`
 - `INBOUND_EMAIL_SECRET`
+- `MESSENGER_TRANSPORT_DSN`
 
 ### Local prototype
 
@@ -234,6 +236,8 @@ Current local prototype rules:
 - the `inbound-smtp` container accepts SMTP on port `2525`
 - it parses the inbound message and forwards JSON to Toastit at `/api/inbound/email`
 - Toastit validates the shared secret using `INBOUND_EMAIL_SECRET`
+- Toastit queues inbound processing in Messenger backed by the database
+- a dedicated worker container consumes the queued inbound messages under `supervisord`
 - the target user is derived from the recipient address, not the sender address
 
 ## Design System Discipline

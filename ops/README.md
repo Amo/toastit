@@ -5,7 +5,7 @@ Toastit should follow the same pattern as the existing Dockerized apps:
 
 - Apache terminates TLS for `toastit.cc`
 - Apache reverse-proxies to FrankenPHP bound on `127.0.0.1:${APP_BIND_PORT}`
-- Docker Compose runs the application, MariaDB, and inbound SMTP fully containerized
+- Docker Compose runs the application, MariaDB, a Messenger worker, and inbound SMTP fully containerized
 
 ## Files
 
@@ -48,6 +48,12 @@ The deploy flow builds and pushes both runtime images:
 
 Those image refs are injected by `make deploy-prod` at deploy time.
 They should not be stored in the env file, because the tag changes on each deploy.
+
+The production env must also define:
+
+- `MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=async`
+
+The `worker` service consumes queued messages from that transport under `supervisord`.
 
 The VPS should keep a checked-out repo only for the Compose and Apache files, not as a remote build workspace.
 

@@ -2,16 +2,17 @@
 
 namespace App\Controller\Api\Inbound;
 
-use App\Workspace\InboundEmailService;
+use App\Workspace\InboundEmailMessage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class ReceiveEmailController extends AbstractController
 {
     public function __construct(
-        private readonly InboundEmailService $inboundEmail,
+        private readonly MessageBusInterface $messageBus,
         private readonly string $inboundEmailSecret,
     ) {
     }
@@ -31,7 +32,7 @@ final class ReceiveEmailController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'missing_email_metadata'], 400);
         }
 
-        $result = $this->inboundEmail->ingest(
+        $this->messageBus->dispatch(new InboundEmailMessage(
             $recipient,
             $from,
             isset($payload['subject']) ? (string) $payload['subject'] : null,
@@ -40,27 +41,12 @@ final class ReceiveEmailController extends AbstractController
             isset($payload['messageId']) ? (string) $payload['messageId'] : null,
             isset($payload['inReplyTo']) ? (string) $payload['inReplyTo'] : null,
             isset($payload['references']) ? (string) $payload['references'] : null,
-        );
-
-        if (null === $result) {
-            return $this->json(['ok' => false, 'error' => 'unknown_inbox'], 404);
-        }
-
-        if ('todo_digest_sent' === $result->getKind()) {
-            return $this->json([
-                'ok' => true,
-                'kind' => 'todo_digest_sent',
-            ]);
-        }
-
-        $toast = $result->getToast();
+        ));
 
         return $this->json([
             'ok' => true,
-            'kind' => 'toast_created',
-            'itemId' => $toast->getId(),
-            'workspaceId' => $toast->getWorkspace()->getId(),
-        ]);
+            'kind' => 'queued',
+        ], 202);
     }
 
     private function isSecretValid(string $providedSecret): bool
