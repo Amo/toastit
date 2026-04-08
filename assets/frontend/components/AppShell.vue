@@ -65,6 +65,7 @@ onMounted(async () => {
   }
 
   window.addEventListener('keydown', handleGlobalAppKeydown);
+window.addEventListener('toastit:api-activity', fetchInboxUnreadCount);\n    await fetchInboxUnreadCount();
 });
 
 onUnmounted(() => {
@@ -95,6 +96,7 @@ onUnmounted(() => {
           </div>
 
           <div v-if="showAppNavigation" class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+<div class=\"relative\">\n                <button
             <div class="flex items-center gap-3">
               <button
                 type="button"
@@ -223,6 +225,36 @@ onUnmounted(() => {
               <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">Cmd/Ctrl + Enter</span>
             </div>
           </div>
+        </div>
+      </div>
+    </ModalDialog>
+
+    <main class="py-6">
+      <div v-if="slots.default" class="tw-toastit-shell">
+        <slot />
+      </div>
+      <div v-else class="tw-toastit-shell" ref="contentRef" v-html="contentHtml"></div>
+    </main>
+  </div>
+</template>
+r-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Submit the new toast modal form</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">Cmd/Ctrl + Enter</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ModalDialog>
+
+    <main class="py-6">
+      <div v-if="slots.default" class="tw-toastit-shell">
+        <slot />
+      </div>
+      <div v-else class="tw-toastit-shell" ref="contentRef" v-html="contentHtml"></div>
+    </main>
+  </div>
+</template>
+ </div>
         </div>
       </div>
     </ModalDialog>

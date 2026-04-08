@@ -312,3 +312,5 @@
 .tw-ai-rainbow-action i {
   color: rgb(28 25 23) !important;
 }
+
+\n\n@keyframes toastit-notification-pulse {\n  0%, 100% {\n    transform: scale(1);\n    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);\n  }\n  50% {\n    transform: scale(1.05);\n    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);\n  }\n}\n\n.tw-notification-badge {\n  animation: toastit-notification-pulse 2s ease-in-out infinite;\n}
