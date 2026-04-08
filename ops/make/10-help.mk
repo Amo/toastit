@@ -28,11 +28,19 @@ help:
 	@echo "      ghcr.io/<owner>/toastit:<tag>"
 	@echo "      ghcr.io/<owner>/toastit-inbound-smtp:<tag>"
 	@echo
+	@echo "Versioning:"
+	@echo "  make bump [RELEASE_NOTE='Tag message']"
+	@echo "    - suggests next patch version from VERSION"
+	@echo "    - prepends generated entries to CHANGELOG.md"
+	@echo "    - commits, tags, and pushes branch + tags"
+	@echo
 	@echo "Encrypted env management:"
 	@echo "  make encrypt-env ENV_FILE=<name> [ENV_PASSPHRASE=...]"
 	@echo "  make decrypt-env ENV_FILE=<name> [ENV_PASSPHRASE=...]"
 	@echo
 	@echo "Deploy:"
+	@echo "  make deploy [ENV_FILE=<name>] [DEPLOY_TAG=<tag>] [GHCR_USER=<owner>] [ENV_PASSPHRASE=...]"
+	@echo "    - defaults to tag from VERSION when DEPLOY_TAG is omitted"
 	@echo "  make deploy-prod ENV_FILE=<name> DEPLOY_TAG=<tag> [GHCR_USER=<owner>] [ENV_PASSPHRASE=...]"
 	@echo "    - decrypts env locally to a temp file"
 	@echo "    - builds and pushes the app + inbound SMTP images"
