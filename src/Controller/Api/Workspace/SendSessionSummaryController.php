@@ -3,13 +3,13 @@
 namespace App\Controller\Api\Workspace;
 
 use App\Mailer\TransactionalMailer;
+use App\Routing\AppUrlGenerator;
 use App\Workspace\WorkspaceAccessService;
 use App\Workspace\WorkspaceWorkflowService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class SendSessionSummaryController extends AbstractController
 {
@@ -17,7 +17,7 @@ final class SendSessionSummaryController extends AbstractController
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly TransactionalMailer $transactionalMailer,
-        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly AppUrlGenerator $appUrlGenerator,
     ) {
     }
 
@@ -48,9 +48,7 @@ final class SendSessionSummaryController extends AbstractController
         $toastUrlsById = [];
         foreach ($workspace->getItems() as $item) {
             if (null !== $item->getId()) {
-                $toastUrlsById[$item->getId()] = $this->urlGenerator->generate('app_spa', [
-                    'path' => sprintf('toasts/%d', $item->getId()),
-                ], UrlGeneratorInterface::ABSOLUTE_URL);
+                $toastUrlsById[$item->getId()] = $this->appUrlGenerator->spaPath(sprintf('toasts/%d', $item->getId()));
             }
         }
 

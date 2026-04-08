@@ -22,12 +22,29 @@ final class MagicLinkController extends AbstractController
     #[Route('/api/auth/magic/{selector}/{token}', name: 'api_auth_magic', methods: ['GET'])]
     public function __invoke(string $selector, string $token): JsonResponse
     {
+        $challenge = $this->loginChallengeManager->previewByMagicLink($selector, $token);
+
+        if (null === $challenge) {
+            return $this->json(['ok' => false, 'error' => 'invalid_magic_link'], 401);
+        }
+
+        return $this->buildChallengeResponse($challenge);
+    }
+
+    #[Route('/api/auth/magic/{selector}/{token}/consume', name: 'api_auth_magic_consume', methods: ['POST'])]
+    public function consume(string $selector, string $token): JsonResponse
+    {
         $challenge = $this->loginChallengeManager->consumeByMagicLink($selector, $token);
 
         if (null === $challenge) {
             return $this->json(['ok' => false, 'error' => 'invalid_magic_link'], 401);
         }
 
+        return $this->buildChallengeResponse($challenge);
+    }
+
+    private function buildChallengeResponse(LoginChallenge $challenge): JsonResponse
+    {
         $user = $challenge->getUser();
         $now = new \DateTimeImmutable();
 

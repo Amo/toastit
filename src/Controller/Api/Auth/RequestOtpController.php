@@ -4,19 +4,19 @@ namespace App\Controller\Api\Auth;
 
 use App\Entity\LoginChallenge;
 use App\Mailer\TransactionalMailer;
+use App\Routing\AppUrlGenerator;
 use App\Security\LoginChallengeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class RequestOtpController extends AbstractController
 {
     public function __construct(
         private readonly LoginChallengeService $loginChallengeManager,
         private readonly TransactionalMailer $transactionalMailer,
-        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly AppUrlGenerator $appUrlGenerator,
     ) {
     }
 
@@ -33,9 +33,11 @@ final class RequestOtpController extends AbstractController
 
         $user = $this->loginChallengeManager->getOrCreateUser($email);
         $createdChallenge = $this->loginChallengeManager->issueChallenge($user, $purpose);
-        $magicLink = $this->urlGenerator->generate('app_spa', [
-            'path' => sprintf('connexion/magic/%s/%s', $createdChallenge->challenge->getSelector(), $createdChallenge->plainToken),
-        ], UrlGeneratorInterface::ABSOLUTE_URL);
+        $magicLink = $this->appUrlGenerator->spaPath(sprintf(
+            'connexion/magic/%s/%s',
+            $createdChallenge->challenge->getSelector(),
+            $createdChallenge->plainToken,
+        ));
 
         $this->transactionalMailer->sendLoginChallenge($user, $createdChallenge->challenge, $magicLink);
 

@@ -144,6 +144,12 @@ final class ApiAuthFlowTest extends WebTestCase
 
         $client->request('GET', sprintf('/api/auth/magic/%s/%s', $linkMatch[1], $linkMatch[2]));
         self::assertResponseIsSuccessful();
+        $previewPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($previewPayload['ok']);
+        self::assertTrue($previewPayload['requiresPinSetup']);
+
+        $client->jsonRequest('POST', sprintf('/api/auth/magic/%s/%s/consume', $linkMatch[1], $linkMatch[2]));
+        self::assertResponseIsSuccessful();
         $magicPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($magicPayload['ok']);
         self::assertTrue($magicPayload['requiresPinSetup']);
@@ -167,6 +173,12 @@ final class ApiAuthFlowTest extends WebTestCase
         self::assertCount(3, $loginLinkMatch);
 
         $client->request('GET', sprintf('/api/auth/magic/%s/%s', $loginLinkMatch[1], $loginLinkMatch[2]));
+        self::assertResponseIsSuccessful();
+        $previewLoginPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($previewLoginPayload['ok']);
+        self::assertTrue($previewLoginPayload['requiresPinUnlock']);
+
+        $client->jsonRequest('POST', sprintf('/api/auth/magic/%s/%s/consume', $loginLinkMatch[1], $loginLinkMatch[2]));
         self::assertResponseIsSuccessful();
         $loginMagicPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($loginMagicPayload['ok']);

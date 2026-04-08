@@ -88,6 +88,20 @@ final class LoginChallengeService
 
     public function consumeByMagicLink(string $selector, string $token): ?LoginChallenge
     {
+        $challenge = $this->previewByMagicLink($selector, $token);
+
+        if (null === $challenge) {
+            return null;
+        }
+
+        $challenge->setUsedAt(new \DateTimeImmutable());
+        $this->entityManager->flush();
+
+        return $challenge;
+    }
+
+    public function previewByMagicLink(string $selector, string $token): ?LoginChallenge
+    {
         $challenge = $this->challengeRepository->findActiveBySelector($selector, new \DateTimeImmutable());
 
         if (null === $challenge) {
@@ -97,9 +111,6 @@ final class LoginChallengeService
         if (!hash_equals($challenge->getTokenHash(), hash('sha256', $token))) {
             return null;
         }
-
-        $challenge->setUsedAt(new \DateTimeImmutable());
-        $this->entityManager->flush();
 
         return $challenge;
     }
