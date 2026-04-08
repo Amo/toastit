@@ -41,6 +41,7 @@ final class InboxWorkspaceFlowTest extends WebTestCase
         $recipient = static::getContainer()->get(InboundEmailAddressService::class)->buildAddressForUser($user);
         self::assertNotNull($recipient);
         self::assertSame($recipient, $inboxPayload['currentUser']['inboxEmailAddress']);
+        self::assertSame(mb_strtolower($recipient), $recipient);
 
         $client->setServerParameter('HTTP_AUTHORIZATION', '');
         $client->request('POST', '/api/inbound/email', server: [

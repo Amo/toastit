@@ -43,12 +43,26 @@ final class InboundEmailService
             return $replyResult;
         }
 
-        $userEmail = $this->inboundEmailAddress->resolveUserEmail($recipient);
-        if (null === $userEmail) {
-            return null;
+        $user = null;
+        $userAlias = $this->inboundEmailAddress->resolveUserAlias($recipient);
+
+        if (null !== $userAlias) {
+            $candidateUser = $this->userRepository->findOneByInboundEmailAlias($userAlias);
+            if ($candidateUser instanceof User) {
+                $user = $candidateUser;
+            }
+        } else {
+            $userEmail = $this->inboundEmailAddress->resolveUserEmail($recipient);
+            if (null === $userEmail) {
+                return null;
+            }
+
+            $candidateUser = $this->userRepository->findOneByNormalizedEmail($userEmail);
+            if ($candidateUser instanceof User) {
+                $user = $candidateUser;
+            }
         }
 
-        $user = $this->userRepository->findOneByNormalizedEmail($userEmail);
         if (!$user instanceof User || $user->isDeleted()) {
             return null;
         }

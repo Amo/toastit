@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -21,6 +22,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 180)]
     private string $email = '';
+
+    #[ORM\Column(length: 36, unique: true)]
+    private string $inboundEmailAlias;
 
     #[ORM\Column(length: 120, nullable: true)]
     private ?string $firstName = null;
@@ -46,6 +50,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
+        $this->inboundEmailAlias = Uuid::v7()->toRfc4122();
     }
 
     public function getId(): ?int
@@ -56,6 +61,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getEmail(): string
     {
         return $this->email;
+    }
+
+    public function getInboundEmailAlias(): string
+    {
+        return $this->inboundEmailAlias;
+    }
+
+    public function setInboundEmailAlias(string $inboundEmailAlias): self
+    {
+        $this->inboundEmailAlias = mb_strtolower(trim($inboundEmailAlias));
+
+        return $this;
     }
 
     public function setEmail(string $email): self

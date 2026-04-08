@@ -20,4 +20,9 @@ class UserRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['email' => $email]);
     }
+
+    public function findOneByInboundEmailAlias(string $inboundEmailAlias): ?User
+    {
+        return $this->findOneBy(['inboundEmailAlias' => mb_strtolower(trim($inboundEmailAlias))]);
+    }
 }

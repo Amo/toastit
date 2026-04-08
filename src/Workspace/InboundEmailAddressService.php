@@ -23,30 +23,30 @@ final class InboundEmailAddressService
         return sprintf(
             '%s%s@%s',
             self::LOCAL_PART_PREFIX,
-            $this->encodeEmail($email),
+            mb_strtolower($user->getInboundEmailAlias()),
             $this->inboundEmailDomain,
         );
     }
 
+    public function resolveUserAlias(string $recipient): ?string
+    {
+        [$localPart] = $this->parseRecipient($recipient) ?? [null, null];
+        if (null === $localPart) {
+            return null;
+        }
+
+        $alias = mb_strtolower(substr($localPart, \strlen(self::LOCAL_PART_PREFIX)));
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $alias)) {
+            return null;
+        }
+
+        return $alias;
+    }
+
     public function resolveUserEmail(string $recipient): ?string
     {
-        $recipient = trim($recipient);
-        if ('' === $recipient) {
-            return null;
-        }
-
-        $parts = explode('@', $recipient, 2);
-        if (2 !== \count($parts)) {
-            return null;
-        }
-
-        [$localPart, $domain] = $parts;
-
-        if ('' === $this->inboundEmailDomain || mb_strtolower($domain) !== mb_strtolower($this->inboundEmailDomain)) {
-            return null;
-        }
-
-        if (!str_starts_with($localPart, self::LOCAL_PART_PREFIX)) {
+        [$localPart] = $this->parseRecipient($recipient) ?? [null, null];
+        if (null === $localPart) {
             return null;
         }
 
@@ -77,5 +77,33 @@ final class InboundEmailAddressService
         }
 
         return mb_strtolower(trim($decodedEmail));
+    }
+
+    /**
+     * @return array{string, string}|null
+     */
+    private function parseRecipient(string $recipient): ?array
+    {
+        $recipient = trim($recipient);
+        if ('' === $recipient) {
+            return null;
+        }
+
+        $parts = explode('@', $recipient, 2);
+        if (2 !== \count($parts)) {
+            return null;
+        }
+
+        [$localPart, $domain] = $parts;
+
+        if ('' === $this->inboundEmailDomain || mb_strtolower($domain) !== mb_strtolower($this->inboundEmailDomain)) {
+            return null;
+        }
+
+        if (!str_starts_with($localPart, self::LOCAL_PART_PREFIX)) {
+            return null;
+        }
+
+        return [$localPart, $domain];
     }
 }
