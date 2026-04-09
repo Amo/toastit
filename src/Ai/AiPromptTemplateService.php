@@ -43,13 +43,20 @@ class AiPromptTemplateService
      */
     private function renderTemplate(string $templateSource, array $variables, string $fallbackPrompt): string
     {
+        $templateSource = trim($templateSource);
+        $fallbackPrompt = trim($fallbackPrompt);
+
         try {
+            if ('' === $templateSource) {
+                return $fallbackPrompt;
+            }
+
             $rendered = $this->twig->createTemplate($templateSource)->render($variables);
             $rendered = trim($rendered);
 
-            return '' !== $rendered ? $rendered : trim($fallbackPrompt);
+            return '' !== $rendered ? $rendered : $templateSource;
         } catch (Error) {
-            return trim($fallbackPrompt);
+            return '' !== $templateSource ? $templateSource : $fallbackPrompt;
         }
     }
 
