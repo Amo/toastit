@@ -11,6 +11,7 @@ export const createSpaRouter = () => createRouter({
     { path: '/pin/unlock', name: 'pin-unlock' },
     { path: '/admin', name: 'admin-dashboard' },
     { path: '/admin/users', name: 'admin-users' },
+    { path: '/admin/prompts', name: 'admin-prompts' },
     { path: '/app', name: 'dashboard' },
     { path: '/app/inbox', name: 'inbox' },
     { path: '/app/workspaces/:id', name: 'workspace' },

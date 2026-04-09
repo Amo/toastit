@@ -145,4 +145,23 @@ class WorkspaceRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    public function findDefaultWorkspaceForUser(User $user): ?Workspace
+    {
+        return $this->createQueryBuilder('workspace')
+            ->distinct()
+            ->leftJoin('workspace.memberships', 'membership')
+            ->where('workspace.deletedAt IS NULL')
+            ->andWhere('workspace.isInboxWorkspace = false')
+            ->andWhere('workspace.isDefault = true')
+            ->andWhere('(
+                workspace.organizer = :user
+                OR membership.user = :user
+            )')
+            ->setParameter('user', $user)
+            ->orderBy('workspace.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

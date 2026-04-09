@@ -2,6 +2,7 @@
 
 namespace App\Workspace;
 
+use App\Ai\AiPromptTemplateService;
 use App\Entity\User;
 use App\Entity\Workspace;
 use App\Repository\WorkspaceRepository;
@@ -13,11 +14,12 @@ final class WorkspaceSuggestionService
     public function __construct(
         private readonly WorkspaceRepository $workspaceRepository,
         private readonly XaiTextService $xaiText,
+        private readonly AiPromptTemplateService $promptTemplate,
     ) {
     }
 
     /**
-     * @return array{id: int, name: string, reason: string}|null
+     * @return array{id: int, name: string, reason: string, confidence: int}|null
      */
     public function suggestWorkspace(User $user, string $title, ?string $description): ?array
     {
@@ -31,9 +33,29 @@ final class WorkspaceSuggestionService
         }
 
         try {
+            $systemPrompt = $this->promptTemplate->resolveSystemPrompt('workspace_suggestion_system', '');
+            if ('' === trim($systemPrompt)) {
+                return null;
+            }
+
+            $workspaceListText = implode("\n", array_map(
+                static fn (Workspace $workspace): string => sprintf('- %s', $workspace->getName()),
+                $workspaces,
+            ));
+
+            $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
+                'workspace_suggestion_system',
+                "Toast title: {{ toast_title }}\nToast description: {{ toast_description }}\nAvailable workspaces:\n{{ workspace_list_text }}",
+                [
+                    'toast_title' => trim($title),
+                    'toast_description' => trim((string) $description) ?: '(empty)',
+                    'workspace_list_text' => $workspaceListText,
+                ],
+            );
+
             $response = $this->xaiText->generateText(
-                $this->buildSystemPrompt(),
-                $this->buildUserPrompt($title, $description, $workspaces),
+                $systemPrompt,
+                $userPrompt,
                 [
                     'source' => 'workspace_suggestion',
                     'userId' => $user->getId(),
@@ -43,14 +65,23 @@ final class WorkspaceSuggestionService
             return null;
         }
 
-        if (!preg_match('/^WORKSPACE:\s*(.+?)\nREASON:\s*(.+)$/s', trim(str_replace("\r\n", "\n", $response)), $matches)) {
+        $normalized = trim(str_replace("\r\n", "\n", $response));
+        $payload = json_decode($normalized, true);
+
+        if (is_array($payload) && is_array($payload['result'] ?? null)) {
+            $result = $payload['result'];
+            $name = trim((string) ($result['workspace'] ?? ''));
+            $confidence = (int) ($result['confidence'] ?? 0);
+            $reason = trim((string) ($result['reason'] ?? ''));
+        } elseif (preg_match('/^WORKSPACE:\s*(.+?)\nCONFIDENCE:\s*(.+?)\nREASON:\s*(.+)$/s', $normalized, $matches)) {
+            $name = trim($matches[1]);
+            $confidence = (int) trim($matches[2]);
+            $reason = trim($matches[3]);
+        } else {
             return null;
         }
 
-        $name = trim($matches[1]);
-        $reason = trim($matches[2]);
-
-        if ('' === $name || 'NONE' === strtoupper($name)) {
+        if ('' === $name || 'NONE' === strtoupper($name) || $confidence < 90) {
             return null;
         }
 
@@ -60,6 +91,7 @@ final class WorkspaceSuggestionService
                     'id' => (int) $workspace->getId(),
                     'name' => $workspace->getName(),
                     'reason' => $reason,
+                    'confidence' => max(0, min(100, $confidence)),
                 ];
             }
         }
@@ -67,33 +99,4 @@ final class WorkspaceSuggestionService
         return null;
     }
 
-    private function buildSystemPrompt(): string
-    {
-        return implode("\n", [
-            'You choose the best Toastit workspace for a newly created toast.',
-            'Return one existing workspace name from the list or NONE.',
-            'Prefer the workspace that best matches the topic, ownership, and likely team context.',
-            'Output must follow this exact format:',
-            'WORKSPACE: <exact workspace name or NONE>',
-            'REASON: <single concise sentence>',
-        ]);
-    }
-
-    /**
-     * @param list<Workspace> $workspaces
-     */
-    private function buildUserPrompt(string $title, ?string $description, array $workspaces): string
-    {
-        $lines = [
-            sprintf('Toast title: %s', trim($title)),
-            sprintf('Toast description: %s', trim((string) $description) ?: '(empty)'),
-            'Available workspaces:',
-        ];
-
-        foreach ($workspaces as $workspace) {
-            $lines[] = sprintf('- %s', $workspace->getName());
-        }
-
-        return implode("\n", $lines);
-    }
 }

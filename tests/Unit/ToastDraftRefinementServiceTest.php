@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit;
 
+use App\Ai\AiPromptTemplateService;
 use App\Meeting\XaiTextService;
 use App\Entity\User;
 use App\Entity\Workspace;
@@ -30,6 +31,11 @@ final class ToastDraftRefinementServiceTest extends TestCase
         $membership->setWorkspace($workspace)->setUser($assignee);
         $workspace->addMembership($membership);
 
+        $promptTemplate = $this->createMock(AiPromptTemplateService::class);
+        $promptTemplate
+            ->method('resolveSystemPrompt')
+            ->willReturn('system prompt');
+
         $service = new ToastDraftRefinementService(new XaiTextService(
             new MockHttpClient([
                 new MockResponse(json_encode([
@@ -45,7 +51,7 @@ final class ToastDraftRefinementServiceTest extends TestCase
             'https://api.x.ai/v1',
             'grok-4.20-reasoning',
             30,
-        ), new WorkspaceWorkflowService());
+        ), new WorkspaceWorkflowService(), $promptTemplate);
 
         $draft = $service->refine($workspace, 'Release', 'Need something clearer');
 
@@ -53,6 +59,42 @@ final class ToastDraftRefinementServiceTest extends TestCase
         self::assertStringContainsString('## Context', $draft['description']);
         self::assertStringContainsString('## Call to action', $draft['description']);
         self::assertSame($assignee->getId(), $draft['ownerId']);
+        self::assertSame('2026-04-18', $draft['dueOn']);
+    }
+
+    public function testRefineAcceptsIsoDatetimeAndNormalizesDueOnDate(): void
+    {
+        $workspace = (new Workspace())
+            ->setName('Draft board')
+            ->setOrganizer((new User())->setEmail('owner@example.com')->setFirstName('Owner'));
+        ReflectionHelper::setId($workspace->getOrganizer(), 1);
+
+        $promptTemplate = $this->createMock(AiPromptTemplateService::class);
+        $promptTemplate
+            ->method('resolveSystemPrompt')
+            ->willReturn('system prompt');
+
+        $service = new ToastDraftRefinementService(new XaiTextService(
+            new MockHttpClient([
+                new MockResponse(json_encode([
+                    'output' => [[
+                        'content' => [[
+                            'type' => 'output_text',
+                            'text' => "TITLE: Ship before weekend\nASSIGNEE: NONE\nDUE_ON: 2026-04-18T19:30:00+02:00\nDESCRIPTION:\nUse the explicit schedule from the email.",
+                        ]],
+                    ]],
+                ], JSON_THROW_ON_ERROR)),
+            ]),
+            'test-key',
+            'https://api.x.ai/v1',
+            'grok-4.20-reasoning',
+            30,
+        ), new WorkspaceWorkflowService(), $promptTemplate);
+
+        $draft = $service->refine($workspace, 'Ship before weekend', 'Need this done this Saturday at 19:30.');
+
+        self::assertSame('Ship before weekend', $draft['title']);
+        self::assertNull($draft['ownerId']);
         self::assertSame('2026-04-18', $draft['dueOn']);
     }
 }

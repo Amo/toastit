@@ -27,6 +27,10 @@ const openOverview = () => {
   window.location.href = '/admin';
 };
 
+const openPrompts = () => {
+  window.location.href = '/admin/prompts';
+};
+
 onMounted(() => {
   fetchUsers();
 });
@@ -38,8 +42,11 @@ onMounted(() => {
       eyebrow="Admin"
       title="ROOT users."
       :stats="[{ label: `${users.length} users`, className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold' }]"
-      :actions="[{ id: 'overview', label: 'Overview', icon: 'fa-solid fa-chart-column', theme: 'secondary' }]"
-      @action="openOverview"
+      :actions="[
+        { id: 'overview', label: 'Overview', icon: 'fa-solid fa-chart-column', theme: 'secondary' },
+        { id: 'prompts', label: 'Prompts', icon: 'fa-solid fa-file-code', theme: 'secondary' },
+      ]"
+      @action="(id) => { if (id === 'overview') openOverview(); else if (id === 'prompts') openPrompts(); }"
     />
 
     <div class="tw-toastit-card overflow-hidden p-6">

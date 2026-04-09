@@ -2,6 +2,7 @@
 
 namespace App\Workspace;
 
+use App\Ai\AiPromptTemplateService;
 use App\Entity\Workspace;
 use App\Entity\User;
 use App\Meeting\SessionSummaryUnavailableException;
@@ -12,6 +13,7 @@ final class ToastDraftRefinementService
     public function __construct(
         private readonly XaiTextService $xaiText,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
+        private readonly AiPromptTemplateService $promptTemplate,
     ) {
     }
 
@@ -27,38 +29,32 @@ final class ToastDraftRefinementService
             throw new SessionSummaryUnavailableException('missing_input', 'A title or description is required.');
         }
 
+        $systemPrompt = $this->promptTemplate->resolveSystemPrompt(
+            'toast_draft_refinement_system',
+            '',
+            [
+                'timezone' => date_default_timezone_get(),
+                'today_iso' => (new \DateTimeImmutable('now'))->format(\DateTimeInterface::ATOM),
+            ],
+        );
+
+        if ('' === trim($systemPrompt)) {
+            throw new SessionSummaryUnavailableException('invalid_refinement_response', 'No system prompt is configured for toast draft refinement.');
+        }
+
+        $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
+            'toast_draft_refinement_system',
+            "Workspace participants:\n{{ participants_text }}\n\nCurrent title:\n{{ current_title }}\n\nCurrent description:\n{{ current_description }}",
+            [
+                'participants_text' => $this->formatParticipants($workspace),
+                'current_title' => '' !== $title ? $title : '(empty)',
+                'current_description' => '' !== $description ? $description : '(empty)',
+            ],
+        );
+
         $response = $this->xaiText->generateText(
-            <<<'PROMPT'
-You rewrite Toastit draft toasts.
-Your job is to improve clarity for fast team decision-making.
-Constraints:
-- Keep the original meaning and intent.
-- Return the result in the same language as the input.
-- Produce a very short, action-driven title.
-- Prefer an imperative or decision-oriented phrasing when relevant.
-- The title should usually stay within 3 to 6 words.
-- Do not pack context, sub-points, examples, or long qualifiers into the title.
-- If the original title contains useful detail, move that detail into the structured description instead of keeping it in the title.
-- Remove vague phrasing, buzzwords, and fuzzy umbrella terms.
-- Produce a structured description in Markdown.
-- Use the description to capture the important context, scope, constraints, options, and decision framing that do not fit in the title.
-- The description should be concise, scannable, action-oriented, and end with a clear call to action that helps decision-making.
-- You may suggest an assignee if one participant is explicitly the best fit for the next step.
-- You may suggest a due date if the scope, urgency, constraints, and likely amount of work make a date reasonably inferable.
-- Do not invent facts, owners, dates, budgets, or decisions that are not present in the source.
-- Output must follow this exact format:
-TITLE: <single line>
-ASSIGNEE: <exact participant display name or NONE>
-DUE_ON: <YYYY-MM-DD or NONE>
-DESCRIPTION:
-<markdown description>
-PROMPT,
-            sprintf(
-                "Workspace participants:\n%s\n\nCurrent title:\n%s\n\nCurrent description:\n%s",
-                $this->formatParticipants($workspace),
-                '' !== $title ? $title : '(empty)',
-                '' !== $description ? $description : '(empty)',
-            ),
+            $systemPrompt,
+            $userPrompt,
             [
                 'source' => 'toast_draft_refinement',
                 'userId' => $requestedBy?->getId(),
@@ -74,6 +70,18 @@ PROMPT,
     private function parseResponse(Workspace $workspace, string $response): array
     {
         $normalized = trim(str_replace("\r\n", "\n", $response));
+
+        $payload = json_decode($normalized, true);
+        if (is_array($payload) && is_array($payload['result'] ?? null)) {
+            $result = $payload['result'];
+            $normalized = sprintf(
+                "TITLE: %s\nASSIGNEE: %s\nDUE_ON: %s\nDESCRIPTION:\n%s",
+                trim((string) ($result['title'] ?? '')),
+                trim((string) ($result['assignee'] ?? 'NONE')),
+                trim((string) ($result['due_on'] ?? 'NONE')),
+                trim((string) ($result['description'] ?? '')),
+            );
+        }
 
         if (!preg_match('/^TITLE:\s*(.+?)\nASSIGNEE:\s*(.*?)\nDUE_ON:\s*(.*?)\nDESCRIPTION:\n(.*)$/s', $normalized, $matches)) {
             throw new SessionSummaryUnavailableException('invalid_refinement_response', 'xAI returned an invalid draft refinement response.');

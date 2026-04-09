@@ -2,6 +2,7 @@
 
 namespace App\Meeting;
 
+use App\Ai\AiPromptTemplateService;
 use App\Entity\ToastingSession;
 use App\Entity\User;
 use App\Entity\Workspace;
@@ -11,6 +12,7 @@ final class ToastingSessionSummaryService
     public function __construct(
         private readonly ToastingSessionSummaryBuilder $summaryBuilder,
         private readonly XaiTextService $xaiText,
+        private readonly AiPromptTemplateService $promptTemplate,
     ) {
     }
 
@@ -38,20 +40,31 @@ final class ToastingSessionSummaryService
     {
         $summaryContext = $this->summaryBuilder->buildPrompt($workspace, $session);
         $generatedAt = new \DateTimeImmutable();
-        $session->setSummary($this->xaiText->generateSummary(
-            <<<'PROMPT'
-You produce operational meeting recaps for Toastit.
-Your output must stay grounded in the provided workspace/session data.
-Do not invent decisions, owners, dates, or follow-ups.
-When information is ambiguous or missing, call it out explicitly.
-Keep the recap concise, actionable, and suitable for sharing with the team.
-PROMPT,
-            $summaryContext['prompt'].sprintf("\n\nRequested by: %s", $requestedBy->getDisplayName()),
+        $systemPrompt = $this->promptTemplate->resolveSystemPrompt('session_summary_system', '');
+
+        if ('' === trim($systemPrompt)) {
+            throw new SessionSummaryUnavailableException('invalid_session_summary_prompt', 'No session-summary system prompt is configured.');
+        }
+
+        $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
+            'session_summary_system',
+            "{{ summary_context }}\n\nRequested by: {{ requested_by }}",
+            [
+                'summary_context' => $summaryContext['prompt'],
+                'requested_by' => $requestedBy->getDisplayName(),
+            ],
+        );
+
+        $rawSummary = $this->xaiText->generateSummary(
+            $systemPrompt,
+            $userPrompt,
             [
                 'source' => 'session_summary',
                 'userId' => $requestedBy->getId(),
             ],
-        ), $generatedAt);
+        );
+
+        $session->setSummary($this->extractSummaryMarkdown($rawSummary), $generatedAt);
         $session
             ->setSummaryGeneratedAt($generatedAt)
             ->setSummaryUpdatedAt($generatedAt);
@@ -64,5 +77,17 @@ PROMPT,
         $session->setSummary($summary, new \DateTimeImmutable());
 
         return $session;
+    }
+
+    private function extractSummaryMarkdown(string $rawSummary): string
+    {
+        $payload = json_decode(trim($rawSummary), true);
+        if (is_array($payload) && is_array($payload['result'] ?? null) && is_string($payload['result']['markdown'] ?? null)) {
+            $markdown = trim($payload['result']['markdown']);
+
+            return '' !== $markdown ? $markdown : trim($rawSummary);
+        }
+
+        return trim($rawSummary);
     }
 }

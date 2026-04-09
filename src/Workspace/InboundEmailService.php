@@ -902,7 +902,12 @@ final class InboundEmailService
         }
 
         if (null === $workspaceSuggestion) {
-            return $toast;
+            $defaultWorkspace = $this->workspaceRepository->findDefaultWorkspaceForUser($actor);
+            if (!$defaultWorkspace instanceof Workspace || $defaultWorkspace->getId() === $toast->getWorkspace()->getId()) {
+                return $toast;
+            }
+
+            return $this->toastTransfer->transfer($toast, $defaultWorkspace, $actor);
         }
 
         $targetWorkspace = $this->workspaceAccessWorkspaceOrNull((int) $workspaceSuggestion['id'], $actor);

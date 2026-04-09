@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit;
 
+use App\Ai\AiPromptTemplateService;
 use App\Entity\Toast;
 use App\Entity\ToastReplyToken;
 use App\Entity\User;
@@ -148,6 +149,7 @@ final class InboundEmailServiceTest extends TestCase
                 new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
                 $transactionalMailer,
                 new AssignedToastPriorityService(),
+                $this->createPromptTemplateService(['todo_digest_system' => 'todo digest system prompt']),
             ),
             new ToastDraftRefinementService(
                 new XaiTextService(
@@ -162,6 +164,7 @@ JSON),
                     30,
                 ),
                 new WorkspaceWorkflowService(),
+                $this->createPromptTemplateService(['toast_draft_refinement_system' => 'refinement system prompt']),
             ),
             new ToastReplyTokenService($tokenEntityManager, $tokenRepository),
             new InboundReplyAddressService('in.toastit.cc'),
@@ -170,7 +173,7 @@ JSON),
                 new XaiTextService(
                     new MockHttpClient([
                         new MockResponse(<<<'JSON'
-{"output_text":"WORKSPACE: Product Board\nREASON: Better fit for product delivery ownership."}
+{"output_text":"WORKSPACE: Product Board\nCONFIDENCE: 96\nREASON: Better fit for product delivery ownership."}
 JSON),
                     ]),
                     'configured-key',
@@ -178,6 +181,7 @@ JSON),
                     'test-model',
                     30,
                 ),
+                $this->createPromptTemplateService(['workspace_suggestion_system' => 'workspace suggestion system prompt']),
             ),
             $transactionalMailer,
             new ToastTransferService(new WorkspaceWorkflowService(), $this->createMock(EntityManagerInterface::class)),
@@ -204,6 +208,143 @@ JSON),
         self::assertSame('Inbox', $result->getToast()?->getWorkspace()->getName());
         self::assertNull($result->getToast()?->getOwner());
         self::assertNull($result->getToast()?->getDueAt());
+    }
+
+    public function testInboundToastFallsBackToDefaultWorkspaceWhenSuggestionConfidenceIsLow(): void
+    {
+        $actor = (new User())
+            ->setEmail('owner@example.com')
+            ->setFirstName('Owner')
+            ->setInboundEmailAlias('018f2e9a-9d9f-7f1f-8f7a-123456789aaa')
+            ->setInboundAutoApplyReword(false)
+            ->setInboundAutoApplyAssignee(false)
+            ->setInboundAutoApplyDueDate(false)
+            ->setInboundAutoApplyWorkspace(true);
+        ReflectionHelper::setId($actor, 1);
+
+        $inboxWorkspace = (new Workspace())
+            ->setName('Inbox')
+            ->setOrganizer($actor)
+            ->setIsInboxWorkspace(true)
+            ->setIsSoloWorkspace(true);
+        ReflectionHelper::setId($inboxWorkspace, 10);
+        $inboxWorkspace->addMembership((new WorkspaceMember())->setUser($actor)->setIsOwner(true));
+
+        $defaultWorkspace = (new Workspace())
+            ->setName('Default Workspace')
+            ->setOrganizer($actor)
+            ->setIsDefault(true);
+        ReflectionHelper::setId($defaultWorkspace, 20);
+        $defaultWorkspace->addMembership((new WorkspaceMember())->setUser($actor)->setIsOwner(true));
+
+        $writeEntityManager = $this->createMock(EntityManagerInterface::class);
+        $writeEntityManager->expects(self::once())->method('persist')->with(self::isInstanceOf(Toast::class));
+        $writeEntityManager->expects(self::once())->method('flush');
+
+        $tokenEntityManager = $this->createMock(EntityManagerInterface::class);
+        $tokenEntityManager->expects(self::once())->method('persist')->with(self::isInstanceOf(ToastReplyToken::class));
+        $tokenEntityManager->expects(self::once())->method('flush');
+
+        $tokenRepository = $this->createMock(ToastReplyTokenRepository::class);
+        $tokenRepository
+            ->expects(self::once())
+            ->method('invalidateActiveTokens')
+            ->with($actor, 0, ToastReplyToken::ACTION_REPHRASE, self::isInstanceOf(\DateTimeImmutable::class));
+
+        $userRepository = $this->createMock(UserRepository::class);
+        $userRepository
+            ->expects(self::once())
+            ->method('findOneByInboundEmailAlias')
+            ->with('018f2e9a-9d9f-7f1f-8f7a-123456789aaa')
+            ->willReturn($actor);
+
+        $workspaceRepository = $this->createMock(WorkspaceRepository::class);
+        $workspaceRepository->method('findInboxWorkspaceForUser')->with($actor)->willReturn($inboxWorkspace);
+        $workspaceRepository->method('findDefaultWorkspaceForUser')->with($actor)->willReturn($defaultWorkspace);
+
+        $workspaceSuggestionRepository = $this->createMock(WorkspaceRepository::class);
+        $workspaceSuggestionRepository->method('findForUser')->with($actor)->willReturn([$defaultWorkspace]);
+
+        $mailerTransport = $this->createMock(MailerInterface::class);
+        $mailerTransport
+            ->expects(self::once())
+            ->method('send')
+            ->with(self::callback(static function (\Symfony\Component\Mime\RawMessage $message): bool {
+                self::assertInstanceOf(Email::class, $message);
+                self::assertStringContainsString('Workspace: Default Workspace', (string) $message->getTextBody());
+
+                return true;
+            }));
+
+        $transactionalMailer = new TransactionalMailer(
+            $mailerTransport,
+            new Environment(new FilesystemLoader(dirname(__DIR__, 2).'/templates')),
+            new CommonMarkConverter(),
+            'no-reply@toastit.local',
+        );
+
+        $service = new InboundEmailService(
+            new InboundEmailAddressService('in.toastit.cc'),
+            $userRepository,
+            $workspaceRepository,
+            $this->createMock(ToastRepository::class),
+            new InboxWorkspaceService(
+                $workspaceRepository,
+                $this->createMock(WorkspaceMemberRepository::class),
+                $this->createMock(EntityManagerInterface::class),
+            ),
+            new ToastCreationService($writeEntityManager),
+            new TodoDigestService(
+                $this->createMock(ToastRepository::class),
+                new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
+                $transactionalMailer,
+                new AssignedToastPriorityService(),
+                $this->createPromptTemplateService(['todo_digest_system' => 'todo digest system prompt']),
+            ),
+            new ToastDraftRefinementService(
+                new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
+                new WorkspaceWorkflowService(),
+                $this->createPromptTemplateService(['toast_draft_refinement_system' => 'refinement system prompt']),
+            ),
+            new ToastReplyTokenService($tokenEntityManager, $tokenRepository),
+            new InboundReplyAddressService('in.toastit.cc'),
+            new WorkspaceSuggestionService(
+                $workspaceSuggestionRepository,
+                new XaiTextService(
+                    new MockHttpClient([
+                        new MockResponse(<<<'JSON'
+{"output_text":"WORKSPACE: Default Workspace\nCONFIDENCE: 42\nREASON: Weak topical overlap."}
+JSON),
+                    ]),
+                    'configured-key',
+                    'https://api.x.ai/v1',
+                    'test-model',
+                    30,
+                ),
+                $this->createPromptTemplateService(['workspace_suggestion_system' => 'workspace suggestion system prompt']),
+            ),
+            $transactionalMailer,
+            new ToastTransferService(new WorkspaceWorkflowService(), $this->createMock(EntityManagerInterface::class)),
+            new WorkspaceWorkflowService(),
+            new JwtTokenService('unit-test-secret'),
+            new AppUrlGenerator($this->createMock(UrlGeneratorInterface::class), 'https://toastit.test'),
+            $writeEntityManager,
+        );
+
+        $result = $service->ingest(
+            'toast+018f2e9a-9d9f-7f1f-8f7a-123456789aaa@in.toastit.cc',
+            'sender@example.com',
+            'Client meeting',
+            'Event planned for saturday with professional contacts.',
+            null,
+            '<message-id>',
+            null,
+            '<references>',
+        );
+
+        self::assertInstanceOf(InboundEmailResult::class, $result);
+        self::assertSame('toast_created', $result->getKind());
+        self::assertSame('Default Workspace', $result->getToast()?->getWorkspace()->getName());
     }
 
     public function testInboundToastIsAutomaticallyRewordedAndReplyToAllowsFurtherCommands(): void
@@ -326,6 +467,7 @@ JSON),
                 new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
                 $transactionalMailer,
                 new AssignedToastPriorityService(),
+                $this->createPromptTemplateService(['todo_digest_system' => 'todo digest system prompt']),
             ),
             new ToastDraftRefinementService(
                 new XaiTextService(
@@ -340,6 +482,7 @@ JSON),
                     30,
                 ),
                 new WorkspaceWorkflowService(),
+                $this->createPromptTemplateService(['toast_draft_refinement_system' => 'refinement system prompt']),
             ),
             new ToastReplyTokenService($tokenEntityManager, $tokenRepository),
             new InboundReplyAddressService('in.toastit.cc'),
@@ -348,7 +491,7 @@ JSON),
                 new XaiTextService(
                     new MockHttpClient([
                         new MockResponse(<<<'JSON'
-{"output_text":"WORKSPACE: Product Board\nREASON: Better fit for product delivery ownership."}
+{"output_text":"WORKSPACE: Product Board\nCONFIDENCE: 96\nREASON: Better fit for product delivery ownership."}
 JSON),
                     ]),
                     'configured-key',
@@ -356,6 +499,7 @@ JSON),
                     'test-model',
                     30,
                 ),
+                $this->createPromptTemplateService(['workspace_suggestion_system' => 'workspace suggestion system prompt']),
             ),
             $transactionalMailer,
             new ToastTransferService(new WorkspaceWorkflowService(), $this->createMock(EntityManagerInterface::class)),
@@ -439,6 +583,7 @@ JSON),
                 30,
             ),
             new WorkspaceWorkflowService(),
+            $this->createPromptTemplateService(['toast_draft_refinement_system' => 'refinement system prompt']),
         );
 
         $mailerTransport = $this->createMock(MailerInterface::class);
@@ -474,6 +619,7 @@ JSON),
                 new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
                 $transactionalMailer,
                 new AssignedToastPriorityService(),
+                $this->createPromptTemplateService(['todo_digest_system' => 'todo digest system prompt']),
             ),
             $toastDraftRefinement,
             $toastReplyToken,
@@ -481,6 +627,7 @@ JSON),
             new WorkspaceSuggestionService(
                 $this->createMock(WorkspaceRepository::class),
                 new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
+                $this->createPromptTemplateService(['workspace_suggestion_system' => 'workspace suggestion system prompt']),
             ),
             $transactionalMailer,
             new ToastTransferService(new WorkspaceWorkflowService(), $this->createMock(EntityManagerInterface::class)),
@@ -507,5 +654,20 @@ JSON),
         self::assertSame("Contexte clarifié\n\nDécision attendue.", $toast->getDescription());
         self::assertSame($suggestedOwner, $toast->getOwner());
         self::assertSame('2026-04-15', $toast->getDueAt()?->format('Y-m-d'));
+    }
+
+    /**
+     * @param array<string, string> $promptByCode
+     */
+    private function createPromptTemplateService(array $promptByCode): AiPromptTemplateService
+    {
+        $service = $this->createMock(AiPromptTemplateService::class);
+        $service
+            ->method('resolveSystemPrompt')
+            ->willReturnCallback(static function (string $code, string $fallbackPrompt = '') use ($promptByCode): string {
+                return $promptByCode[$code] ?? ('' !== trim($fallbackPrompt) ? $fallbackPrompt : 'system prompt');
+            });
+
+        return $service;
     }
 }

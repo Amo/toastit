@@ -16,6 +16,7 @@ import WorkspacePage from './components/WorkspacePage.vue';
 import ProfilePage from './components/ProfilePage.vue';
 import AdminDashboardPage from './components/AdminDashboardPage.vue';
 import AdminUsersPage from './components/AdminUsersPage.vue';
+import AdminPromptsPage from './components/AdminPromptsPage.vue';
 import { useSpaContext } from './spaContext';
 
 const props = defineProps({
@@ -31,8 +32,8 @@ let accessRefreshTimerId = null;
 const authRefreshPending = ref(false);
 const authApi = new AuthApi(new ToastitApiClient(''));
 
-const protectedRouteNames = ['dashboard', 'inbox', 'workspace', 'toast', 'profile', 'admin-dashboard', 'admin-users'];
-const rootRouteNames = ['admin-dashboard', 'admin-users'];
+const protectedRouteNames = ['dashboard', 'inbox', 'workspace', 'toast', 'profile', 'admin-dashboard', 'admin-users', 'admin-prompts'];
+const rootRouteNames = ['admin-dashboard', 'admin-users', 'admin-prompts'];
 const accessTokenExpired = computed(() => {
   const expiresAt = authStore.getAccessTokenExpiresAt();
 
@@ -328,6 +329,17 @@ watch(() => authState.accessToken, syncAccessRefresh);
     content-html=""
   >
     <AdminUsersPage :access-token="authState.accessToken" />
+  </AppShell>
+
+  <AppShell
+    v-else-if="routeName === 'admin-prompts'"
+    current-section="workspace"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="authState.user"
+    content-html=""
+  >
+    <AdminPromptsPage :access-token="authState.accessToken" />
   </AppShell>
 
   <AppShell

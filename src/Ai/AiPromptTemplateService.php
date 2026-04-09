@@ -1,0 +1,66 @@
+<?php
+
+namespace App\Ai;
+
+use App\Repository\AiPromptRepository;
+use App\Repository\AiPromptVersionRepository;
+use Twig\Environment;
+use Twig\Error\Error;
+
+class AiPromptTemplateService
+{
+    public function __construct(
+        private readonly AiPromptRepository $promptRepository,
+        private readonly AiPromptVersionRepository $promptVersionRepository,
+        private readonly Environment $twig,
+    ) {
+    }
+
+    /**
+     * @param array<string, mixed> $variables
+     */
+    public function resolveSystemPrompt(string $code, string $fallbackPrompt, array $variables = []): string
+    {
+        $latestVersion = $this->resolveLatestVersion($code);
+        $templateSource = $latestVersion?->getSystemPrompt() ?: $fallbackPrompt;
+
+        return $this->renderTemplate($templateSource, $variables, $fallbackPrompt);
+    }
+
+    /**
+     * @param array<string, mixed> $variables
+     */
+    public function resolveUserPromptTemplate(string $code, string $fallbackTemplate, array $variables = []): string
+    {
+        $latestVersion = $this->resolveLatestVersion($code);
+        $templateSource = $latestVersion?->getUserPromptTemplate() ?: $fallbackTemplate;
+
+        return $this->renderTemplate($templateSource, $variables, $fallbackTemplate);
+    }
+
+    /**
+     * @param array<string, mixed> $variables
+     */
+    private function renderTemplate(string $templateSource, array $variables, string $fallbackPrompt): string
+    {
+        try {
+            $rendered = $this->twig->createTemplate($templateSource)->render($variables);
+            $rendered = trim($rendered);
+
+            return '' !== $rendered ? $rendered : trim($fallbackPrompt);
+        } catch (Error) {
+            return trim($fallbackPrompt);
+        }
+    }
+
+    private function resolveLatestVersion(string $code): ?\App\Entity\AiPromptVersion
+    {
+        $prompt = $this->promptRepository->findOneByCode($code);
+
+        if (null === $prompt) {
+            return null;
+        }
+
+        return $this->promptVersionRepository->findLatestForPrompt($prompt);
+    }
+}

@@ -2,6 +2,7 @@
 
 namespace App\Workspace;
 
+use App\Ai\AiPromptTemplateService;
 use App\Entity\Toast;
 use App\Entity\User;
 use App\Meeting\SessionSummaryUnavailableException;
@@ -12,6 +13,7 @@ final class ToastExecutionPlanDraftService
     public function __construct(
         private readonly XaiTextService $xaiText,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
+        private readonly AiPromptTemplateService $promptTemplate,
     ) {
     }
 
@@ -27,44 +29,21 @@ final class ToastExecutionPlanDraftService
             throw new SessionSummaryUnavailableException('missing_decision_notes', 'Decision notes must be saved before generating an execution plan.');
         }
 
+        $systemPrompt = $this->promptTemplate->resolveSystemPrompt('toast_execution_plan_system', '');
+        if ('' === trim($systemPrompt)) {
+            throw new SessionSummaryUnavailableException('invalid_execution_plan', 'No execution-plan system prompt is configured.');
+        }
+
+        $promptVariables = $this->buildPromptVariables($toast);
+        $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
+            'toast_execution_plan_system',
+            '{{ context_text }}',
+            $promptVariables,
+        );
+
         $response = $this->xaiText->generateText(
-            <<<'PROMPT'
-You produce a strict JSON execution plan for a single Toastit toast discussed in toasting mode.
-Return JSON only. No markdown fences. No prose before or after JSON.
-
-Goal:
-- suggest actionable follow-up toasts linked to the current source toast
-- each follow-up must be precise, action-oriented, and independently executable
-- suggest assignees only from the provided participants
-- suggest dates when the effort, urgency, and dependencies justify them
-
-Allowed action type:
-- "create_follow_up"
-
-JSON schema:
-{
-  "summary": "short explanation of the execution plan",
-  "actions": [
-    {
-      "type": "create_follow_up",
-      "toastId": 123,
-      "reason": "why this follow-up should exist",
-      "title": "short action-driven follow-up title",
-      "description": "markdown description, precise and actionable",
-      "ownerId": 12 or null,
-      "dueOn": "YYYY-MM-DD" or null
-    }
-  ]
-}
-
-Rules:
-- every action must target the provided source toast id
-- keep the plan tight and realistic
-- no invented facts, owners, or dates outside the provided context
-- follow-up titles should be concise and action-driven
-- descriptions should clarify expected outcome, constraints, and next move
-PROMPT,
-            $this->buildContext($toast),
+            $systemPrompt,
+            $userPrompt,
             [
                 'source' => 'toast_execution_plan',
                 'userId' => $requestedBy?->getId(),
@@ -74,7 +53,7 @@ PROMPT,
         return $this->parseResponse($response, $toast->getId() ?? 0);
     }
 
-    private function buildContext(Toast $toast): string
+    private function buildPromptVariables(Toast $toast): array
     {
         $workspace = $toast->getWorkspace();
         $participants = array_filter(
@@ -82,12 +61,15 @@ PROMPT,
             static fn ($participant): bool => null !== $participant->getId(),
         );
 
-        $participantLines = array_map(
-            static fn ($participant): string => sprintf('- %d: %s', $participant->getId(), $participant->getDisplayName()),
+        $participantPayload = array_map(
+            static fn ($participant): array => [
+                'id' => (int) $participant->getId(),
+                'display_name' => $participant->getDisplayName(),
+            ],
             $participants,
         );
 
-        return implode("\n", [
+        $legacyContextText = implode("\n", [
             sprintf('Workspace: %s', $workspace->getName()),
             sprintf('Source toast id: %d', $toast->getId()),
             sprintf('Source title: %s', $toast->getTitle()),
@@ -98,8 +80,25 @@ PROMPT,
             trim((string) $toast->getDiscussionNotes()),
             '',
             'Workspace participants:',
-            ...$participantLines,
+            ...array_map(
+                static fn (array $participant): string => sprintf('- %d: %s', $participant['id'], $participant['display_name']),
+                $participantPayload,
+            ),
         ]);
+
+        return [
+            'workspace_name' => $workspace->getName(),
+            'source_toast' => [
+                'id' => (int) ($toast->getId() ?? 0),
+                'title' => $toast->getTitle(),
+                'current_owner_id' => $toast->getOwner()?->getId(),
+                'current_due_on' => $toast->getDueAt()?->format('Y-m-d'),
+                'description' => trim((string) $toast->getDescription()) ?: '(empty)',
+                'decision_notes' => trim((string) $toast->getDiscussionNotes()),
+            ],
+            'participants' => array_values($participantPayload),
+            'context_text' => $legacyContextText,
+        ];
     }
 
     /**
@@ -109,6 +108,9 @@ PROMPT,
     {
         $normalized = trim($response);
         $payload = json_decode($normalized, true);
+        if (is_array($payload) && is_array($payload['result'] ?? null)) {
+            $payload = $payload['result'];
+        }
 
         if (!is_array($payload) || !is_array($payload['actions'] ?? null)) {
             throw new SessionSummaryUnavailableException('invalid_execution_plan', 'xAI returned an invalid execution plan.');

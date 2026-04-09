@@ -53,6 +53,10 @@ const openUsers = () => {
   window.location.href = '/admin/users';
 };
 
+const openPrompts = () => {
+  window.location.href = '/admin/prompts';
+};
+
 onMounted(() => {
   fetchDashboard();
 });
@@ -64,8 +68,11 @@ onMounted(() => {
       eyebrow="Admin"
       title="ROOT overview."
       :stats="statCards.map((item) => ({ label: `${item.value} ${item.label}`, className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold' }))"
-      :actions="[{ id: 'users', label: 'User list', icon: 'fa-solid fa-users', theme: 'secondary' }]"
-      @action="openUsers"
+      :actions="[
+        { id: 'users', label: 'User list', icon: 'fa-solid fa-users', theme: 'secondary' },
+        { id: 'prompts', label: 'Prompts', icon: 'fa-solid fa-file-code', theme: 'secondary' },
+      ]"
+      @action="(id) => { if (id === 'users') openUsers(); else if (id === 'prompts') openPrompts(); }"
     />
 
     <div class="tw-toastit-card p-6">

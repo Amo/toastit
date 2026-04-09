@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit;
 
+use App\Ai\AiPromptTemplateService;
 use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Workspace;
@@ -43,14 +44,27 @@ final class TodoDigestServiceTest extends TestCase
         $xaiText
             ->expects(self::once())
             ->method('generateText')
-            ->with(
-                self::stringContains('Top 10 actions'),
-                self::logicalAnd(
-                    self::stringContains('Ship the digest'),
-                    self::stringContains('Delivery')
-                ),
-            )
+            ->with(self::anything(), self::logicalAnd(
+                self::stringContains('Ship the digest'),
+                self::stringContains('Delivery')
+            ))
             ->willReturn("## Top 10 actions\n\n1. Ship the digest");
+
+        $promptTemplate = $this->createMock(AiPromptTemplateService::class);
+        $promptTemplate
+            ->method('resolveSystemPrompt')
+            ->willReturn('You are helping a Toastit user decide what to do next.');
+        $promptTemplate
+            ->method('resolveUserPromptTemplate')
+            ->willReturnCallback(static function (string $code, string $fallback, array $variables = []): string {
+                return implode("\n", [
+                    sprintf('User: %s', (string) ($variables['user_display_name'] ?? '')),
+                    sprintf('Email: %s', (string) ($variables['user_email'] ?? '')),
+                    sprintf('Today: %s', (string) ($variables['today_date'] ?? '')),
+                    'Assigned active actions:',
+                    (string) ($variables['assigned_actions_text'] ?? ''),
+                ]);
+            });
 
         $mailerTransport = $this->createMock(MailerInterface::class);
         $mailerTransport
@@ -70,7 +84,7 @@ final class TodoDigestServiceTest extends TestCase
             'no-reply@toastit.local',
         );
 
-        (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService()))->sendTodoDigest($user);
+        (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService(), $promptTemplate))->sendTodoDigest($user);
     }
 
     public function testSendTodoDigestFallsBackWhenNoAssignedActionsExist(): void
@@ -86,6 +100,14 @@ final class TodoDigestServiceTest extends TestCase
 
         $xaiText = $this->createMock(XaiTextService::class);
         $xaiText->expects(self::never())->method('generateText');
+
+        $promptTemplate = $this->createMock(AiPromptTemplateService::class);
+        $promptTemplate
+            ->method('resolveSystemPrompt')
+            ->willReturn('You are helping a Toastit user decide what to do next.');
+        $promptTemplate
+            ->method('resolveUserPromptTemplate')
+            ->willReturn('Assigned active actions:');
 
         $mailerTransport = $this->createMock(MailerInterface::class);
         $mailerTransport
@@ -104,6 +126,6 @@ final class TodoDigestServiceTest extends TestCase
             'no-reply@toastit.local',
         );
 
-        (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService()))->sendTodoDigest($user);
+        (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService(), $promptTemplate))->sendTodoDigest($user);
     }
 }
