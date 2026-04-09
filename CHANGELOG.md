@@ -1,3 +1,21 @@
+## 0.4.0 (April 09, 2026)
+- NEW: database-backed AI prompt management with versioning, admin editing, and stricter AI contracts
+  - Added prompt registry persistence:
+    - introduced `ai_prompt` + `ai_prompt_version` entities/repositories with migration-backed schema
+    - seeded core AI prompts and appended multiple prompt versions to evolve system/user templates safely
+    - added template metadata (`availableVariables`, `availableUserVariables`) for Twig-driven prompt rendering
+  - Added ROOT prompt management workflow:
+    - new admin page at `/admin/prompts` with prompt selection, system/user template editors, save-as-new-version, and rollback
+    - new protected API endpoints: list/detail/update/rollback (`/api/admin/prompts*`)
+    - admin navigation now links overview, users, and prompts pages together
+  - Switched AI features to resolve prompts from DB templates:
+    - `ToastDraftRefinementService`, `WorkspaceSuggestionService`, `TodoDigestService`, `ToastCurationDraftService`,
+      `ToastExecutionPlanDraftService`, and `ToastingSessionSummaryService` now use `AiPromptTemplateService`
+    - curation/execution/todo/summary pipelines now accept strict JSON envelopes (`result.*`) with backward-safe parsing
+    - workspace suggestion now enforces confidence gating (`>= 90`) before auto-selection
+  - Adjusted inbound-email auto-routing behavior:
+    - when workspace suggestion is disabled or inconclusive, inbox-created toasts are transferred to the actor default workspace
+
 ## 0.3.0 (April 09, 2026)
 - NEW: inbound email AI automation now supports granular auto-apply preferences
   - Added automatic xAI refinement for inbound toasts:
