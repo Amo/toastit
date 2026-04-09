@@ -1,3 +1,21 @@
+## 0.3.0 (April 09, 2026)
+- NEW: inbound email AI automation now supports granular auto-apply preferences
+  - Added automatic xAI refinement for inbound toasts:
+    - reword title/description
+    - suggest and apply assignee
+    - suggest and apply due date
+    - suggest and apply target workspace
+  - Added per-user inbound AI preferences (default `on` for all):
+    - `reword`, `assignee`, `dueDate`, `workspace`
+    - Preferences are exposed in profile API payloads and persisted in database
+  - Updated profile experience:
+    - Introduced profile subpages with sidebar navigation: `Infos` (default), `Preferences`, `Trash`, `Account`
+    - Preference toggles now save on change (no submit button)
+    - Added explicit visual feedback per toggle (`saving`, `saved`, `error`)
+  - Improved outbound email command loop:
+    - Reply emails now include actionable `Reply-To` addresses for follow-up commands
+    - Acknowledgement and action-summary emails include complete task state snapshots
+
 ## 0.2.1 (April 08, 2026)
 - NEW: simplified homepage and clearer feature positioning
   - Streamlined landing content and reduced visual complexity
