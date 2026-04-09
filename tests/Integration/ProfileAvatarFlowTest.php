@@ -30,6 +30,8 @@ final class ProfileAvatarFlowTest extends WebTestCase
             'dueDate' => true,
             'workspace' => true,
         ], $initialPayload['user']['inboundAiAutoApply']);
+        self::assertSame('auto', $initialPayload['user']['inboundRewordLanguage']);
+        self::assertCount(11, $initialPayload['user']['inboundRewordLanguageChoices']);
 
         $client->request('PUT', '/api/profile', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
             'firstName' => 'Jean',
@@ -40,6 +42,7 @@ final class ProfileAvatarFlowTest extends WebTestCase
                 'dueDate' => false,
                 'workspace' => true,
             ],
+            'inboundRewordLanguage' => 'fr',
         ], JSON_THROW_ON_ERROR));
         self::assertResponseIsSuccessful();
         $updatePayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -49,6 +52,7 @@ final class ProfileAvatarFlowTest extends WebTestCase
             'dueDate' => false,
             'workspace' => true,
         ], $updatePayload['user']['inboundAiAutoApply']);
+        self::assertSame('fr', $updatePayload['user']['inboundRewordLanguage']);
 
         $client->request('GET', '/api/profile');
         self::assertResponseIsSuccessful();
@@ -59,6 +63,7 @@ final class ProfileAvatarFlowTest extends WebTestCase
             'dueDate' => false,
             'workspace' => true,
         ], $reloadedPayload['user']['inboundAiAutoApply']);
+        self::assertSame('fr', $reloadedPayload['user']['inboundRewordLanguage']);
     }
 
     public function testAuthenticatedUserCanUploadAvatarAndReadItFromReturnedUrl(): void

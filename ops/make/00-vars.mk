@@ -1,5 +1,6 @@
-DOCKER_COMPOSE := docker compose
-DOCKER_COMPOSE_PROD := docker compose -f ops/docker-compose.prod.yml
+LOCAL_ENV_FILE ?= .env.dev
+DOCKER_COMPOSE ?= docker compose --env-file $(LOCAL_ENV_FILE)
+DOCKER_COMPOSE_PROD ?= docker compose -f ops/docker-compose.prod.yml
 APP_SERVICE := php
 GHCR_USER ?= amo
 GHCR_USER_LC := $(shell echo "$(GHCR_USER)" | tr '[:upper:]' '[:lower:]')

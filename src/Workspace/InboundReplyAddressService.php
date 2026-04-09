@@ -25,8 +25,8 @@ final class InboundReplyAddressService
      */
     public function parseAddress(string $recipient): ?array
     {
-        $recipient = trim($recipient);
-        if ('' === $recipient) {
+        $recipient = $this->normalizeRecipient($recipient);
+        if (null === $recipient) {
             return null;
         }
 
@@ -36,15 +36,16 @@ final class InboundReplyAddressService
         }
 
         [$localPart, $domain] = $parts;
+        $normalizedLocalPart = mb_strtolower($localPart);
         if (mb_strtolower($domain) !== mb_strtolower($this->inboundEmailDomain)) {
             return null;
         }
 
-        if (!str_starts_with($localPart, self::REPLY_PREFIX)) {
+        if (!str_starts_with($normalizedLocalPart, self::REPLY_PREFIX)) {
             return null;
         }
 
-        $tokenParts = explode('-', substr($localPart, strlen(self::REPLY_PREFIX)), 2);
+        $tokenParts = explode('-', substr($normalizedLocalPart, strlen(self::REPLY_PREFIX)), 2);
         if (2 !== count($tokenParts)) {
             return null;
         }
@@ -53,5 +54,28 @@ final class InboundReplyAddressService
             'selector' => $tokenParts[0],
             'token' => $tokenParts[1],
         ];
+    }
+
+    private function normalizeRecipient(string $recipient): ?string
+    {
+        $recipient = trim($recipient);
+        if ('' === $recipient) {
+            return null;
+        }
+
+        if (preg_match('/<([^<>]+)>/', $recipient, $matches)) {
+            $recipient = trim((string) $matches[1]);
+        }
+
+        if (str_starts_with(mb_strtolower($recipient), 'mailto:')) {
+            $recipient = trim(substr($recipient, 7));
+        }
+
+        $recipient = trim($recipient, " \t\n\r\0\x0B\"'");
+        if ('' === $recipient) {
+            return null;
+        }
+
+        return false !== filter_var($recipient, FILTER_VALIDATE_EMAIL) ? $recipient : null;
     }
 }

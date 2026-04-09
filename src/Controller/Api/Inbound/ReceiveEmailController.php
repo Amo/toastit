@@ -29,8 +29,8 @@ final class ReceiveEmailController extends AbstractController
         }
 
         $payload = $request->toArray();
-        $recipient = trim((string) ($payload['recipient'] ?? ''));
-        $from = trim((string) ($payload['from'] ?? ''));
+        $recipient = $this->resolveRecipient($payload);
+        $from = $this->resolveSender($payload);
 
         if ('' === $recipient || '' === $from) {
             return $this->json(['ok' => false, 'error' => 'missing_email_metadata'], 400);
@@ -67,5 +67,116 @@ final class ReceiveEmailController extends AbstractController
     {
         return '' !== $this->inboundEmailSecret
             && hash_equals($this->inboundEmailSecret, $providedSecret);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function resolveRecipient(array $payload): string
+    {
+        $candidate = $this->resolvePayloadValue($payload, [
+            'recipient',
+            'to',
+            'envelope.to',
+            'envelope.rcpt_tos',
+        ]);
+
+        return $this->normalizeMailbox($candidate, true);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function resolveSender(array $payload): string
+    {
+        $candidate = $this->resolvePayloadValue($payload, [
+            'from',
+            'sender',
+            'mailFrom',
+            'envelope.from',
+            'envelope.mail_from',
+        ]);
+
+        return $this->normalizeMailbox($candidate, false);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @param list<string> $paths
+     */
+    private function resolvePayloadValue(array $payload, array $paths): mixed
+    {
+        foreach ($paths as $path) {
+            $value = $this->readPathValue($payload, $path);
+            if (null !== $value && '' !== trim((string) $value)) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function readPathValue(array $payload, string $path): mixed
+    {
+        $segments = explode('.', $path);
+        $current = $payload;
+
+        foreach ($segments as $segment) {
+            if (!is_array($current)) {
+                return null;
+            }
+
+            if (!array_key_exists($segment, $current)) {
+                return null;
+            }
+
+            $current = $current[$segment];
+        }
+
+        if (is_array($current)) {
+            foreach ($current as $candidate) {
+                if (is_scalar($candidate) && '' !== trim((string) $candidate)) {
+                    return $candidate;
+                }
+            }
+
+            return null;
+        }
+
+        return $current;
+    }
+
+    private function normalizeMailbox(mixed $value, bool $strict): string
+    {
+        if (null === $value) {
+            return '';
+        }
+
+        $candidate = trim((string) $value);
+        if ('' === $candidate) {
+            return '';
+        }
+
+        if (preg_match('/<([^<>]+)>/', $candidate, $matches)) {
+            $candidate = trim((string) $matches[1]);
+        }
+
+        if (str_starts_with(mb_strtolower($candidate), 'mailto:')) {
+            $candidate = trim(substr($candidate, 7));
+        }
+
+        $candidate = trim($candidate, " \t\n\r\0\x0B\"'");
+        if ('' === $candidate) {
+            return '';
+        }
+
+        if (false !== filter_var($candidate, FILTER_VALIDATE_EMAIL)) {
+            return $candidate;
+        }
+
+        return $strict ? '' : $candidate;
     }
 }

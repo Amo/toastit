@@ -3,6 +3,7 @@
 namespace App\Controller\Api\Profile;
 
 use App\Api\ProfilePayloadBuilder;
+use App\Entity\User;
 use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,6 +38,28 @@ final class UpdateController extends AbstractController
                 ->setInboundAutoApplyAssignee($this->toBool($inboundAiAutoApply['assignee'] ?? $user->isInboundAutoApplyAssignee()))
                 ->setInboundAutoApplyDueDate($this->toBool($inboundAiAutoApply['dueDate'] ?? $user->isInboundAutoApplyDueDate()))
                 ->setInboundAutoApplyWorkspace($this->toBool($inboundAiAutoApply['workspace'] ?? $user->isInboundAutoApplyWorkspace()));
+        }
+
+        if (array_key_exists('inboundRewordLanguage', $payload)) {
+            $language = $payload['inboundRewordLanguage'];
+            if (!is_string($language)) {
+                return $this->json([
+                    'ok' => false,
+                    'error' => 'invalid_inbound_reword_language',
+                ], 400);
+            }
+
+            $normalized = strtolower(trim($language));
+            if ('' === $normalized || 'auto' === $normalized) {
+                $user->setInboundRewordLanguage(null);
+            } elseif (User::isSupportedInboundRewordLanguage($normalized)) {
+                $user->setInboundRewordLanguage($normalized);
+            } else {
+                return $this->json([
+                    'ok' => false,
+                    'error' => 'invalid_inbound_reword_language',
+                ], 400);
+            }
         }
 
         $this->entityManager->flush();

@@ -44,11 +44,13 @@ final class ToastDraftRefinementService
 
         $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
             'toast_draft_refinement_system',
-            "Workspace participants:\n{{ participants_text }}\n\nCurrent title:\n{{ current_title }}\n\nCurrent description:\n{{ current_description }}",
+            "Requested by:\n{{ requested_by_display_name }}\n\nLanguage rule:\n{{ reword_language_instruction }}\n\nWorkspace participants:\n{{ participants_text }}\n\nCurrent title:\n{{ current_title }}\n\nCurrent description:\n{{ current_description }}",
             [
+                'requested_by_display_name' => $requestedBy?->getDisplayName() ?? 'UNKNOWN',
                 'participants_text' => $this->formatParticipants($workspace),
                 'current_title' => '' !== $title ? $title : '(empty)',
                 'current_description' => '' !== $description ? $description : '(empty)',
+                'reword_language_instruction' => $this->buildRewordLanguageInstruction($requestedBy),
             ],
         );
 
@@ -129,5 +131,22 @@ final class ToastDraftRefinementService
             static fn ($participant): string => sprintf('- %s', $participant->getDisplayName()),
             $participants,
         ));
+    }
+
+    private function buildRewordLanguageInstruction(?User $requestedBy): string
+    {
+        if (!$requestedBy instanceof User) {
+            return 'Detect language from current title/description and keep the same language.';
+        }
+
+        $preferredLanguage = $requestedBy->getInboundRewordLanguage();
+        if (null === $preferredLanguage || '' === trim($preferredLanguage)) {
+            return 'Detect language from current title/description and keep the same language.';
+        }
+
+        return sprintf(
+            'Force output language for title and description to: %s.',
+            User::getInboundRewordLanguageLabel($preferredLanguage),
+        );
     }
 }

@@ -14,6 +14,18 @@ use Symfony\Component\Security\Core\User\UserInterface;
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     public const DELETED_EMAIL_DOMAIN = 'deleted.toastit.local';
+    public const INBOUND_REWORD_LANGUAGES = [
+        'en' => 'English',
+        'es' => 'Spanish',
+        'zh' => 'Mandarin Chinese',
+        'hi' => 'Hindi',
+        'ar' => 'Arabic',
+        'fr' => 'French',
+        'pt' => 'Portuguese',
+        'bn' => 'Bengali',
+        'ru' => 'Russian',
+        'ur' => 'Urdu',
+    ];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -58,6 +70,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(options: ['default' => true])]
     private bool $inboundAutoApplyWorkspace = true;
+
+    #[ORM\Column(length: 8, nullable: true)]
+    private ?string $inboundRewordLanguage = null;
 
     public function __construct()
     {
@@ -310,6 +325,54 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getPublicEmail(): ?string
     {
         return $this->isDeleted() ? null : $this->email;
+    }
+
+    public function getInboundRewordLanguage(): ?string
+    {
+        return $this->inboundRewordLanguage;
+    }
+
+    public function setInboundRewordLanguage(?string $inboundRewordLanguage): self
+    {
+        $normalized = null !== $inboundRewordLanguage ? strtolower(trim($inboundRewordLanguage)) : null;
+
+        if (null === $normalized || '' === $normalized || !self::isSupportedInboundRewordLanguage($normalized)) {
+            $this->inboundRewordLanguage = null;
+
+            return $this;
+        }
+
+        $this->inboundRewordLanguage = $normalized;
+
+        return $this;
+    }
+
+    public static function isSupportedInboundRewordLanguage(string $language): bool
+    {
+        return array_key_exists(strtolower(trim($language)), self::INBOUND_REWORD_LANGUAGES);
+    }
+
+    /**
+     * @return list<array{code: string, label: string}>
+     */
+    public static function getInboundRewordLanguageChoices(): array
+    {
+        $choices = [
+            ['code' => 'auto', 'label' => 'Auto (match email language)'],
+        ];
+
+        foreach (self::INBOUND_REWORD_LANGUAGES as $code => $label) {
+            $choices[] = ['code' => $code, 'label' => $label];
+        }
+
+        return $choices;
+    }
+
+    public static function getInboundRewordLanguageLabel(?string $language): string
+    {
+        $normalized = null !== $language ? strtolower(trim($language)) : '';
+
+        return self::INBOUND_REWORD_LANGUAGES[$normalized] ?? 'Auto (match email language)';
     }
 
     public function anonymize(): self

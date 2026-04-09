@@ -42,6 +42,8 @@ const profile = ref({
   displayName: '',
   firstName: '',
   lastName: '',
+  inboundRewordLanguage: 'auto',
+  inboundRewordLanguageChoices: [],
   inboundAiAutoApply: {
     reword: true,
     assignee: true,
@@ -89,6 +91,28 @@ const currentProfileSectionDescription = computed(() => {
   }
 
   return 'Set your first and last name, avatar, and inbound email address.';
+});
+
+const inboundRewordLanguageLabel = computed(() => {
+  const selectedCode = profile.value.inboundRewordLanguage ?? 'auto';
+  const choices = Array.isArray(profile.value.inboundRewordLanguageChoices)
+    ? profile.value.inboundRewordLanguageChoices
+    : [];
+
+  const matchedChoice = choices.find((choice) => choice.code === selectedCode);
+  if (!matchedChoice) {
+    return 'Auto (match email language)';
+  }
+
+  return matchedChoice.label;
+});
+
+const inboundRewordLanguageBadgeLabel = computed(() => {
+  if ((profile.value.inboundRewordLanguage ?? 'auto') === 'auto') {
+    return 'Auto (detected)';
+  }
+
+  return `Forced: ${inboundRewordLanguageLabel.value}`;
 });
 
 const goToProfileSection = async (sectionKey) => {
@@ -146,6 +170,7 @@ const saveInboundPreferences = async (preferenceKey) => {
   const currentSequence = ++preferencesSaveSequence;
   const { ok, data } = await profileApi.saveProfile(props.updateUrl, {
     inboundAiAutoApply: profile.value.inboundAiAutoApply,
+    inboundRewordLanguage: profile.value.inboundRewordLanguage,
   });
 
   if (currentSequence !== preferencesSaveSequence) {
@@ -166,6 +191,8 @@ const saveInboundPreferences = async (preferenceKey) => {
     dueDate: data.user.inboundAiAutoApply.dueDate ?? profile.value.inboundAiAutoApply.dueDate,
     workspace: data.user.inboundAiAutoApply.workspace ?? profile.value.inboundAiAutoApply.workspace,
   };
+  profile.value.inboundRewordLanguage = data.user.inboundRewordLanguage ?? profile.value.inboundRewordLanguage;
+  profile.value.inboundRewordLanguageChoices = data.user.inboundRewordLanguageChoices ?? profile.value.inboundRewordLanguageChoices;
 
   highlightedPreferenceState.value = 'saved';
   if (preferencesHighlightTimer) {
@@ -274,6 +301,8 @@ const fetchProfile = async () => {
 
     profile.value = {
       ...data.user,
+      inboundRewordLanguage: data.user?.inboundRewordLanguage ?? 'auto',
+      inboundRewordLanguageChoices: data.user?.inboundRewordLanguageChoices ?? [],
       inboundAiAutoApply,
       deletedWorkspaces: data.deletedWorkspaces ?? [],
     };
@@ -490,6 +519,9 @@ onUnmounted(() => {
               <p class="mt-1 text-sm text-stone-600">
                 Choose which xAI suggestions are automatically applied when a new toast is created from inbound email.
               </p>
+              <div class="mt-3 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800">
+                Reword language: {{ inboundRewordLanguageBadgeLabel }}
+              </div>
               <p v-if="preferencesErrorMessage" class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ preferencesErrorMessage }}</p>
               <p v-else-if="isPreferencesSaving" class="mt-3 text-sm font-medium text-amber-700">Saving preferences...</p>
 
@@ -533,6 +565,29 @@ onUnmounted(() => {
                     <span v-if="highlightedPreferenceKey === 'workspace' && highlightedPreferenceState === 'saved'" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Saved</span>
                   </span>
                   <input v-model="profile.inboundAiAutoApply.workspace" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500" @change="onPreferenceToggle('workspace')">
+                </label>
+
+                <label
+                  class="flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition"
+                  :class="preferenceRowClass('language')"
+                >
+                  <span class="flex items-center gap-2 text-sm font-medium text-stone-900">
+                    <span>Reword language</span>
+                    <span v-if="highlightedPreferenceKey === 'language' && highlightedPreferenceState === 'saved'" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Saved</span>
+                  </span>
+                  <select
+                    v-model="profile.inboundRewordLanguage"
+                    class="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    @change="onPreferenceToggle('language')"
+                  >
+                    <option
+                      v-for="choice in profile.inboundRewordLanguageChoices"
+                      :key="choice.code"
+                      :value="choice.code"
+                    >
+                      {{ choice.label }}
+                    </option>
+                  </select>
                 </label>
               </div>
             </div>

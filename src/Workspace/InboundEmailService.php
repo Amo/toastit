@@ -10,6 +10,7 @@ use App\Entity\Workspace;
 use App\Meeting\SessionSummaryUnavailableException;
 use App\Routing\AppUrlGenerator;
 use App\Security\JwtTokenService;
+use App\Security\AppEventLogger;
 use App\Repository\WorkspaceRepository;
 use App\Repository\UserRepository;
 use App\Repository\ToastRepository;
@@ -36,6 +37,7 @@ final class InboundEmailService
         private readonly JwtTokenService $jwtTokenService,
         private readonly AppUrlGenerator $appUrlGenerator,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ?AppEventLogger $eventLogger = null,
     ) {
     }
 
@@ -107,16 +109,87 @@ final class InboundEmailService
         $workspace = $this->inboxWorkspace->getOrCreateInboxWorkspace($user);
         $originalTitle = $this->buildTitle($from, $subject, $textBody, $htmlBody);
         $originalDescription = $this->buildDescription($textBody, $htmlBody);
-        $toast = $this->toastCreation->createToast(
-            $workspace,
+        $toast = null;
+        $workspaceSuggestion = null;
+        $wasRewordedByAi = false;
+
+        $rewrite = $this->workspaceSuggestion->suggestInboundRewrite(
             $user,
+            $from,
             $originalTitle,
             $originalDescription,
         );
 
-        $wasRewordedByAi = $this->applyAutomaticRefinementSuggestions($workspace, $toast, $user);
-        $workspaceSuggestion = $this->workspaceSuggestion->suggestWorkspace($user, $toast->getTitle(), $toast->getDescription());
-        $toast = $this->applyAutomaticWorkspaceSuggestion($toast, $user, $workspaceSuggestion);
+        if (is_array($rewrite)) {
+            $targetWorkspace = $workspace;
+            if ($user->isInboundAutoApplyWorkspace()) {
+                $resolvedWorkspace = $this->resolveWorkspaceByNameForUser($user, $rewrite['workspace']);
+                if ($resolvedWorkspace instanceof Workspace && !$resolvedWorkspace->isInboxWorkspace()) {
+                    $targetWorkspace = $resolvedWorkspace;
+                    $workspaceSuggestion = [
+                        'id' => (int) $resolvedWorkspace->getId(),
+                        'name' => $resolvedWorkspace->getName(),
+                        'reason' => (string) ($rewrite['reason'] ?? ''),
+                        'confidence' => (int) ($rewrite['confidence'] ?? 0),
+                    ];
+                } else {
+                    $defaultWorkspace = $this->workspaceRepository->findDefaultWorkspaceForUser($user);
+                    if ($defaultWorkspace instanceof Workspace && $defaultWorkspace->getId() !== $workspace->getId()) {
+                        $targetWorkspace = $defaultWorkspace;
+                    }
+                }
+            }
+
+            $title = $originalTitle;
+            $description = $originalDescription;
+            if ($user->isInboundAutoApplyReword()) {
+                $title = trim((string) $rewrite['title']) ?: $originalTitle;
+                $description = trim((string) $rewrite['description']) ?: $originalDescription;
+                $wasRewordedByAi = $title !== $originalTitle || $description !== $originalDescription;
+            }
+
+            $owner = null;
+            if ($user->isInboundAutoApplyAssignee()) {
+                $owner = $this->resolveWorkspaceOwnerFromSuggestion($targetWorkspace, $rewrite['owner']);
+                if (!$owner instanceof User) {
+                    $owner = $this->resolveRequestedByOwner($targetWorkspace, $user);
+                }
+            }
+
+            $dueAt = null;
+            if ($user->isInboundAutoApplyDueDate()) {
+                $rewriteDueOn = trim((string) ($rewrite['due_on'] ?? ''));
+                if ('' === $rewriteDueOn || 'NONE' === strtoupper($rewriteDueOn)) {
+                    $dueAt = $this->resolveWorkspaceDefaultDueAt($targetWorkspace);
+                } else {
+                    $dueAt = $this->resolveDueAt($rewriteDueOn);
+                    if (null === $dueAt) {
+                        $this->logInvalidInboundRewriteDueDate($user, $from, $rewriteDueOn, $rewrite);
+                    }
+                }
+            }
+
+            $toast = $this->toastCreation->createToast(
+                $targetWorkspace,
+                $user,
+                $title,
+                $description,
+                $owner,
+                $dueAt,
+            );
+        } else {
+            $toast = $this->toastCreation->createToast(
+                $workspace,
+                $user,
+                $originalTitle,
+                $originalDescription,
+            );
+
+            $wasRewordedByAi = $this->applyAutomaticRefinementSuggestions($workspace, $toast, $user);
+            $workspaceSuggestion = $this->workspaceSuggestion->suggestWorkspace($user, $toast->getTitle(), $toast->getDescription());
+            $toast = $this->applyAutomaticWorkspaceSuggestion($toast, $user, $workspaceSuggestion);
+        }
+
         $this->entityManager->flush();
 
         $replyToAddress = $this->buildToastReplyAddress($user, $toast);
@@ -889,7 +962,72 @@ final class InboundEmailService
             return null;
         }
 
-        return new \DateTimeImmutable($dueOn);
+        try {
+            return new \DateTimeImmutable($dueOn);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function resolveWorkspaceDefaultDueAt(Workspace $workspace): ?\DateTimeImmutable
+    {
+        $today = new \DateTimeImmutable('today');
+
+        return match ($workspace->getDefaultDuePreset()) {
+            Workspace::DEFAULT_DUE_TOMORROW => $today->modify('+1 day'),
+            Workspace::DEFAULT_DUE_NEXT_WEEK => $today->modify('+7 days'),
+            Workspace::DEFAULT_DUE_IN_2_WEEKS => $today->modify('+14 days'),
+            Workspace::DEFAULT_DUE_NEXT_MONDAY => $today->modify('next monday'),
+            Workspace::DEFAULT_DUE_FIRST_MONDAY_NEXT_MONTH => (new \DateTimeImmutable('first day of next month'))->modify('next monday'),
+            default => null,
+        };
+    }
+
+    private function resolveWorkspaceByNameForUser(User $actor, string $workspaceName): ?Workspace
+    {
+        $workspaceName = trim($workspaceName);
+        if ('' === $workspaceName) {
+            return null;
+        }
+
+        foreach ($this->workspaceRepository->findForUser($actor) as $candidate) {
+            if (0 === strcasecmp($candidate->getName(), $workspaceName)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveWorkspaceOwnerFromSuggestion(Workspace $workspace, string $ownerSuggestion): ?User
+    {
+        $ownerSuggestion = trim($ownerSuggestion);
+        if ('' === $ownerSuggestion) {
+            return null;
+        }
+
+        foreach ($this->workspaceWorkflow->getWorkspaceInvitees($workspace) as $invitee) {
+            if (0 === strcasecmp($invitee->getDisplayName(), $ownerSuggestion)) {
+                return $invitee;
+            }
+
+            if (0 === strcasecmp($invitee->getEmail(), $ownerSuggestion)) {
+                return $invitee;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveRequestedByOwner(Workspace $workspace, User $requestedBy): ?User
+    {
+        foreach ($this->workspaceWorkflow->getWorkspaceInvitees($workspace) as $invitee) {
+            if ($invitee->getId() === $requestedBy->getId()) {
+                return $invitee;
+            }
+        }
+
+        return $workspace->getOrganizer();
     }
 
     /**
@@ -961,5 +1099,37 @@ final class InboundEmailService
         $replyToken = $this->toastReplyToken->issue($user, $toast, ToastReplyToken::ACTION_REPHRASE);
 
         return $this->inboundReplyAddress->buildAddress($replyToken->token->getSelector(), $replyToken->plainToken);
+    }
+
+    /**
+     * @param array{
+     *   title?: string,
+     *   workspace?: string,
+     *   owner?: string,
+     *   reason?: string,
+     *   confidence?: int
+     * } $rewrite
+     */
+    private function logInvalidInboundRewriteDueDate(User $user, string $sender, string $rawDueOn, array $rewrite): void
+    {
+        if (!$this->eventLogger instanceof AppEventLogger) {
+            return;
+        }
+
+        $this->eventLogger->log(
+            'inbound.email_due_date_invalid',
+            $user->getId(),
+            $sender,
+            'inbound_email_rewrite',
+            'invalid_due_date',
+            [
+                'rawDueOn' => $rawDueOn,
+                'rewriteTitle' => (string) ($rewrite['title'] ?? ''),
+                'rewriteWorkspace' => (string) ($rewrite['workspace'] ?? ''),
+                'rewriteOwner' => (string) ($rewrite['owner'] ?? ''),
+                'rewriteReason' => (string) ($rewrite['reason'] ?? ''),
+                'rewriteConfidence' => (int) ($rewrite['confidence'] ?? 0),
+            ],
+        );
     }
 }

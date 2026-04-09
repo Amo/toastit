@@ -18,7 +18,7 @@ final class ProfilePayloadBuilder
     }
 
     /**
-     * @return array{id: int|null, email: ?string, displayName: string, firstName: ?string, lastName: ?string, initials: string, gravatarUrl: string, inboxWorkspaceId: int|null, inboxEmailAddress: string|null, inboundAiAutoApply: array{reword: bool, assignee: bool, dueDate: bool, workspace: bool}}
+     * @return array{id: int|null, email: ?string, displayName: string, firstName: ?string, lastName: ?string, initials: string, gravatarUrl: string, inboxWorkspaceId: int|null, inboxEmailAddress: string|null, inboundAiAutoApply: array{reword: bool, assignee: bool, dueDate: bool, workspace: bool}, inboundRewordLanguage: string, inboundRewordLanguageChoices: list<array{code: string, label: string}>}
      */
     public function buildUser(User $user): array
     {
@@ -40,6 +40,8 @@ final class ProfilePayloadBuilder
                 'dueDate' => $user->isInboundAutoApplyDueDate(),
                 'workspace' => $user->isInboundAutoApplyWorkspace(),
             ],
+            'inboundRewordLanguage' => $user->getInboundRewordLanguage() ?? 'auto',
+            'inboundRewordLanguageChoices' => User::getInboundRewordLanguageChoices(),
         ];
     }
 

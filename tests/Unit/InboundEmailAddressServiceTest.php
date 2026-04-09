@@ -32,4 +32,18 @@ final class InboundEmailAddressServiceTest extends TestCase
             $service->resolveUserEmail('toast+YW1hdXJ5QGxlcm91eGRlbGVucy5jb20@in.toastit.cc'),
         );
     }
+
+    public function testResolveParsesDisplayNameAndCaseInsensitiveRecipientFormats(): void
+    {
+        $service = new InboundEmailAddressService('in.toastit.cc');
+
+        self::assertSame(
+            '0195f2f7-89ab-7cde-8fab-0123456789ab',
+            $service->resolveUserAlias('Toastit Inbox <TOAST+0195f2f7-89ab-7cde-8fab-0123456789ab@IN.TOASTIT.CC>'),
+        );
+        self::assertSame(
+            'amaury@lerouxdelens.com',
+            $service->resolveUserEmail('mailto:TOAST+YW1hdXJ5QGxlcm91eGRlbGVucy5jb20@in.toastit.cc'),
+        );
+    }
 }
