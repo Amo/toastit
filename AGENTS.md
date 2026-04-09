@@ -2,240 +2,185 @@
 
 ## Purpose
 
-This file defines the contribution rules that must keep the codebase consistent over time.
+This file defines the contribution rules that keep Toastit coherent over time.
 
-It is normative.
+It is normative.  
+If this file conflicts with older docs, this file wins for implementation choices.
 
-When a rule here conflicts with an older document, this file wins for day-to-day implementation choices.
+## Current stack (authoritative)
 
-## Repository context
-
-Toastit currently runs on:
-
-- Symfony 8 for application runtime, security, domain logic, persistence, and HTTP entrypoints
-- PHP 8.4+ with Doctrine ORM
+- Symfony 8 (`symfony/*` 8.0)
+- PHP `>=8.4`
+- Doctrine ORM + Doctrine Migrations
 - MariaDB
-- Vite for front-end bundling
-- Vue 3 for the product UI shell
-- Tailwind utility classes in the Vue app
-- Sass for shared styling entrypoints
+- Vite + Vue 3
+- Tailwind utilities in Vue templates
+- Shared styling through `assets/frontend/styles/app.css` and `assets/styles/app.scss`
 
-## Architecture stance
+## Architecture boundary
 
-Toastit is not a pure server-rendered Twig app anymore.
-Toastit is also not a front-end-first application where the browser owns business logic.
+Toastit is a Symfony-first product with a Vue app shell.
 
-The current target is:
+- Symfony owns business rules, permissions, workflows, persistence, auth, and payload shaping.
+- Vue owns interactive product screens and local UI state only.
+- Product behavior is JSON API first.
+- HTML responses are for app bootstrapping and auth surfaces, not new product flows.
 
-- Symfony owns business rules, permissions, workflows, persistence, authentication, and payload composition
-- Vue owns interactive product screens and client-side composition of already-approved data flows
-- The back-end contract is JSON API first
-- HTML responses exist only for application bootstrapping
-- API endpoints remain thin and explicit
-- Controllers do orchestration, not domain decisions
-- Payload builders and services shape data for the UI
+Hard rules:
 
-This means:
-
-- no business rules inside Vue components
-- no persistence logic inside controllers
-- no undocumented direct database access from the front-end
-- no new HTML product responses except the minimal app boot entrypoint
-- no ad hoc API surface when an existing workflow/service should be extended instead
+- no business decision logic in Vue components
+- no persistence logic in controllers
+- no direct database usage from front-end code
+- no parallel workflow path when an existing service can be extended
 
 ## Backend rules
 
-### 0. Global implementation rules
+### Responsibility split
 
-- Always follow Symfony coding-style rules for PHP code.
-- Prefer composition over inheritance.
-- Do not create an interface unless at least two concrete classes need to implement the contract, or there is an immediate and explicit architectural reason.
+- Controllers in `src/Controller` orchestrate request/security/response only.
+- Domain logic lives in dedicated services (`src/Workspace`, `src/Meeting`, `src/Security`, `src/Admin`, `src/Ai`, etc.).
+- Entities hold state/invariants; they do not shape API responses.
+- API payloads must be deliberate screen contracts, never raw entity dumps.
 
-### 1. Keep responsibilities explicit
+### Service extension first
 
-- Controllers under `src/Controller` coordinate request, security, and response only.
-- Domain rules belong in dedicated services under `src/`.
-- Data exposed to the front-end must be assembled by payload builders or dedicated application services.
-- Entities must stay focused on state and invariants, not response formatting.
-- Product behavior should be exposed through JSON responses, not server-rendered HTML screens.
-
-### 2. Prefer existing workflows before adding new services
-
-Before creating a new service, inspect existing code in:
+Before adding a new service/class, check whether behavior belongs in existing modules:
 
 - `src/Workspace`
-- `src/Security`
 - `src/Meeting`
+- `src/Security`
+- `src/Admin`
+- `src/Ai`
 - `src/Api`
 
-If the behavior extends an existing workflow, keep it there unless the class is becoming incoherent.
+Prefer extending coherent existing workflows over creating near-duplicates.
 
-### 3. Keep API shape stable and predictable
+### API contract discipline
 
-- API controllers must return payloads shaped for the current screen, not raw entity dumps.
-- Prefer JSON responses for product flows; HTML is reserved for app bootstrapping only.
-- Date fields sent to the front-end must be explicit and consistently formatted.
-- Permission-sensitive flags must be computed server-side.
-- Do not leak internal-only fields just because they exist on the entity.
+- Keep payload keys stable and explicit.
+- Compute permission-sensitive flags server-side.
+- Keep date/datetime formatting consistent and explicit.
+- Do not leak internal fields just because they exist on entities.
+- If payload shape changes, update all consumers and tests in the same slice.
 
-### 4. Make security decisions on the server
+### Security rules
 
-- Authentication, unlock logic, roles, and permission checks stay in Symfony.
-- Vue may hide or disable UI affordances, but the server must remain authoritative.
-- Any action that changes state must validate access server-side.
+- Server is authoritative for auth, unlock, roles, and authorization checks.
+- Any state-changing endpoint must enforce access checks server-side.
+- UI affordances can hide actions; they cannot grant permissions.
 
-### 5. Keep migrations disciplined
+### Migration rules
 
-- Every schema change requires a Doctrine migration.
-- Never edit an old migration that has already become part of project history unless explicitly required.
-- Migration names are generated; business intent belongs in commit/PR description, not hand-renamed filenames.
+- Every schema change requires a new Doctrine migration.
+- Never rewrite old shipped migrations unless explicitly requested.
+- Keep migration intent in commit/PR text; filenames remain generated.
 
 ## Front-end rules
 
-### 1. Respect the current front-end boundary
+### Current structure (authoritative)
 
-The Vue app is the interactive shell for product pages.
+- Reusable/front-end feature components: `assets/frontend/components`
+- API client/helpers: `assets/frontend/api`, `assets/frontend/utils`
+- Router: `assets/frontend/router.js`
 
-Use Vue for:
+There is no required `assets/frontend/pages` tree today; do not enforce it as a rule.
 
-- authenticated product screens
-- local interaction state
-- optimistic or transient UI state when safe
-- composition of server-provided payloads
+### Component discipline
 
-Do not use Vue for:
+- Reuse/extend existing components before creating new ones.
+- Keep large route-level shells thin and composition-oriented.
+- Extract repeated UI blocks into reusable components early.
+- Avoid giant single-file components that mix unrelated concerns.
 
-- re-implementing business workflows already decided on the server
-- inventing a second validation or authorization model
-- bypassing explicit API contracts
+### Styling discipline
 
-### 2. Component discipline
-
-- Front-end code must be split between page components and reusable components.
-- Target structure:
-  - `assets/frontend/pages` for route-level pages
-  - `assets/frontend/components` for reusable UI or feature components
-- Pages compose focused components.
-- Shared presentation logic must move into reusable components before duplication spreads.
-- Before creating any new component, always verify that an equivalent or extensible component does not already exist.
-- If a close existing component exists, extend or adapt it instead of creating a parallel one.
-- Keep route-level components thin; pages must orchestrate and compose, not contain large repeated UI blocks.
-- Avoid giant single-file components that mix fetching, mutations, rendering, and formatting without structure.
-- New UI work must default to component extraction, not inline local markup inside a page.
-
-### 3. Styling discipline
-
-- Reuse the existing visual language before inventing new patterns.
-- Prefer the established app styles in `assets/frontend/styles/app.css` and shared Sass entrypoints.
-- If a new visual primitive becomes reusable, promote it instead of copying markup and classes.
+- Reuse existing tokens and shared styles first.
+- Prefer established styles in `assets/frontend/styles/app.css` and `assets/styles/app.scss`.
 - No inline style attributes unless technically unavoidable.
-- No one-off color decisions that bypass the existing design language.
+- No one-off color/spacing primitives that bypass shared design language.
 
-### 4. Router discipline
+### Router discipline
 
-- New product pages must be registered explicitly in [assets/frontend/router.js](/Users/amaury/code/toastit/assets/frontend/router.js).
-- Route names must stay stable once used by the app shell or navigation logic.
-- A route component should map cleanly to a back-end payload contract.
-
-## API and screen contract rules
-
-- Every screen that fetches data should have a clearly identifiable back-end source.
-- The back-end should serve JSON for application behavior; do not introduce new HTML response flows for product features.
-- Prefer extending an existing payload builder over scattering formatting across controllers.
-- If the front-end needs a new flag, label, or derived field, compute it server-side.
-- Keep naming consistent between payload keys and front-end usage.
-- Avoid breaking payload shape casually; when unavoidable, update all affected screens and tests in the same change.
+- New product pages must be explicitly registered in `assets/frontend/router.js`.
+- Route names should remain stable once consumed by navigation logic.
+- Each route should map to a clear backend payload source.
 
 ## Testing rules
 
-### 1. Test where the behavior lives
+### Test where behavior lives
 
-- Unit tests for isolated domain logic, value shaping, and pure service behavior
-- Integration tests for end-to-end flows, permissions, controller wiring, and persistence effects
+- Unit tests for isolated service/domain/value-shaping logic.
+- Integration tests for controller wiring, permissions, persistence effects, and flow behavior.
 
-### 2. Minimum expectation for feature work
+### Minimum expectation
 
-Any non-trivial change should include or update tests when it affects:
+Non-trivial changes should add/update tests when affecting:
 
 - authentication or PIN flows
-- permissions
+- permissions/roles/access checks
 - workspace workflows
-- API payload shape
 - meeting mode behavior
-- item lifecycle behavior
+- API payload contracts
+- inbound/outbound email behavior
 
-### 3. Do not rely on manual-only validation
+### Manual validation is not enough
 
-If a bug or feature required a debugging session, capture the important behavior in an automated test when practical.
+If a bug or feature required debugging, capture the key behavior in automated tests when practical.
 
-## File and naming conventions
+## Naming and code conventions
 
-- Follow PSR-4 and the existing namespace layout.
-- Backend names must use a noun that describes the domain concept, then the concrete type suffix.
-- Prefer names such as `WorkspaceController`, `AgendaEntity`, `ToastService`, `LoginChallengeRepository`, `DashboardPayloadBuilder`.
-- Avoid names built around verbs or role-based suffixes such as `Provider`, `Validator`, `Manager`, `Handler`, or similar vague technical labels.
-- New controllers should still remain consistent with the existing tree, but future naming should converge toward noun-plus-type naming.
-- Services should be named after the domain concept they represent, not vague technical verbs.
-- Avoid catch-all utility classes.
+- Follow PSR-4 and existing namespace layout.
+- Prefer clear domain-oriented names.
+- Avoid vague catch-all utility classes.
 - Keep method names explicit about business intent.
+- Do not introduce interfaces without a concrete need.
 
-## Change management rules
+Note: existing classes may still use legacy suffixes (`*Manager`, `*Handler`, etc.).  
+Do not rename broadly without a focused refactor task.
 
-### 1. Prefer extension over parallel systems
+## Change management
 
-When a pattern already exists, extend it.
+### Prefer extension over parallel systems
 
-Do not introduce:
+Do not introduce a second:
 
-- a second workspace workflow path
-- a second auth mechanism
-- a second design language
-- a second way to assemble the same payload category
+- auth mechanism
+- workspace workflow for same behavior
+- payload assembly path for same screen intent
+- design language
 
-### 2. Keep docs synchronized
+### Keep changes coherent
 
-Update documentation when you intentionally change:
+- One change-set should solve one coherent problem.
+- Avoid mixing major refactor, schema redesign, and UI overhaul unless tightly coupled.
+- Preparatory refactors should preserve behavior and prove it with tests.
 
-- architecture direction
-- design-system rules
-- local developer workflow
-- security-sensitive behavior
-- a major payload contract
+### Keep docs in sync when rules change
 
-At minimum, review:
+When architecture or conventions intentionally change, update:
 
-- [AGENTS.md](/Users/amaury/code/toastit/AGENTS.md)
-- [DESIGN-SYSTEM.md](/Users/amaury/code/toastit/DESIGN-SYSTEM.md)
-- [doc/technical-foundation.md](/Users/amaury/code/toastit/doc/technical-foundation.md)
-
-### 3. Prefer small coherent slices
-
-- One change should solve one coherent problem.
-- Avoid mixing schema changes, major refactors, and visual redesigns unless they are tightly coupled.
-- If a refactor is preparatory, keep behavior stable and prove it with tests.
+- `AGENTS.md`
+- `DESIGN-SYSTEM.md`
+- `doc/technical-foundation.md`
 
 ## Explicitly discouraged patterns
 
-- putting business decisions in Vue components
-- returning raw entity data directly from API controllers
-- duplicating permission logic between front and back
-- embedding formatting and orchestration logic directly in entities
-- creating new page-local UI blocks without first checking whether an existing component already covers the need
-- creating near-duplicate front-end components instead of extending an existing one
-- keeping reusable UI inside page files when it should be extracted to `assets/frontend/components`
-- adding new UI patterns without aligning them with the existing design system
-- changing payload keys without updating the consumers and tests
-- introducing new dependencies for problems already solved by the current stack
+- business logic inside Vue components
+- raw entity serialization as API contract
+- duplicated permission logic in front and back
+- ad hoc API shape that bypasses established services/workflows
+- near-duplicate UI components instead of extending existing ones
+- payload key changes without synchronized consumer/test updates
+- adding dependencies for problems already solved by current stack
 
 ## Contributor checklist
 
-Before merging a change, verify:
+Before merging, verify:
 
-1. The solution follows the existing architectural boundary instead of creating a parallel path.
-2. Back-end business rules remain server-owned.
-3. Front-end code stays component-oriented and does not absorb domain logic.
-4. Any new page-level work respects the `pages/` vs `components/` separation target.
-5. An existing reusable component was checked before creating a new one.
-6. API payload changes are deliberate, minimal, and fully consumed.
-7. Tests cover the changed behavior at the correct level.
-8. Documentation was updated if the change altered a standing rule.
+1. The solution extends the current architecture instead of creating a parallel path.
+2. Server-side remains authoritative for business and security decisions.
+3. Front-end remains component-driven and thin on domain logic.
+4. Existing reusable components were checked before adding new UI blocks.
+5. API payload changes are deliberate, stable, and fully consumed.
+6. Tests cover changed behavior at the right level.
+7. Docs were updated when standing rules changed.

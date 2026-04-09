@@ -4,417 +4,183 @@
 
 This document captures the current technical baseline of Toastit.
 
-It is intentionally technical and normative. It describes:
+It is normative and complements `AGENTS.md` with broader system context:
 
-- the execution stack
-- the security model
-- the UI and design-system discipline
-- the local development environment
-- the testing strategy
-- the conventions that must be preserved while the product grows
+- runtime stack and local environment
+- architecture boundaries
+- security/authentication model
+- mail and inbound processing model
+- design-system and front-end constraints
+- testing and workflow expectations
 
-This file is meant to serve as the first stable reference for future development.
+## Product Architecture
 
-## Product and UI Direction
+Toastit is Symfony-first with a Vue product shell.
 
-Toastit is built as a mobile-first Symfony application.
+- Symfony owns business rules, security, workflows, persistence, and payload shaping.
+- Vue owns interactive screens and local interaction state.
+- Product behavior is JSON API first.
+- HTML rendering is reserved for app bootstrapping and auth entry surfaces.
 
-The target architecture is:
+This is not a Twig+Alpine product architecture anymore.
 
-- Symfony for all business logic and security
-- Twig for server rendering
-- Alpine.js only for small interaction logic
-- Bulma as the primitive CSS framework
-- a strict component-first design system layered on top of Bulma
+Hard constraints:
 
-The application must not drift toward a SPA architecture.
-
-That means:
-
-- no React-style client-side state architecture
-- no front-end API orchestration as the main application model
-- no page-specific UI inventions when an existing component already exists
-
-The browser is responsible for:
-
-- rendering server-provided pages
-- small interactive behavior
-- segmented code input UX
-- lightweight overlays and local interactions
-
-Symfony remains responsible for:
-
-- authentication
-- authorization
-- state transitions
-- email flows
-- persistence
-- security decisions
+- no business-rule reimplementation in Vue
+- no permission decisions in the browser
+- no persistence logic in controllers
+- no parallel workflow when an existing backend service can be extended
 
 ## Runtime Stack
 
 ### Application runtime
 
 - Symfony 8
-- PHP 8.5 on FrankenPHP
-- MariaDB 11.4
+- PHP 8.5 on FrankenPHP (`dunglas/frankenphp:1-php8.5-bookworm`)
+- Doctrine ORM + Doctrine Migrations
+- MariaDB
 - Docker Compose for local orchestration
+
+### Front-end runtime
+
+- Vue 3
+- Vite
+- Tailwind CSS
+- shared styles in `assets/frontend/styles/app.css` and `assets/styles/app.scss`
 
 ### Local services
 
-- `php`: FrankenPHP application container
-- `database`: MariaDB container
+- `php`: app runtime (FrankenPHP)
+- `database`: MariaDB
+- `mailer`: dev mail catcher
+- `inbound-smtp`: local inbound email bridge
 
-### Key project files
+## Project Structure (Current)
 
-- `compose.yaml`
-- `Dockerfile`
-- `docker/frankenphp/Caddyfile`
-- `docker/frankenphp/docker-entrypoint.sh`
-- `.env`
+- Backend domain/services: `src/Workspace`, `src/Meeting`, `src/Security`, `src/Admin`, `src/Ai`
+- API/controllers: `src/Controller`, `src/Controller/Api`
+- Persistence: `src/Entity`, `src/Repository`, `migrations`
+- Front-end UI: `assets/frontend/components`
+- Front-end API/utilities: `assets/frontend/api`, `assets/frontend/utils`
+- Front-end routing: `assets/frontend/router.js`
 
-### Make targets
+## Development Workflow
 
-The project currently standardizes local actions through:
+Primary local commands are defined in `ops/make/20-local.mk`:
 
 - `make up`
 - `make down`
 - `make logs`
 - `make bash`
 - `make migrate`
+- `make build`
+- `make dev`
 - `make test`
 
-These are intended to remain the primary developer entrypoints for common tasks.
+Keep these as the default workflow entrypoints.
 
-## External AI Integrations
+## Security and Authentication
 
-Toastit can call xAI for server-side meeting recaps.
+Toastit uses two-step access:
 
-Current integration rules:
+1. Email challenge login (magic link + OTP)
+2. PIN unlock layer after authentication
 
-- xAI calls must stay on the Symfony side
-- Vue must only trigger explicit API endpoints and render the returned recap
-- the xAI configuration is environment-driven through `XAI_API_KEY`, `XAI_BASE_URL`, `XAI_MODEL`, and `XAI_TIMEOUT_SECONDS`
-- meeting recap prompts must be grounded in Toastit workspace and session data, never in ad hoc client-side state
+### Email challenge invariants
 
-## Security and Authentication Model
+- same flow for sign-in and account creation
+- no user-enumeration leak at UI level
+- challenge validity is time-bound and one-time-use
 
-Toastit uses a two-step authentication and unlock model.
+### PIN invariants
 
-### Step 1: Email-based authentication
-
-There is a single email entrypoint for both:
-
-- sign in
-- account creation
-
-Behavior:
-
-1. user submits an email
-2. email is normalized
-3. user is looked up
-4. user is created if absent
-5. an OTP challenge is created
-6. an email is sent with:
-   - a magic login link
-   - a 6-character alphanumeric OTP code
-
-Important invariants:
-
-- login and account creation share the same flow
-- the UI must not reveal whether the email previously existed
-- OTP challenges are time-limited and one-time-use
-
-### Step 2: PIN unlock
-
-After Symfony authentication succeeds, the user must pass a second unlock layer:
-
-- first successful login: define a 4-digit PIN
-- subsequent sessions: enter the PIN
-- active authenticated session: reverrouillage after 1 hour since last PIN verification
-
-Important invariants:
-
-- the PIN is numeric and exactly 4 digits
-- the PIN is hashed
-- the PIN is not a substitute for Symfony authentication; it is an app-level unlock layer
-
-### Current authentication building blocks
-
-Domain and security code currently lives in:
-
-- `src/Entity/User.php`
-- `src/Entity/LoginChallenge.php`
-- `src/Security/LoginChallengeManager.php`
-- `src/Security/ChallengeFactory.php`
-- `src/Security/PinManager.php`
-- `src/Security/PinSessionManager.php`
-- `src/Security/OtpLoginAuthenticator.php`
-- `src/EventSubscriber/PinLockSubscriber.php`
-- `src/Controller/AuthController.php`
-- `src/Controller/PinController.php`
+- numeric 4-digit PIN
+- stored hashed
+- unlock layer is additive, not a replacement for authentication
 
 ### Roles
 
-User roles are persisted in the `roles` JSON column on `User`.
+- `ROLE_USER` baseline
+- `ROLE_ROOT` for privileged admin capabilities
 
-Current role model:
+Server remains authoritative for all authorization decisions.
 
-- every user gets `ROLE_USER`
-- privileged accounts can receive `ROLE_ROOT`
+## AI Integration Baseline
 
-The command:
+Toastit AI calls are server-side only.
 
-- `toastit:user:root`
+- AI orchestration must remain in Symfony services.
+- Front-end triggers explicit API endpoints and renders returned payloads.
+- Prompts are database-backed and versioned (`ai_prompt`, `ai_prompt_version`).
+- Prompt rendering uses Twig templates with explicit variables and stable contracts.
+- AI responses should use strict structured envelopes when defined (for example `result.*`).
 
-promotes an existing user to `ROLE_ROOT`.
+Configuration remains environment-driven (`XAI_API_KEY`, `XAI_BASE_URL`, `XAI_MODEL`, `XAI_TIMEOUT_SECONDS`).
 
-`ROLE_ROOT` is reserved for future application administration capabilities and must be treated as a privileged role from now on.
+## Mail and Inbound Email
 
-## Mail Strategy
+### Outbound mail (dev)
 
-Toastit uses Symfony Mailer, but development and production are intentionally different.
-
-### Development
-
-In `dev`, email is not sent to an external provider.
-
-Instead, a local custom transport writes each message to:
-
-- `var/storage/mails`
-
-This is required behavior and must be preserved.
-
-It gives the team:
-
-- inspectable mail payloads
-- deterministic local debugging
-- no accidental external delivery during development
-
-### Email templating
-
-All emails must go through a shared HTML email layout.
-
-Current structure:
-
-- `templates/emails/base.html.twig`
-- `templates/emails/auth/login_challenge.html.twig`
-- `templates/emails/auth/login_challenge.txt.twig`
-
-Important invariant:
-
-- every email must use the shared HTML template system, even if the visual design is still temporary
-
-No email should be assembled as ad hoc raw HTML inside controllers or services.
+- In development, mail is captured locally through the mailer container.
+- Email generation must go through shared templates under `templates/emails/`.
 
 ### Inbound mail
 
-Toastit can also ingest inbound email and convert it into toasts.
+- Inbound email is converted into Toastit inbox/workspace flows server-side.
+- Inbound processing is protected by shared secret and domain config.
+- Heavy processing is queued (Messenger), not done inline on receipt.
 
-Current inbound rules:
-
-- inbound email is mapped to a dedicated hidden `Inbox` workspace mode
-- the inbox workspace is created on demand if missing
-- the inbox workspace must not appear in the standard workspace list
-- the inbox workspace is accessible through dedicated app navigation, not normal workspace discovery
-- the inbox workspace is non-configurable: it cannot be renamed, shared, or deleted through the product flows
-- inbound delivery is protected server-side through environment-driven configuration
-- inbound SMTP receipt must stay fast and queue the heavy processing asynchronously
-
-Current inbound configuration is environment-driven through:
+Key env configuration:
 
 - `INBOUND_EMAIL_DOMAIN`
 - `INBOUND_EMAIL_SECRET`
 - `MESSENGER_TRANSPORT_DSN`
 
-### Local prototype
+## Design System and UI Discipline
 
-The local development stack can run a dedicated inbound SMTP bridge container.
+Design rules are strict, not optional.
 
-Current local prototype rules:
-
-- the `inbound-smtp` container accepts SMTP on port `2525`
-- it parses the inbound message and forwards JSON to Toastit at `/api/inbound/email`
-- Toastit validates the shared secret using `INBOUND_EMAIL_SECRET`
-- Toastit queues inbound processing in Messenger backed by the database
-- a dedicated worker container consumes the queued inbound messages under `supervisord`
-- the target user is derived from the recipient address, not the sender address
-
-## Design System Discipline
-
-The design system is a hard constraint, not a loose guideline.
-
-The current source of truth is:
+Source of truth:
 
 - `assets/styles/app.scss`
-- `assets/frontend/components`
 - `assets/frontend/styles/app.css`
+- `assets/frontend/components`
 - `DESIGN-SYSTEM.md`
 - `AGENTS.md`
 
-### Core UI principle
+Rules:
 
-Pages must compose approved components.
-
-Pages must not invent their own primitives.
-
-### Current base components
-
-Examples already introduced:
-
-- page headers
-- modal dialogs
-- modal headers
-- workspace rows
-- toast list items
-- member list items
-- comment thread and composer
-- follow-up editor
-
-### Color policy
-
-Color usage must flow through tokens.
-
-No page or component should hard-code its own palette unless it is:
-
-- a documented new system token
-- added to the design system reference page
-
-### Design system page
-
-The design system page is not decorative. It is a living reference.
-
-It currently showcases:
-
-- color tokens
-- typography
-- spacing and surfaces
-- button states
-- OTP/PIN interaction patterns
-- tabular UI
-- overlays
-- breadcrumb and pagination
-- Font Awesome usage
-
-Any new reusable UI pattern should be added there before being duplicated across product pages.
-
-## Front-End Interaction Model
-
-Alpine.js is allowed only for lightweight interaction logic.
-
-That includes:
-
-- segmented code inputs
-- focus transitions
-- drawers and sheets
-- local interaction demos
-- small stateful display logic
-
-It must not become:
-
-- a business-state store
-- a client-side application shell
-- a replacement for Symfony controllers and security
+- compose pages from reusable components
+- reuse tokens/styles before inventing new primitives
+- avoid inline style attributes except unavoidable edge cases
+- avoid one-off UI patterns when an existing component can be extended
 
 ## Persistence and Migrations
 
-Doctrine ORM is the persistence layer.
+- Doctrine is the persistence layer.
+- Schema changes must be introduced via new migrations.
+- Existing shipped migrations are append-only unless explicitly instructed otherwise.
 
-Current migrations of note:
+## Testing Strategy
 
-- initial auth tables
-- role support on `User`
+Test split:
 
-Migrations must continue to be additive and explicit.
+- unit tests for isolated domain/service behavior
+- integration tests for HTTP wiring, auth/permissions, and persistence effects
 
-Already-applied migrations should not be rewritten casually.
+Execution:
 
-## Test Strategy
+- run `make test`
+- test workflow recreates `app_test`, applies migrations, then runs PHPUnit
 
-The repository now has:
+Behavioral changes in auth, permissions, workflows, or payload contracts should be covered by automated tests.
 
-- unit tests
-- integration tests
-- a dedicated test database flow
+## Non-Negotiable Constraints
 
-### Test execution
-
-Use:
-
-- `make test`
-
-This currently:
-
-1. recreates `app_test`
-2. grants access to the app database user
-3. runs doctrine migrations in test
-4. clears local mail storage artifacts
-5. runs PHPUnit
-
-### Test database
-
-Tests run against a dedicated database:
-
-- `app_test`
-
-This isolation must remain in place.
-
-### Current coverage baseline
-
-The current suite covers:
-
-- email normalization
-- OTP challenge generation
-- login request flow
-- mail storage side effects
-- OTP and magic-link integration
-- PIN setup and unlock flow
-
-This is only a baseline; future business logic should continue the same split:
-
-- unit tests for pure domain/services
-- integration tests for HTTP/security/persistence flows
-
-## Development Tooling
-
-### Web Debug Toolbar
-
-The Symfony Web Debug Toolbar and profiler are enabled in development.
-
-This is required for now and should remain available while the application is still being shaped.
-
-Routes include:
-
-- `/_wdt`
-- `/_profiler`
-
-### Local shell access
-
-The expected shell entrypoint is:
-
-- `make bash`
-
-This should stay stable for the development workflow.
-
-## Rules To Preserve
-
-The following are not optional and should be considered architectural constraints:
-
-1. Symfony owns security and business logic.
-2. Authentication stays email-first, with OTP + magic link.
-3. PIN remains a second unlock layer, not a replacement for authentication.
-4. Development mail must be stored locally in `var/storage/mails`.
-5. Every email must use the shared HTML templating system.
-6. The UI must remain component-first and server-rendered.
-7. All icons must pass through the icon component.
-8. All reusable patterns must be reflected in the design system page.
-9. Tests must continue to run through `make test` against a dedicated test DB.
-
-## Recommended Next Documentation
-
-This foundation file should be followed later by:
-
-- a business domain document
-- an authentication flow document with sequence diagrams
-- an admin/ROOT capability document
-- a component catalog document if the design system grows substantially
+1. Symfony remains authoritative for business logic and security.
+2. API contracts are explicit and stable for front-end screens.
+3. Front-end stays component-first and does not absorb domain decisions.
+4. Mail and inbound processing stay server-driven and auditable.
+5. DB schema evolution stays migration-driven.
+6. Design-system rules must be respected for new UI work.
+7. Tests must remain part of every non-trivial behavioral change.
