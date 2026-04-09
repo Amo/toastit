@@ -1,3 +1,9 @@
+## 0.5.1 (April 09, 2026)
+- FIX: prevent prompt-resolution failures when DB prompts are present but render to an empty string
+  - `AiPromptTemplateService` now falls back to the raw stored prompt template when Twig rendering returns an empty result
+  - rendering errors now also fall back to the stored template (or configured fallback), reducing production incidents like:
+    - `No system prompt is configured for toast draft refinement.`
+
 ## 0.5.0 (April 09, 2026)
 - NEW: inbound email rewrite quality and routing reliability improvements
   - Introduced a unified inbound rewrite flow for title/description/workspace/owner/due date:
