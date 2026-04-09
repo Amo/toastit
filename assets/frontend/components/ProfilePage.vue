@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { authStore } from '../authStore';
 import { ProfileApi } from '../api/profile';
@@ -22,6 +23,7 @@ const props = defineProps({
 
 const isLoading = ref(true);
 const isSaving = ref(false);
+const isPreferencesSaving = ref(false);
 const isUploadingAvatar = ref(false);
 const isDeleting = ref(false);
 const isRequestingDeletionOtp = ref(false);
@@ -33,15 +35,156 @@ const deleteErrorMessage = ref('');
 const isRestoringWorkspaceId = ref(null);
 const restoreErrorMessage = ref('');
 const avatarErrorMessage = ref('');
-const profile = ref({ displayName: '', firstName: '', lastName: '', deletedWorkspaces: [] });
+const preferencesErrorMessage = ref('');
+const highlightedPreferenceKey = ref('');
+const highlightedPreferenceState = ref('');
+const profile = ref({
+  displayName: '',
+  firstName: '',
+  lastName: '',
+  inboundAiAutoApply: {
+    reword: true,
+    assignee: true,
+    dueDate: true,
+    workspace: true,
+  },
+  deletedWorkspaces: [],
+});
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
   },
 });
+const route = useRoute();
+const router = useRouter();
 const profileApi = new ProfileApi(apiClient);
 const MIN_AVATAR_SIZE = 64;
 const MAX_AVATAR_SIZE = 256;
+const profileSections = [
+  { key: 'infos', label: 'Infos' },
+  { key: 'preferences', label: 'Preferences' },
+  { key: 'trash', label: 'Trash' },
+  { key: 'account', label: 'Account' },
+];
+
+const normalizeProfileSection = (value) => (
+  profileSections.some((section) => section.key === value) ? value : 'infos'
+);
+
+const currentProfileSection = computed(() => normalizeProfileSection(
+  typeof route.query.section === 'string' ? route.query.section : 'infos',
+));
+
+const currentProfileSectionDescription = computed(() => {
+  if (currentProfileSection.value === 'preferences') {
+    return 'Configure how inbound email suggestions from xAI are applied automatically.';
+  }
+
+  if (currentProfileSection.value === 'trash') {
+    return 'Review and restore your deleted workspaces.';
+  }
+
+  if (currentProfileSection.value === 'account') {
+    return 'Manage irreversible account-level actions.';
+  }
+
+  return 'Set your first and last name, avatar, and inbound email address.';
+});
+
+const goToProfileSection = async (sectionKey) => {
+  const nextSection = normalizeProfileSection(sectionKey);
+  const nextQuery = { ...route.query };
+
+  if (nextSection === 'infos') {
+    delete nextQuery.section;
+  } else {
+    nextQuery.section = nextSection;
+  }
+
+  await router.replace({ query: nextQuery });
+};
+let preferencesSaveTimer = null;
+let preferencesHighlightTimer = null;
+let preferencesSaveSequence = 0;
+
+const preferenceRowClass = (preferenceKey) => {
+  if (highlightedPreferenceKey.value !== preferenceKey) {
+    return 'border-stone-200 bg-white';
+  }
+
+  if (highlightedPreferenceState.value === 'pending') {
+    return 'border-amber-300 bg-amber-50';
+  }
+
+  if (highlightedPreferenceState.value === 'saved') {
+    return 'border-emerald-300 bg-emerald-50';
+  }
+
+  if (highlightedPreferenceState.value === 'error') {
+    return 'border-rose-300 bg-rose-50';
+  }
+
+  return 'border-stone-200 bg-white';
+};
+
+const clearPreferenceHighlight = () => {
+  if (preferencesHighlightTimer) {
+    window.clearTimeout(preferencesHighlightTimer);
+    preferencesHighlightTimer = null;
+  }
+
+  highlightedPreferenceKey.value = '';
+  highlightedPreferenceState.value = '';
+};
+
+const saveInboundPreferences = async (preferenceKey) => {
+  isPreferencesSaving.value = true;
+  preferencesErrorMessage.value = '';
+  highlightedPreferenceKey.value = preferenceKey;
+  highlightedPreferenceState.value = 'pending';
+
+  const currentSequence = ++preferencesSaveSequence;
+  const { ok, data } = await profileApi.saveProfile(props.updateUrl, {
+    inboundAiAutoApply: profile.value.inboundAiAutoApply,
+  });
+
+  if (currentSequence !== preferencesSaveSequence) {
+    return;
+  }
+
+  isPreferencesSaving.value = false;
+
+  if (!ok || !data?.user?.inboundAiAutoApply) {
+    highlightedPreferenceState.value = 'error';
+    preferencesErrorMessage.value = 'Unable to save preferences.';
+    return;
+  }
+
+  profile.value.inboundAiAutoApply = {
+    reword: data.user.inboundAiAutoApply.reword ?? profile.value.inboundAiAutoApply.reword,
+    assignee: data.user.inboundAiAutoApply.assignee ?? profile.value.inboundAiAutoApply.assignee,
+    dueDate: data.user.inboundAiAutoApply.dueDate ?? profile.value.inboundAiAutoApply.dueDate,
+    workspace: data.user.inboundAiAutoApply.workspace ?? profile.value.inboundAiAutoApply.workspace,
+  };
+
+  highlightedPreferenceState.value = 'saved';
+  if (preferencesHighlightTimer) {
+    window.clearTimeout(preferencesHighlightTimer);
+  }
+  preferencesHighlightTimer = window.setTimeout(() => {
+    clearPreferenceHighlight();
+  }, 1400);
+};
+
+const onPreferenceToggle = (preferenceKey) => {
+  if (preferencesSaveTimer) {
+    window.clearTimeout(preferencesSaveTimer);
+  }
+
+  preferencesSaveTimer = window.setTimeout(() => {
+    saveInboundPreferences(preferenceKey);
+  }, 180);
+};
 
 const loadImageElement = (file) => {
   const objectUrl = URL.createObjectURL(file);
@@ -122,8 +265,16 @@ const fetchProfile = async () => {
   const { ok, data } = await profileApi.getProfile(props.apiUrl);
 
   if (ok && data) {
+    const inboundAiAutoApply = {
+      reword: data.user?.inboundAiAutoApply?.reword ?? true,
+      assignee: data.user?.inboundAiAutoApply?.assignee ?? true,
+      dueDate: data.user?.inboundAiAutoApply?.dueDate ?? true,
+      workspace: data.user?.inboundAiAutoApply?.workspace ?? true,
+    };
+
     profile.value = {
       ...data.user,
+      inboundAiAutoApply,
       deletedWorkspaces: data.deletedWorkspaces ?? [],
     };
   }
@@ -238,106 +389,197 @@ const restoreWorkspace = async (workspaceId) => {
 };
 
 onMounted(fetchProfile);
+onUnmounted(() => {
+  if (preferencesSaveTimer) {
+    window.clearTimeout(preferencesSaveTimer);
+    preferencesSaveTimer = null;
+  }
+
+  clearPreferenceHighlight();
+});
 </script>
 
 <template>
   <section class="tw-toastit-shell space-y-6">
-    <PageHero eyebrow="Profile" :title="profile.displayName || 'My profile'" description="Set your first and last name to improve lists, avatars, and invitations." />
+    <PageHero
+      eyebrow="Profile"
+      :title="profile.displayName || 'My profile'"
+      :description="currentProfileSectionDescription"
+    />
 
-    <div class="tw-toastit-card max-w-2xl p-6">
+    <div class="tw-toastit-card p-6">
       <EmptyState v-if="isLoading" message="Loading..." />
-      <div v-else class="space-y-8">
-        <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex items-center gap-4">
-              <AvatarBadge
-                :seed="profile.id ?? profile.displayName"
-                :initials="profile.initials"
-                :gravatar-url="profile.gravatarUrl"
-                :alt="profile.displayName"
-                :title="profile.displayName || profile.email || ''"
-                size-class="h-16 w-16 text-lg"
-              />
+      <div v-else class="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
+        <aside class="space-y-2">
+          <button
+            v-for="section in profileSections"
+            :key="section.key"
+            type="button"
+            class="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-medium transition"
+            :class="currentProfileSection === section.key
+              ? 'border-amber-300 bg-amber-50 text-amber-900'
+              : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'"
+            @click="goToProfileSection(section.key)"
+          >
+            <span>{{ section.label }}</span>
+          </button>
+        </aside>
+
+        <div class="space-y-8">
+          <template v-if="currentProfileSection === 'infos'">
+            <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                  <AvatarBadge
+                    :seed="profile.id ?? profile.displayName"
+                    :initials="profile.initials"
+                    :gravatar-url="profile.gravatarUrl"
+                    :alt="profile.displayName"
+                    :title="profile.displayName || profile.email || ''"
+                    size-class="h-16 w-16 text-lg"
+                  />
+                  <div>
+                    <h3 class="text-base font-semibold text-stone-950">Avatar</h3>
+                    <p class="mt-1 text-sm text-stone-600">The image is cropped to a centered square and resampled to stay between 64x64 and 256x256 pixels.</p>
+                  </div>
+                </div>
+
+                <label class="inline-flex cursor-pointer items-center justify-center rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400">
+                  {{ isUploadingAvatar ? 'Uploading...' : 'Upload avatar' }}
+                  <input
+                    class="sr-only"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    :disabled="isUploadingAvatar"
+                    @change="uploadAvatar"
+                  >
+                </label>
+              </div>
+
+              <p v-if="avatarErrorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ avatarErrorMessage }}</p>
+            </div>
+
+            <div class="space-y-4">
+              <TextInputField v-model="profile.firstName" label="First name" />
+              <TextInputField v-model="profile.lastName" label="Last name" />
+              <PrimaryActionButton :disabled="isSaving" @click="saveProfile">
+                {{ isSaving ? 'Saving...' : 'Save' }}
+              </PrimaryActionButton>
+            </div>
+
+            <div v-if="profile.inboxEmailAddress" class="rounded-[1.5rem] border border-sky-200 bg-sky-50/70 p-5">
+              <div class="space-y-3">
+                <div>
+                  <h3 class="text-base font-semibold text-sky-950">Inbound email</h3>
+                  <p class="mt-1 text-sm text-sky-900">
+                    Send an email to this address to create a new toast automatically in your hidden Inbox workspace.
+                  </p>
+                </div>
+
+                <div class="rounded-2xl border border-sky-200 bg-white px-4 py-3">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Your Toastit inbox address</p>
+                  <p class="mt-2 break-all font-mono text-sm text-sky-950">{{ profile.inboxEmailAddress }}</p>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-if="currentProfileSection === 'preferences'">
+            <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
+              <h3 class="text-base font-semibold text-stone-950">Inbound xAI auto-apply</h3>
+              <p class="mt-1 text-sm text-stone-600">
+                Choose which xAI suggestions are automatically applied when a new toast is created from inbound email.
+              </p>
+              <p v-if="preferencesErrorMessage" class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ preferencesErrorMessage }}</p>
+              <p v-else-if="isPreferencesSaving" class="mt-3 text-sm font-medium text-amber-700">Saving preferences...</p>
+
+              <div class="mt-4 space-y-3">
+                <label
+                  class="flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition"
+                  :class="preferenceRowClass('reword')"
+                >
+                  <span class="flex items-center gap-2 text-sm font-medium text-stone-900">
+                    <span>Reword title and description</span>
+                    <span v-if="highlightedPreferenceKey === 'reword' && highlightedPreferenceState === 'saved'" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Saved</span>
+                  </span>
+                  <input v-model="profile.inboundAiAutoApply.reword" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500" @change="onPreferenceToggle('reword')">
+                </label>
+                <label
+                  class="flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition"
+                  :class="preferenceRowClass('assignee')"
+                >
+                  <span class="flex items-center gap-2 text-sm font-medium text-stone-900">
+                    <span>Apply suggested assignee</span>
+                    <span v-if="highlightedPreferenceKey === 'assignee' && highlightedPreferenceState === 'saved'" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Saved</span>
+                  </span>
+                  <input v-model="profile.inboundAiAutoApply.assignee" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500" @change="onPreferenceToggle('assignee')">
+                </label>
+                <label
+                  class="flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition"
+                  :class="preferenceRowClass('dueDate')"
+                >
+                  <span class="flex items-center gap-2 text-sm font-medium text-stone-900">
+                    <span>Apply suggested due date</span>
+                    <span v-if="highlightedPreferenceKey === 'dueDate' && highlightedPreferenceState === 'saved'" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Saved</span>
+                  </span>
+                  <input v-model="profile.inboundAiAutoApply.dueDate" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500" @change="onPreferenceToggle('dueDate')">
+                </label>
+                <label
+                  class="flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition"
+                  :class="preferenceRowClass('workspace')"
+                >
+                  <span class="flex items-center gap-2 text-sm font-medium text-stone-900">
+                    <span>Apply suggested workspace</span>
+                    <span v-if="highlightedPreferenceKey === 'workspace' && highlightedPreferenceState === 'saved'" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Saved</span>
+                  </span>
+                  <input v-model="profile.inboundAiAutoApply.workspace" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500" @change="onPreferenceToggle('workspace')">
+                </label>
+              </div>
+            </div>
+          </template>
+
+          <template v-if="currentProfileSection === 'trash'">
+            <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5">
               <div>
-                <h3 class="text-base font-semibold text-stone-950">Avatar</h3>
-                <p class="mt-1 text-sm text-stone-600">The image is cropped to a centered square and resampled to stay between 64x64 and 256x256 pixels.</p>
+                <h3 class="text-base font-semibold text-stone-950">Deleted workspaces</h3>
+                <p class="mt-1 text-sm text-stone-600">Only owners can see and restore deleted workspaces.</p>
+              </div>
+
+              <p v-if="restoreErrorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ restoreErrorMessage }}</p>
+
+              <div v-if="profile.deletedWorkspaces?.length" class="space-y-3">
+                <div
+                  v-for="deletedWorkspace in profile.deletedWorkspaces"
+                  :key="deletedWorkspace.id"
+                  class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white px-4 py-4"
+                >
+                  <div class="min-w-0">
+                    <p class="font-medium text-stone-950">{{ deletedWorkspace.name }}</p>
+                    <p class="mt-1 text-sm text-stone-500">Deleted on {{ deletedWorkspace.deletedAtDisplay }}</p>
+                  </div>
+                  <SecondaryActionButton :disabled="isRestoringWorkspaceId === deletedWorkspace.id" @click="restoreWorkspace(deletedWorkspace.id)">
+                    {{ isRestoringWorkspaceId === deletedWorkspace.id ? 'Restoring...' : 'Restore' }}
+                  </SecondaryActionButton>
+                </div>
+              </div>
+
+              <EmptyState v-else message="No deleted workspaces." />
+            </div>
+          </template>
+
+          <template v-if="currentProfileSection === 'account'">
+            <div class="rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5">
+              <div class="space-y-3">
+                <div>
+                  <h3 class="text-base font-semibold text-rose-900">Delete my account</h3>
+                  <p class="mt-1 text-sm text-rose-800">
+                    This permanently disables your account and cannot be recovered.
+                  </p>
+                </div>
+                <SecondaryActionButton @click="openDeleteModal">Delete my account</SecondaryActionButton>
               </div>
             </div>
-
-            <label class="inline-flex cursor-pointer items-center justify-center rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400">
-              {{ isUploadingAvatar ? 'Uploading...' : 'Upload avatar' }}
-              <input
-                class="sr-only"
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                :disabled="isUploadingAvatar"
-                @change="uploadAvatar"
-              >
-            </label>
-          </div>
-
-          <p v-if="avatarErrorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ avatarErrorMessage }}</p>
-        </div>
-
-        <div class="space-y-4">
-          <TextInputField v-model="profile.firstName" label="First name" />
-          <TextInputField v-model="profile.lastName" label="Last name" />
-          <PrimaryActionButton :disabled="isSaving" @click="saveProfile">
-            {{ isSaving ? 'Saving...' : 'Save' }}
-          </PrimaryActionButton>
-        </div>
-
-        <div v-if="profile.inboxEmailAddress" class="rounded-[1.5rem] border border-sky-200 bg-sky-50/70 p-5">
-          <div class="space-y-3">
-            <div>
-              <h3 class="text-base font-semibold text-sky-950">Inbound email</h3>
-              <p class="mt-1 text-sm text-sky-900">
-                Send an email to this address to create a new toast automatically in your hidden Inbox workspace.
-              </p>
-            </div>
-
-            <div class="rounded-2xl border border-sky-200 bg-white px-4 py-3">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Your Toastit inbox address</p>
-              <p class="mt-2 break-all font-mono text-sm text-sky-950">{{ profile.inboxEmailAddress }}</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5">
-          <div class="space-y-3">
-            <div>
-              <h3 class="text-base font-semibold text-rose-900">Delete my account</h3>
-              <p class="mt-1 text-sm text-rose-800">
-                This permanently disables your account and cannot be recovered.
-              </p>
-            </div>
-            <SecondaryActionButton @click="openDeleteModal">Delete my account</SecondaryActionButton>
-          </div>
-        </div>
-
-        <div v-if="profile.deletedWorkspaces?.length" class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5">
-          <div>
-            <h3 class="text-base font-semibold text-stone-950">Deleted workspaces</h3>
-            <p class="mt-1 text-sm text-stone-600">Only owners can see and restore deleted workspaces.</p>
-          </div>
-
-          <p v-if="restoreErrorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ restoreErrorMessage }}</p>
-
-          <div class="space-y-3">
-            <div
-              v-for="deletedWorkspace in profile.deletedWorkspaces"
-              :key="deletedWorkspace.id"
-              class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white px-4 py-4"
-            >
-              <div class="min-w-0">
-                <p class="font-medium text-stone-950">{{ deletedWorkspace.name }}</p>
-                <p class="mt-1 text-sm text-stone-500">Deleted on {{ deletedWorkspace.deletedAtDisplay }}</p>
-              </div>
-              <SecondaryActionButton :disabled="isRestoringWorkspaceId === deletedWorkspace.id" @click="restoreWorkspace(deletedWorkspace.id)">
-                {{ isRestoringWorkspaceId === deletedWorkspace.id ? 'Restoring...' : 'Restore' }}
-              </SecondaryActionButton>
-            </div>
-          </div>
+          </template>
         </div>
       </div>
     </div>

@@ -15,6 +15,16 @@ Pending confirmation: {{ pending_count }}
 {% endif %}
 {% endfor %}
 
+{% if toast_snapshot %}
+Current task state:
+- id: #{{ toast_snapshot.id }}
+- title: {{ toast_snapshot.title }}
+- assignee: {{ toast_snapshot.owner ? toast_snapshot.owner.displayName : 'none' }}
+- due date: {{ toast_snapshot.dueAt ? toast_snapshot.dueAt|date('Y-m-d') : 'none' }}
+- description:
+{{ toast_snapshot.description ?? '' }}
+{% endif %}
+
 {% if pending_count > 0 %}
 Some commands were not applied because confidence was low.
 Reply with explicit commands (one per line), for example:

@@ -47,6 +47,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $avatarPath = null;
 
+    #[ORM\Column(options: ['default' => true])]
+    private bool $inboundAutoApplyReword = true;
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $inboundAutoApplyAssignee = true;
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $inboundAutoApplyDueDate = true;
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $inboundAutoApplyWorkspace = true;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -245,6 +257,54 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function isDeleted(): bool
     {
         return str_ends_with($this->email, '@'.self::DELETED_EMAIL_DOMAIN);
+    }
+
+    public function isInboundAutoApplyReword(): bool
+    {
+        return $this->inboundAutoApplyReword;
+    }
+
+    public function setInboundAutoApplyReword(bool $inboundAutoApplyReword): self
+    {
+        $this->inboundAutoApplyReword = $inboundAutoApplyReword;
+
+        return $this;
+    }
+
+    public function isInboundAutoApplyAssignee(): bool
+    {
+        return $this->inboundAutoApplyAssignee;
+    }
+
+    public function setInboundAutoApplyAssignee(bool $inboundAutoApplyAssignee): self
+    {
+        $this->inboundAutoApplyAssignee = $inboundAutoApplyAssignee;
+
+        return $this;
+    }
+
+    public function isInboundAutoApplyDueDate(): bool
+    {
+        return $this->inboundAutoApplyDueDate;
+    }
+
+    public function setInboundAutoApplyDueDate(bool $inboundAutoApplyDueDate): self
+    {
+        $this->inboundAutoApplyDueDate = $inboundAutoApplyDueDate;
+
+        return $this;
+    }
+
+    public function isInboundAutoApplyWorkspace(): bool
+    {
+        return $this->inboundAutoApplyWorkspace;
+    }
+
+    public function setInboundAutoApplyWorkspace(bool $inboundAutoApplyWorkspace): self
+    {
+        $this->inboundAutoApplyWorkspace = $inboundAutoApplyWorkspace;
+
+        return $this;
     }
 
     public function getPublicEmail(): ?string

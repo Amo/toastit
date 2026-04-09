@@ -82,6 +82,7 @@ final class TransactionalMailer
         ?string $originalSubject = null,
         ?string $messageId = null,
         ?string $references = null,
+        ?string $replyToAddress = null,
     ): void
     {
         $summary = trim($summary);
@@ -102,6 +103,10 @@ final class TransactionalMailer
             ->html($this->twig->render('emails/todo_digest.html.twig', $context))
             ->text($this->twig->render('emails/todo_digest.txt.twig', $context));
 
+        if (null !== $replyToAddress && '' !== trim($replyToAddress)) {
+            $email->replyTo($replyToAddress);
+        }
+
         $this->applyReplyHeaders($email, $messageId, $references);
 
         $this->mailer->send($email);
@@ -114,6 +119,9 @@ final class TransactionalMailer
         Toast $toast,
         string $replyToAddress,
         ?array $workspaceSuggestion,
+        bool $wasRewordedByAi,
+        ?string $originalTitle,
+        ?string $originalDescription,
         ?string $originalSubject = null,
         ?string $messageId = null,
         ?string $references = null,
@@ -121,6 +129,9 @@ final class TransactionalMailer
         $context = [
             'toast' => $toast,
             'workspace_suggestion' => $workspaceSuggestion,
+            'was_reworded_by_ai' => $wasRewordedByAi,
+            'original_title' => trim((string) $originalTitle),
+            'original_description' => trim((string) $originalDescription),
         ];
 
         $email = (new Email())
@@ -139,6 +150,7 @@ final class TransactionalMailer
         Toast $toast,
         string $proposedTitle,
         string $proposedDescription,
+        ?string $replyToAddress = null,
         ?string $originalSubject = null,
         ?string $messageId = null,
         ?string $references = null,
@@ -157,6 +169,10 @@ final class TransactionalMailer
             ->html($this->twig->render('emails/toast_rephrase_proposal.html.twig', $context))
             ->text($this->twig->render('emails/toast_rephrase_proposal.txt.twig', $context));
 
+        if (null !== $replyToAddress && '' !== trim($replyToAddress)) {
+            $email->replyTo($replyToAddress);
+        }
+
         $this->applyReplyHeaders($email, $messageId, $references);
         $this->mailer->send($email);
     }
@@ -164,6 +180,7 @@ final class TransactionalMailer
     public function sendToastReplyActionResult(
         Toast $toast,
         array $actionResults,
+        ?string $replyToAddress = null,
         ?string $originalSubject = null,
         ?string $messageId = null,
         ?string $references = null,
@@ -172,6 +189,8 @@ final class TransactionalMailer
             $toast->getAuthor(),
             sprintf('Task #%d — %s', $toast->getId(), $toast->getTitle()),
             $actionResults,
+            $replyToAddress,
+            $toast,
             $originalSubject ?: sprintf('Task #%d', $toast->getId()),
             $messageId,
             $references,
@@ -182,6 +201,8 @@ final class TransactionalMailer
         User $recipient,
         string $contextLabel,
         array $actionResults,
+        ?string $replyToAddress = null,
+        ?Toast $toastSnapshot = null,
         ?string $originalSubject = null,
         ?string $messageId = null,
         ?string $references = null,
@@ -200,6 +221,7 @@ final class TransactionalMailer
             'action_results' => $actionResults,
             'pending_count' => $pendingCount,
             'applied_count' => $appliedCount,
+            'toast_snapshot' => $toastSnapshot,
         ];
 
         $email = (new Email())
@@ -208,6 +230,10 @@ final class TransactionalMailer
             ->subject($this->buildReplySubject($originalSubject ?: $contextLabel))
             ->html($this->twig->render('emails/toast_reply_action_result.html.twig', $context))
             ->text($this->twig->render('emails/toast_reply_action_result.txt.twig', $context));
+
+        if (null !== $replyToAddress && '' !== trim($replyToAddress)) {
+            $email->replyTo($replyToAddress);
+        }
 
         $this->applyReplyHeaders($email, $messageId, $references);
         $this->mailer->send($email);

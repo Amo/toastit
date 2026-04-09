@@ -7,6 +7,7 @@ use App\Entity\ToastComment;
 use App\Entity\ToastReplyToken;
 use App\Entity\User;
 use App\Entity\Workspace;
+use App\Meeting\SessionSummaryUnavailableException;
 use App\Routing\AppUrlGenerator;
 use App\Security\JwtTokenService;
 use App\Repository\WorkspaceRepository;
@@ -97,30 +98,37 @@ final class InboundEmailService
                 $subject,
                 $messageId ?? $inReplyTo,
                 $references,
+                $this->inboundEmailAddress->buildAddressForUser($user),
             );
 
             return InboundEmailResult::todoDigestSent();
         }
 
         $workspace = $this->inboxWorkspace->getOrCreateInboxWorkspace($user);
+        $originalTitle = $this->buildTitle($from, $subject, $textBody, $htmlBody);
+        $originalDescription = $this->buildDescription($textBody, $htmlBody);
         $toast = $this->toastCreation->createToast(
             $workspace,
             $user,
-            $this->buildTitle($from, $subject, $textBody, $htmlBody),
-            $this->buildDescription($textBody, $htmlBody),
+            $originalTitle,
+            $originalDescription,
         );
 
+        $wasRewordedByAi = $this->applyAutomaticRefinementSuggestions($workspace, $toast, $user);
+        $workspaceSuggestion = $this->workspaceSuggestion->suggestWorkspace($user, $toast->getTitle(), $toast->getDescription());
+        $toast = $this->applyAutomaticWorkspaceSuggestion($toast, $user, $workspaceSuggestion);
         $this->entityManager->flush();
 
-        $replyToken = $this->toastReplyToken->issue($user, $toast, ToastReplyToken::ACTION_REPHRASE);
-        $replyToAddress = $this->inboundReplyAddress->buildAddress($replyToken->token->getSelector(), $replyToken->plainToken);
-        $workspaceSuggestion = $this->workspaceSuggestion->suggestWorkspace($user, $toast->getTitle(), $toast->getDescription());
+        $replyToAddress = $this->buildToastReplyAddress($user, $toast);
 
         if (null !== $replyToAddress) {
             $this->transactionalMailer->sendInboundToastAcknowledgement(
                 $toast,
                 $replyToAddress,
                 $workspaceSuggestion,
+                $wasRewordedByAi,
+                $originalTitle,
+                $originalDescription,
                 $subject,
                 $messageId,
                 $references,
@@ -224,6 +232,8 @@ final class InboundEmailService
             $user,
             'Todo digest commands',
             $results,
+            $this->inboundEmailAddress->buildAddressForUser($user),
+            null,
             $subject,
             $messageId ?? $inReplyTo,
             $references,
@@ -308,6 +318,7 @@ final class InboundEmailService
         $this->transactionalMailer->sendToastReplyActionResult(
             $toast,
             $results,
+            $recipient,
             $subject,
             $messageId ?? $inReplyTo,
             $references,
@@ -879,5 +890,71 @@ final class InboundEmailService
         }
 
         return new \DateTimeImmutable($dueOn);
+    }
+
+    /**
+     * @param array{id: int, name: string, reason: string}|null $workspaceSuggestion
+     */
+    private function applyAutomaticWorkspaceSuggestion(Toast $toast, User $actor, ?array $workspaceSuggestion): Toast
+    {
+        if (!$actor->isInboundAutoApplyWorkspace()) {
+            return $toast;
+        }
+
+        if (null === $workspaceSuggestion) {
+            return $toast;
+        }
+
+        $targetWorkspace = $this->workspaceAccessWorkspaceOrNull((int) $workspaceSuggestion['id'], $actor);
+        if (!$targetWorkspace instanceof Workspace || $targetWorkspace->getId() === $toast->getWorkspace()->getId()) {
+            return $toast;
+        }
+
+        return $this->toastTransfer->transfer($toast, $targetWorkspace, $actor);
+    }
+
+    private function applyAutomaticRefinementSuggestions(Workspace $workspace, Toast $toast, User $actor): bool
+    {
+        $applyReword = $actor->isInboundAutoApplyReword();
+        $applyAssignee = $actor->isInboundAutoApplyAssignee();
+        $applyDueDate = $actor->isInboundAutoApplyDueDate();
+
+        if (!$applyReword && !$applyAssignee && !$applyDueDate) {
+            return false;
+        }
+
+        try {
+            $proposal = $this->toastDraftRefinement->refine(
+                $workspace,
+                $toast->getTitle(),
+                $toast->getDescription(),
+                $actor,
+            );
+        } catch (SessionSummaryUnavailableException) {
+            return false;
+        }
+
+        if ($applyReword) {
+            $toast
+                ->setTitle(trim($proposal['title']))
+                ->setDescription(trim((string) $proposal['description']) ?: null);
+        }
+
+        if ($applyAssignee) {
+            $toast->setOwner($this->resolveWorkspaceOwner($toast->getWorkspace(), $proposal['ownerId']));
+        }
+
+        if ($applyDueDate) {
+            $toast->setDueAt($this->resolveDueAt($proposal['dueOn']));
+        }
+
+        return $applyReword;
+    }
+
+    private function buildToastReplyAddress(User $user, Toast $toast): ?string
+    {
+        $replyToken = $this->toastReplyToken->issue($user, $toast, ToastReplyToken::ACTION_REPHRASE);
+
+        return $this->inboundReplyAddress->buildAddress($replyToken->token->getSelector(), $replyToken->plainToken);
     }
 }

@@ -5,7 +5,31 @@
     <p style="margin:0 0 12px;font-size:15px;line-height:1.6;">
         <strong>Task #{{ toast.id }}</strong> created in your Inbox workspace.
     </p>
-    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#1f1209;"><strong>Title:</strong> {{ toast.title }}</p>
+
+    <div style="margin:0 0 18px;padding:14px;border:1px solid #e5e7eb;border-radius:14px;background:#ffffff;font-size:14px;line-height:1.6;color:#1f1209;">
+        <p style="margin:0 0 8px;font-weight:700;">
+            {% if was_reworded_by_ai %}
+                Result (xAI auto-processed)
+            {% else %}
+                Current task result
+            {% endif %}
+        </p>
+        <p style="margin:0 0 6px;"><strong>Title:</strong> {{ toast.title }}</p>
+        <p style="margin:0 0 6px;"><strong>Workspace:</strong> {{ toast.workspace.name }}</p>
+        <p style="margin:0 0 6px;"><strong>Assignee:</strong> {{ toast.owner ? toast.owner.displayName : 'none' }}</p>
+        <p style="margin:0 0 6px;"><strong>Due date:</strong> {{ toast.dueAt ? toast.dueAt|date('Y-m-d') : 'none' }}</p>
+        <p style="margin:0 0 4px;"><strong>Description:</strong></p>
+        <pre style="margin:0;white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.6;color:#1f1209;">{{ toast.description ?? '' }}</pre>
+    </div>
+
+    {% if was_reworded_by_ai and (original_title or original_description) %}
+        <div style="margin:0 0 18px;padding:14px;border:1px solid #dbeafe;border-radius:14px;background:#eff6ff;font-size:14px;line-height:1.6;color:#1e3a8a;">
+            <p style="margin:0 0 8px;font-weight:700;">Original email draft</p>
+            <p style="margin:0 0 6px;"><strong>Title:</strong> {{ original_title ?: '(empty)' }}</p>
+            <p style="margin:0 0 4px;"><strong>Description:</strong></p>
+            <pre style="margin:0;white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.6;color:#1e3a8a;">{{ original_description ?: '(empty)' }}</pre>
+        </div>
+    {% endif %}
 
     <div style="margin:0 0 18px;padding:14px;border:1px solid #eceff3;border-radius:14px;background:#faf8f4;font-size:14px;line-height:1.6;color:#1f1209;">
         <p style="margin:0 0 8px;font-weight:700;">Reply commands (one per line, optional prefix: #{{ toast.id }})</p>

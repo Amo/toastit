@@ -18,7 +18,7 @@ final class ProfilePayloadBuilder
     }
 
     /**
-     * @return array{id: int|null, email: ?string, displayName: string, firstName: ?string, lastName: ?string, initials: string, gravatarUrl: string, inboxWorkspaceId: int|null, inboxEmailAddress: string|null}
+     * @return array{id: int|null, email: ?string, displayName: string, firstName: ?string, lastName: ?string, initials: string, gravatarUrl: string, inboxWorkspaceId: int|null, inboxEmailAddress: string|null, inboundAiAutoApply: array{reword: bool, assignee: bool, dueDate: bool, workspace: bool}}
      */
     public function buildUser(User $user): array
     {
@@ -34,6 +34,12 @@ final class ProfilePayloadBuilder
             'gravatarUrl' => $this->avatarUrl->resolve($user),
             'inboxWorkspaceId' => $inboxWorkspace?->getId(),
             'inboxEmailAddress' => $this->inboundEmailAddress->buildAddressForUser($user),
+            'inboundAiAutoApply' => [
+                'reword' => $user->isInboundAutoApplyReword(),
+                'assignee' => $user->isInboundAutoApplyAssignee(),
+                'dueDate' => $user->isInboundAutoApplyDueDate(),
+                'workspace' => $user->isInboundAutoApplyWorkspace(),
+            ],
         ];
     }
 

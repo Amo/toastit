@@ -13,6 +13,54 @@ final class ProfileAvatarFlowTest extends WebTestCase
 {
     use MailpitTestTrait;
 
+    public function testUserCanConfigureInboundAiAutoApplyPreferencesFromProfile(): void
+    {
+        $client = static::createClient();
+        $email = sprintf('profile-ai-prefs-%s@example.com', time());
+        $this->loginWithMagicLink($client, $email);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
+
+        $client->request('GET', '/api/profile');
+        self::assertResponseIsSuccessful();
+        $initialPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame([
+            'reword' => true,
+            'assignee' => true,
+            'dueDate' => true,
+            'workspace' => true,
+        ], $initialPayload['user']['inboundAiAutoApply']);
+
+        $client->request('PUT', '/api/profile', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+            'firstName' => 'Jean',
+            'lastName' => 'Dupont',
+            'inboundAiAutoApply' => [
+                'reword' => false,
+                'assignee' => true,
+                'dueDate' => false,
+                'workspace' => true,
+            ],
+        ], JSON_THROW_ON_ERROR));
+        self::assertResponseIsSuccessful();
+        $updatePayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame([
+            'reword' => false,
+            'assignee' => true,
+            'dueDate' => false,
+            'workspace' => true,
+        ], $updatePayload['user']['inboundAiAutoApply']);
+
+        $client->request('GET', '/api/profile');
+        self::assertResponseIsSuccessful();
+        $reloadedPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame([
+            'reword' => false,
+            'assignee' => true,
+            'dueDate' => false,
+            'workspace' => true,
+        ], $reloadedPayload['user']['inboundAiAutoApply']);
+    }
+
     public function testAuthenticatedUserCanUploadAvatarAndReadItFromReturnedUrl(): void
     {
         $client = static::createClient();

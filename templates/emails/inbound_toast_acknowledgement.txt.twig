@@ -1,7 +1,24 @@
 Toast received
 
 Task #{{ toast.id }} created in your Inbox workspace.
+{% if was_reworded_by_ai %}
+Result (xAI auto-processed):
+{% else %}
+Current task result:
+{% endif %}
 Title: {{ toast.title }}
+Workspace: {{ toast.workspace.name }}
+Assignee: {{ toast.owner ? toast.owner.displayName : 'none' }}
+Due date: {{ toast.dueAt ? toast.dueAt|date('Y-m-d') : 'none' }}
+Description:
+{{ toast.description ?? '' }}
+
+{% if was_reworded_by_ai and (original_title or original_description) %}
+Original email draft:
+Title: {{ original_title ?: '(empty)' }}
+Description:
+{{ original_description ?: '(empty)' }}
+{% endif %}
 
 Reply commands (one per line, optional prefix: #{{ toast.id }}):
 - assign me

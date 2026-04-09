@@ -28,6 +28,7 @@ final class TodoDigestService
         ?string $originalSubject,
         ?string $messageId,
         ?string $references,
+        ?string $replyToAddress = null,
     ): void {
         $assignedToasts = $this->toastRepository->findAssignedActiveForUser($user);
 
@@ -38,6 +39,7 @@ final class TodoDigestService
                 $originalSubject,
                 $messageId,
                 $references,
+                $replyToAddress,
             );
 
             return;
@@ -58,6 +60,7 @@ final class TodoDigestService
             $originalSubject,
             $messageId,
             $references,
+            $replyToAddress,
         );
     }
 
