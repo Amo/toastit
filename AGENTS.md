@@ -173,6 +173,10 @@ When architecture or conventions intentionally change, update:
 - payload key changes without synchronized consumer/test updates
 - adding dependencies for problems already solved by current stack
 
+## Changelog convention
+
+- When a request says `CHANGELOG update`, interpret it as: reword the latest changes in `CHANGELOG.md` for end-user sharing, while keeping the existing release/version structure.
+
 ## Contributor checklist
 
 Before merging, verify:

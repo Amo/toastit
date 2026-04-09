@@ -1,67 +1,42 @@
 ## 0.5.1 (April 09, 2026)
-- FIX: prevent prompt-resolution failures when DB prompts are present but render to an empty string
-  - `AiPromptTemplateService` now falls back to the raw stored prompt template when Twig rendering returns an empty result
-  - rendering errors now also fall back to the stored template (or configured fallback), reducing production incidents like:
-    - `No system prompt is configured for toast draft refinement.`
+- FIX: improved reliability for AI prompt loading
+  - Prevented a case where AI-generated refinements could fail even when prompts existed
+  - Added safer fallback behavior so prompt rendering issues do not block inbound toast refinement
 
 ## 0.5.0 (April 09, 2026)
-- NEW: inbound email rewrite quality and routing reliability improvements
-  - Introduced a unified inbound rewrite flow for title/description/workspace/owner/due date:
-    - added a dedicated DB-backed prompt `inbound_email_rewrite_system`
-    - switched inbound ingestion to consume a single structured rewrite payload when available
-    - kept fallback compatibility with previous refinement + workspace suggestion path
-  - Hardened prompt contracts and runtime behavior:
-    - strengthened JSON output constraints and workspace/member routing rules
-    - clarified workspace context format in prompt user templates
-    - improved temporal resolution guidance for relative/literal due-date signals
-    - added explicit logging for invalid AI due-date outputs (`inbound.email_due_date_invalid`)
-  - Improved ownership and workspace assignment safety:
-    - owner now falls back to requester when AI owner resolution is invalid
-    - workspace resolution behavior is deterministic under invalid/ambiguous suggestions
-  - Added profile-level language control for inbound rewording:
-    - added user preference `inbound_reword_language` (`auto` + top 10 common languages)
-    - exposed/validated setting via profile API and profile page preferences UI
-    - propagated language instruction into inbound rewrite/refinement prompt contexts
-- TECH: local/deployment and documentation updates
-  - improved local compose/make environment handling for migrations/workers
-  - tightened required production compose environment variables
-  - refreshed AGENTS and technical foundation documentation
+- NEW: better inbound email understanding and smarter auto-routing
+  - Improved how inbound emails are transformed into actionable toasts:
+    - clearer titles and richer structured descriptions
+    - more consistent workspace, owner, and due date suggestions
+    - stronger fallback behavior when AI output is incomplete
+  - Improved assignment and routing safety:
+    - more reliable owner selection
+    - more predictable workspace selection in ambiguous cases
+  - Added language preferences for inbound AI rewording:
+    - users can keep automatic language detection or force a preferred language
+    - setting is available in profile preferences
+- TECH: deployment and maintenance improvements
+  - improved environment handling for migrations and workers
+  - tightened production environment requirements
+  - refreshed internal project documentation
 
 ## 0.4.0 (April 09, 2026)
-- NEW: database-backed AI prompt management with versioning, admin editing, and stricter AI contracts
-  - Added prompt registry persistence:
-    - introduced `ai_prompt` + `ai_prompt_version` entities/repositories with migration-backed schema
-    - seeded core AI prompts and appended multiple prompt versions to evolve system/user templates safely
-    - added template metadata (`availableVariables`, `availableUserVariables`) for Twig-driven prompt rendering
-  - Added ROOT prompt management workflow:
-    - new admin page at `/admin/prompts` with prompt selection, system/user template editors, save-as-new-version, and rollback
-    - new protected API endpoints: list/detail/update/rollback (`/api/admin/prompts*`)
-    - admin navigation now links overview, users, and prompts pages together
-  - Switched AI features to resolve prompts from DB templates:
-    - `ToastDraftRefinementService`, `WorkspaceSuggestionService`, `TodoDigestService`, `ToastCurationDraftService`,
-      `ToastExecutionPlanDraftService`, and `ToastingSessionSummaryService` now use `AiPromptTemplateService`
-    - curation/execution/todo/summary pipelines now accept strict JSON envelopes (`result.*`) with backward-safe parsing
-    - workspace suggestion now enforces confidence gating (`>= 90`) before auto-selection
-  - Adjusted inbound-email auto-routing behavior:
-    - when workspace suggestion is disabled or inconclusive, inbox-created toasts are transferred to the actor default workspace
+- NEW: AI prompt management in admin, with version history
+  - Added a centralized prompt library in the database
+  - Added admin tools to view, edit, version, and roll back prompts
+  - Improved consistency of AI outputs across summarization, refinement, curation, and execution flows
+  - Improved safety for workspace auto-selection with confidence checks
 
 ## 0.3.0 (April 09, 2026)
 - NEW: inbound email AI automation now supports granular auto-apply preferences
-  - Added automatic xAI refinement for inbound toasts:
+  - Added automatic AI improvements for inbound toasts:
     - reword title/description
-    - suggest and apply assignee
-    - suggest and apply due date
-    - suggest and apply target workspace
-  - Added per-user inbound AI preferences (default `on` for all):
-    - `reword`, `assignee`, `dueDate`, `workspace`
-    - Preferences are exposed in profile API payloads and persisted in database
-  - Updated profile experience:
-    - Introduced profile subpages with sidebar navigation: `Infos` (default), `Preferences`, `Trash`, `Account`
-    - Preference toggles now save on change (no submit button)
-    - Added explicit visual feedback per toggle (`saving`, `saved`, `error`)
-  - Improved outbound email command loop:
-    - Reply emails now include actionable `Reply-To` addresses for follow-up commands
-    - Acknowledgement and action-summary emails include complete task state snapshots
+    - suggest assignee
+    - suggest due date
+    - suggest target workspace
+  - Added per-user controls for which suggestions are auto-applied
+  - Improved profile experience with clearer sections and instant preference saving
+  - Improved outbound email follow-up loop with actionable reply addresses and clearer summaries
 
 ## 0.2.1 (April 08, 2026)
 - NEW: simplified homepage and clearer feature positioning
@@ -71,18 +46,14 @@
 
 ## 0.2.0 (April 08, 2026)
 - NEW: upgraded inbound email workflows
-  - Introduced concise command-based replies for toast and `todo` digest emails
-  - Added action support for `assign`, `due`, `comment`/`note`, `move`/`transfer`, `update`, and `reword`
-  - Added confidence-gated execution:
-    - high-confidence commands are applied immediately
-    - low-confidence commands are returned as explicit confirmation choices
-  - Added authenticated confirmation links for low-confidence actions
-    - each option URL applies exactly one explicit action
-    - confirmation result is shown in a centered in-app screen
-  - Added task ID references (`#<taskId>`) for multi-task command execution
-  - Improved outbound email readability:
-    - more compact acknowledgement and action-summary messages
-    - per-action status reporting (`applied`, `pending_confirmation`, `failed`)
+  - Added concise command-based replies for toast and `todo` digest emails
+  - Added support for `assign`, `due`, `comment`/`note`, `move`/`transfer`, `update`, and `reword`
+  - Added confidence-aware execution:
+    - clear commands are applied immediately
+    - ambiguous commands return explicit confirmation options
+  - Added secure confirmation links for low-confidence actions
+  - Added task ID references (`#<taskId>`) for multi-task commands
+  - Improved outbound email readability with compact summaries and clearer action statuses
 - NEW: improved dashboard home layout
   - Promoted “My Actions” as the primary home section
   - Moved the workspace list to a compact right-side rail
