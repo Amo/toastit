@@ -1,3 +1,26 @@
+## 0.5.0 (April 09, 2026)
+- NEW: inbound email rewrite quality and routing reliability improvements
+  - Introduced a unified inbound rewrite flow for title/description/workspace/owner/due date:
+    - added a dedicated DB-backed prompt `inbound_email_rewrite_system`
+    - switched inbound ingestion to consume a single structured rewrite payload when available
+    - kept fallback compatibility with previous refinement + workspace suggestion path
+  - Hardened prompt contracts and runtime behavior:
+    - strengthened JSON output constraints and workspace/member routing rules
+    - clarified workspace context format in prompt user templates
+    - improved temporal resolution guidance for relative/literal due-date signals
+    - added explicit logging for invalid AI due-date outputs (`inbound.email_due_date_invalid`)
+  - Improved ownership and workspace assignment safety:
+    - owner now falls back to requester when AI owner resolution is invalid
+    - workspace resolution behavior is deterministic under invalid/ambiguous suggestions
+  - Added profile-level language control for inbound rewording:
+    - added user preference `inbound_reword_language` (`auto` + top 10 common languages)
+    - exposed/validated setting via profile API and profile page preferences UI
+    - propagated language instruction into inbound rewrite/refinement prompt contexts
+- TECH: local/deployment and documentation updates
+  - improved local compose/make environment handling for migrations/workers
+  - tightened required production compose environment variables
+  - refreshed AGENTS and technical foundation documentation
+
 ## 0.4.0 (April 09, 2026)
 - NEW: database-backed AI prompt management with versioning, admin editing, and stricter AI contracts
   - Added prompt registry persistence:
