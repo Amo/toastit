@@ -1,3 +1,10 @@
+## 0.7.0 (April 10, 2026)
+- NEW: richer Public API editing support for Toastit integrations
+  - Added a dedicated endpoint to update toast descriptions from external clients
+  - Enabled Markdown-friendly description updates through the MCP Toastit tools
+  - Improved integration parity so API and MCP flows now cover creation, assignment, due date, comments, vote/boost, and description edits
+- FIX: replace legacy route fallback with proper not-found page
+
 ## 0.6.0 (April 10, 2026)
 - NEW: first public API for Toastit integrations
   - Added a dedicated API domain flow (`api.toastit.cc`) with versioning via `Accept` header
