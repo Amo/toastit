@@ -86,11 +86,22 @@ final class PersonalAccessTokenService
 
     private function extractSelector(string $plainTextToken): ?string
     {
-        if (!preg_match('/^tpat_([a-f0-9]{16})_[a-f0-9]{48}$/', $plainTextToken, $match)) {
+        $segments = explode('_', $plainTextToken);
+        if (count($segments) < 2) {
             return null;
         }
 
-        return $match[1];
+        $selector = $segments[count($segments) - 2];
+        $secret = $segments[count($segments) - 1];
+
+        if (!preg_match('/^[a-f0-9]{16}$/', $selector)) {
+            return null;
+        }
+
+        if (!preg_match('/^[a-f0-9]{48}$/', $secret)) {
+            return null;
+        }
+
+        return $selector;
     }
 }
-

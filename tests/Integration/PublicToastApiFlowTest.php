@@ -72,6 +72,13 @@ final class PublicToastApiFlowTest extends WebTestCase
         ]);
         self::assertResponseIsSuccessful();
 
+        $markdownDescription = "## MCP update\n\n- endpoint: `PATCH /toasts/{id}/description`\n- format: markdown";
+        $client->jsonRequest('PATCH', sprintf('/toasts/%d/description', $toastId), [
+            'description' => $markdownDescription,
+        ]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($markdownDescription, $this->decodeJsonResponse($client)['toast']['description'] ?? null);
+
         $client->jsonRequest('POST', sprintf('/toasts/%d/comments', $toastId), [
             'content' => 'Comment from PAT flow',
         ]);
@@ -102,6 +109,7 @@ final class PublicToastApiFlowTest extends WebTestCase
         self::assertInstanceOf(Toast::class, $toast);
         self::assertSame('Public API board', $toast->getWorkspace()->getName());
         self::assertSame('2026-04-30', $toast->getDueAt()?->format('Y-m-d'));
+        self::assertSame($markdownDescription, $toast->getDescription());
         self::assertNull($toast->getOwner());
         self::assertTrue($toast->isBoosted());
         self::assertSame(1, $toast->getVoteCount());

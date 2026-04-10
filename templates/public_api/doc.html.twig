@@ -102,7 +102,7 @@
 
   <h2>Authentication</h2>
   <p>Use a Personal Access Token (PAT) created from your Toastit profile page.</p>
-  <pre><code>Authorization: Bearer tpat_...</code></pre>
+  <pre><code>Authorization: Bearer &lt;your_pat_token&gt;</code></pre>
 
   <h2>Versioning</h2>
   <p>All JSON API calls must send this header:</p>
@@ -227,6 +227,16 @@
     <p><strong>Success <code>200</code>:</strong></p>
     <pre><code>{ "ok": true, "toast": { "id": 123, "assigneeEmail": "someone@example.com" } }</code></pre>
     <p><strong>Validation/errors:</strong> <code>400 missing_assignee_email</code>, <code>400 unknown_assignee</code>, <code>400 toast_not_editable</code>, <code>403 forbidden</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PATCH /toasts/{id}/description</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "description": "## Markdown\n\n- updated from MCP" }</code></pre>
+    <p class="muted">Use empty value to clear: <code>{ "description": "" }</code></p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true, "toast": { "id": 123, "description": "## Markdown\n\n- updated from MCP" } }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 missing_description</code>, <code>400 toast_not_editable</code>, <code>403 forbidden</code></p>
   </section>
 
   <section class="endpoint">
