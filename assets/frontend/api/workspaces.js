@@ -125,6 +125,10 @@ export class WorkspacesApi {
     return this.client.request(`/api/items/${itemId}/toast`, { method: 'POST' });
   }
 
+  setReady(itemId, ready) {
+    return this.client.postJson(`/api/items/${itemId}/ready`, { ready });
+  }
+
   copyToast(itemId, targetWorkspaceId = null) {
     return this.client.postJson(`/api/items/${itemId}/copy`, { targetWorkspaceId });
   }

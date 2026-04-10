@@ -52,13 +52,13 @@ final class MeetingAgendaBuilderTest extends TestCase
             ->setWorkspace($workspace)
             ->setAuthor((new User())->setEmail('vetoed@example.com'))
             ->setTitle('Vetoed')
-            ->setStatus(Toast::STATUS_VETOED);
+            ->setStatus(Toast::STATUS_DISCARDED);
 
         $resolved = (new Toast())
             ->setWorkspace($workspace)
             ->setAuthor((new User())->setEmail('resolved@example.com'))
             ->setTitle('Resolved')
-            ->setDiscussionStatus(Toast::DISCUSSION_TREATED);
+            ->setStatus(Toast::STATUS_TOASTED);
 
         $normal->addVote((new Vote())->setItem($normal)->setUser((new User())->setEmail('vote-1@example.com')));
         $normal->addVote((new Vote())->setItem($normal)->setUser((new User())->setEmail('vote-2@example.com')));

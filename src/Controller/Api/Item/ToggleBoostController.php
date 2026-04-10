@@ -35,8 +35,11 @@ final class ToggleBoostController extends AbstractController
         if ($item->isBoosted()) {
             $item->setIsBoosted(false);
         } else {
+            if ($item->isVetoed()) {
+                $item->setStatus(Toast::STATUS_PENDING);
+            }
+
             $item
-                ->setStatus(Toast::STATUS_OPEN)
                 ->setIsBoosted(true)
                 ->setBoostRank($this->workspaceWorkflow->nextBoostRank($workspace));
         }

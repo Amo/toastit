@@ -5,7 +5,7 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-#[ORM\UniqueConstraint(name: 'uniq_vote_per_user_item', columns: ['item_id', 'user_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_vote_per_user_toast', columns: ['toast_id', 'user_id'])]
 class Vote
 {
     #[ORM\Id]
@@ -14,7 +14,7 @@ class Vote
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Toast::class, inversedBy: 'votes')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    #[ORM\JoinColumn(name: 'toast_id', nullable: false, onDelete: 'CASCADE')]
     private Toast $item;
 
     #[ORM\ManyToOne(targetEntity: User::class)]

@@ -39,7 +39,7 @@ final class DashboardPayloadBuilder
         $today = new \DateTimeImmutable('today');
 
         foreach ($workspace->getItems() as $item) {
-            if (\App\Entity\Toast::DISCUSSION_TREATED === $item->getDiscussionStatus()) {
+            if (\App\Entity\Toast::STATUS_TOASTED === $item->getStatus()) {
                 ++$resolvedItems;
                 continue;
             }

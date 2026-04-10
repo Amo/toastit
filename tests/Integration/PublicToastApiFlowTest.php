@@ -40,10 +40,43 @@ final class PublicToastApiFlowTest extends WebTestCase
         $client->setServerParameter('HTTP_ACCEPT', self::PUBLIC_ACCEPT);
         $client->setServerParameter('HTTP_HOST', $this->publicApiHost());
 
+        $publicWorkspaceName = sprintf('PAT workspace %s', microtime(true));
+        $client->jsonRequest('POST', '/workspaces', ['name' => $publicWorkspaceName]);
+        self::assertResponseStatusCodeSame(201);
+        $publicWorkspaceId = (int) $this->decodeJsonResponse($client)['workspace']['id'];
+
+        $client->request('GET', sprintf('/workspaces/%d/members', $publicWorkspaceId));
+        self::assertResponseIsSuccessful();
+        $publicMembers = $this->decodeJsonResponse($client)['members'] ?? [];
+        self::assertCount(1, $publicMembers);
+        self::assertTrue((bool) ($publicMembers[0]['isOwner'] ?? false));
+
+        $client->jsonRequest('POST', sprintf('/workspaces/%d/members', $publicWorkspaceId), [
+            'email' => $memberEmail,
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $invitedMemberId = (int) $this->decodeJsonResponse($client)['member']['memberId'];
+
+        $client->jsonRequest('PATCH', sprintf('/workspaces/%d/name', $publicWorkspaceId), [
+            'name' => 'Public API board (renamed)',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('DELETE', sprintf('/workspaces/%d/members/%d', $publicWorkspaceId, $invitedMemberId));
+        self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('POST', '/workspaces', ['name' => 'Public API board (to delete)']);
+        self::assertResponseStatusCodeSame(201);
+        $workspaceToDeleteId = (int) $this->decodeJsonResponse($client)['workspace']['id'];
+
+        $client->jsonRequest('DELETE', sprintf('/workspaces/%d', $workspaceToDeleteId));
+        self::assertResponseIsSuccessful();
+
         $client->request('GET', '/workspaces');
         self::assertResponseIsSuccessful();
         $workspaceList = $this->decodeJsonResponse($client)['workspaces'] ?? [];
         self::assertContains($workspaceId, array_map(static fn (array $workspace): int => (int) ($workspace['id'] ?? 0), $workspaceList));
+        self::assertContains($publicWorkspaceId, array_map(static fn (array $workspace): int => (int) ($workspace['id'] ?? 0), $workspaceList));
 
         $title = sprintf('Public toast %s', microtime(true));
         $client->jsonRequest('POST', sprintf('/workspaces/%d/toasts', $workspaceId), [
@@ -55,12 +88,44 @@ final class PublicToastApiFlowTest extends WebTestCase
         self::assertResponseStatusCodeSame(201);
         $toastId = (int) $this->decodeJsonResponse($client)['toast']['id'];
 
+        $client->request('GET', sprintf('/toasts/%d', $toastId));
+        self::assertResponseIsSuccessful();
+        self::assertSame($toastId, (int) $this->decodeJsonResponse($client)['toast']['id']);
+
+        $client->jsonRequest('PATCH', sprintf('/toasts/%d/title', $toastId), [
+            'title' => sprintf('%s (edited)', $title),
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('PATCH', sprintf('/toasts/%d/status', $toastId), [
+            'status' => 'discarded',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('PATCH', sprintf('/toasts/%d/status', $toastId), [
+            'status' => 'new',
+        ]);
+        self::assertResponseIsSuccessful();
+
         $client->request('GET', sprintf('/workspaces/%d/toasts?status=new&page=1&perPage=10', $workspaceId));
         self::assertResponseIsSuccessful();
         $toastsPayload = $this->decodeJsonResponse($client);
         self::assertSame(1, $toastsPayload['pagination']['page']);
         self::assertSame(10, $toastsPayload['pagination']['perPage']);
         self::assertContains($toastId, array_map(static fn (array $toast): int => (int) ($toast['id'] ?? 0), $toastsPayload['toasts'] ?? []));
+
+        $client->jsonRequest('POST', sprintf('/workspaces/%d/toasts', $workspaceId), [
+            'title' => 'Toast to transfer',
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $toastToTransferId = (int) $this->decodeJsonResponse($client)['toast']['id'];
+
+        $client->jsonRequest('PATCH', sprintf('/toasts/%d/workspace', $toastToTransferId), [
+            'workspaceId' => $publicWorkspaceId,
+        ]);
+        self::assertResponseIsSuccessful();
+        $transferredToastId = (int) $this->decodeJsonResponse($client)['toast']['id'];
+        self::assertGreaterThan(0, $transferredToastId);
 
         $client->jsonRequest('PATCH', sprintf('/toasts/%d/assignee', $toastId), [
             'assigneeEmail' => '',

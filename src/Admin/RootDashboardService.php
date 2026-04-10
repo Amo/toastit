@@ -45,7 +45,7 @@ SELECT
 FROM user u
 LEFT JOIN (
     SELECT organizer_id AS user_id, COUNT(*) AS workspaceCount
-    FROM team
+    FROM workspace
     WHERE deleted_at IS NULL
     GROUP BY organizer_id
 ) workspaces ON workspaces.user_id = u.id
@@ -53,8 +53,8 @@ LEFT JOIN (
     SELECT
         author_id AS user_id,
         COUNT(*) AS totalToastCount,
-        SUM(CASE WHEN status = 'open' AND discussion_status = 'pending' THEN 1 ELSE 0 END) AS activeToastCount
-    FROM parking_lot_item
+        SUM(CASE WHEN status IN ('pending', 'ready') THEN 1 ELSE 0 END) AS activeToastCount
+    FROM toast
     GROUP BY author_id
 ) toasts ON toasts.user_id = u.id
 LEFT JOIN (

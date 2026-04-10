@@ -167,9 +167,77 @@
   </section>
 
   <section class="endpoint">
+    <h3><code>POST /workspaces</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "name": "My new workspace" }</code></pre>
+    <p><strong>Success <code>201</code>:</strong></p>
+    <pre><code>{
+  "ok": true,
+  "workspace": {
+    "id": 42,
+    "name": "My new workspace",
+    "isDefault": false,
+    "isSoloWorkspace": false,
+    "meetingMode": "idle",
+    "memberCount": 1,
+    "currentUserIsOwner": true,
+    "createdAt": "2026-04-10T11:30:00+00:00"
+  }
+}</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 invalid_name</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PATCH /workspaces/{id}/name</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "name": "Renamed workspace" }</code></pre>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true, "workspace": { "id": 42, "name": "Renamed workspace" } }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 missing_name</code>, <code>400 inbox_workspace_not_configurable</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>DELETE /workspaces/{id}</code></h3>
+    <p><strong>Request body:</strong> none</p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 inbox_workspace_not_deletable</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>GET /workspaces/{id}/members</code></h3>
+    <p><strong>Request body:</strong> none</p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{
+  "ok": true,
+  "members": [
+    { "memberId": 10, "userId": 9, "displayName": "Alice", "email": "alice@example.com", "isOwner": true }
+  ]
+}</code></pre>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>POST /workspaces/{id}/members</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "email": "new.member@example.com" }</code></pre>
+    <p><strong>Success <code>201</code>:</strong> member created</p>
+    <p><strong>Success <code>200</code>:</strong> already member</p>
+    <pre><code>{ "ok": true, "alreadyMember": true }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 missing_email</code>, <code>400 inbox_workspace_not_shareable</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>DELETE /workspaces/{workspaceId}/members/{memberId}</code></h3>
+    <p><strong>Request body:</strong> none</p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 last_owner</code>, <code>404 member_not_found</code></p>
+  </section>
+
+  <section class="endpoint">
     <h3><code>GET /workspaces/{id}/toasts</code></h3>
     <p class="meta">List toasts from one workspace with status filter and pagination.</p>
-    <p><strong>Query params:</strong> <code>status=all|new|treated|vetoed</code>, <code>page</code> (default <code>1</code>), <code>perPage</code> (default <code>20</code>, max <code>100</code>)</p>
+    <p><strong>Query params:</strong> <code>status=all|new|ready|toasted|discarded</code>, <code>page</code> (default <code>1</code>), <code>perPage</code> (default <code>20</code>, max <code>100</code>)</p>
     <p><strong>Request body:</strong> none</p>
     <p><strong>Success <code>200</code>:</strong></p>
     <pre><code>{
@@ -179,8 +247,7 @@
       "id": 123,
       "title": "My toast",
       "description": "Optional",
-      "status": "open",
-      "discussionStatus": "pending",
+      "status": "pending",
       "publicStatus": "new",
       "isBoosted": false,
       "dueOn": "2026-04-30",
@@ -227,6 +294,46 @@
     <p><strong>Success <code>200</code>:</strong></p>
     <pre><code>{ "ok": true, "toast": { "id": 123, "assigneeEmail": "someone@example.com" } }</code></pre>
     <p><strong>Validation/errors:</strong> <code>400 missing_assignee_email</code>, <code>400 unknown_assignee</code>, <code>400 toast_not_editable</code>, <code>403 forbidden</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>GET /toasts/{id}</code></h3>
+    <p><strong>Request body:</strong> none</p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{
+  "ok": true,
+  "toast": {
+    "id": 123,
+    "workspaceId": 42,
+    "title": "My toast",
+    "description": "Optional",
+    "publicStatus": "new"
+  }
+}</code></pre>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PATCH /toasts/{id}/title</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "title": "Updated title" }</code></pre>
+    <p><strong>Success <code>200</code>:</strong> updated toast payload</p>
+    <p><strong>Validation/errors:</strong> <code>400 missing_title</code>, <code>400 toast_not_editable</code>, <code>403 forbidden</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PATCH /toasts/{id}/status</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "status": "new|ready|toasted|discarded" }</code></pre>
+    <p><strong>Success <code>200</code>:</strong> updated toast payload</p>
+    <p><strong>Validation/errors:</strong> <code>400 invalid_status</code>, <code>400 toast_not_allowed</code>, <code>400 toast_not_editable</code>, <code>400 ready_not_allowed_for_solo_workspace</code>, <code>403 only_assignee_can_mark_ready</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PATCH /toasts/{id}/workspace</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "workspaceId": 43 }</code></pre>
+    <p><strong>Success <code>200</code>:</strong> returns the transferred toast payload in target workspace</p>
+    <p><strong>Validation/errors:</strong> <code>400 only_new_toasts_can_be_transferred</code>, <code>400 invalid_target_workspace</code></p>
   </section>
 
   <section class="endpoint">

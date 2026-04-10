@@ -30,7 +30,7 @@ final class ToastingSessionSummaryBuilderTest extends TestCase
             ->setAuthor($workspace->getOrganizer())
             ->setTitle('Validate roadmap')
             ->setDescription('Need a go/no-go for the next quarter.')
-            ->setDiscussionStatus(Toast::DISCUSSION_TREATED)
+            ->setStatus(Toast::STATUS_TOASTED)
             ->setDiscussionNotes('Decision: focus on two lighthouse accounts.')
             ->setOwner($workspace->getOrganizer())
             ->setDueAt(new \DateTimeImmutable('2026-04-08'));

@@ -8,7 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WorkspaceRepository::class)]
-#[ORM\Table(name: 'team')]
+#[ORM\Table(name: 'workspace')]
 class Workspace
 {
     public const MEETING_MODE_IDLE = 'idle';

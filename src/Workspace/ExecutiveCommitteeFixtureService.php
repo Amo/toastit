@@ -46,11 +46,11 @@ final class ExecutiveCommitteeFixtureService
         $connection->beginTransaction();
 
         try {
-            $connection->executeStatement('DELETE FROM toast_comment WHERE toast_id IN (SELECT id FROM parking_lot_item WHERE team_id = ?)', [$workspaceId]);
-            $connection->executeStatement('DELETE FROM vote WHERE item_id IN (SELECT id FROM parking_lot_item WHERE team_id = ?)', [$workspaceId]);
-            $connection->executeStatement('DELETE FROM parking_lot_item WHERE team_id = ?', [$workspaceId]);
+            $connection->executeStatement('DELETE FROM toast_comment WHERE toast_id IN (SELECT id FROM toast WHERE workspace_id = ?)', [$workspaceId]);
+            $connection->executeStatement('DELETE FROM vote WHERE toast_id IN (SELECT id FROM toast WHERE workspace_id = ?)', [$workspaceId]);
+            $connection->executeStatement('DELETE FROM toast WHERE workspace_id = ?', [$workspaceId]);
             $connection->executeStatement('DELETE FROM toasting_session WHERE workspace_id = ?', [$workspaceId]);
-            $connection->executeStatement('DELETE FROM team_member WHERE team_id = ?', [$workspaceId]);
+            $connection->executeStatement('DELETE FROM workspace_member WHERE workspace_id = ?', [$workspaceId]);
             $connection->commit();
         } catch (\Throwable $exception) {
             $connection->rollBack();
@@ -240,7 +240,7 @@ final class ExecutiveCommitteeFixtureService
             createdAt: $meetingAt->modify('-2 days'),
             dueAt: $meetingAt->modify('+14 days'),
             description: sprintf("Context for weekly ExCo review on %s.\n\nExpected output:\n- one strategic decision\n- one owner\n- one measurable checkpoint\n\nFocus: Braincube executive committee support around %s.", $meetingAt->format('Y-m-d'), strtolower($topic)),
-            discussionStatus: Toast::DISCUSSION_TREATED,
+            status: Toast::STATUS_TOASTED,
             discussionNotes: sprintf("Decision taken during the weekly executive committee: go forward on %s with a tighter weekly checkpoint and one executive owner. Team aligned on expected customer impact, staffing implications, and communication cadence.", strtolower($topic)),
             statusChangedAt: $meetingAt,
             isBoosted: $offset % 4 === 0
@@ -261,7 +261,7 @@ final class ExecutiveCommitteeFixtureService
             createdAt: $meetingAt->modify('+1 day'),
             dueAt: $followUpDueAt,
             description: sprintf('Execution follow-up created from the ExCo decision on %s.', $topic),
-            discussionStatus: $followUpResolved ? Toast::DISCUSSION_TREATED : Toast::DISCUSSION_PENDING,
+            status: $followUpResolved ? Toast::STATUS_TOASTED : Toast::STATUS_PENDING,
             discussionNotes: $followUpResolved ? 'Follow-up delivered and reviewed in ExCo.' : null,
             previousItem: $decisionToast,
             statusChangedAt: $followUpResolved ? $meetingAt->modify('+15 days') : null,
@@ -289,8 +289,8 @@ final class ExecutiveCommitteeFixtureService
                 createdAt: $meetingAt->modify('-1 day'),
                 dueAt: $meetingAt->modify('+7 days'),
                 description: 'Alternative option recorded during ExCo and deliberately declined after discussion.',
-                status: Toast::STATUS_VETOED,
-                discussionStatus: Toast::DISCUSSION_PENDING,
+                status: Toast::STATUS_DISCARDED,
+                status: Toast::STATUS_PENDING,
                 discussionNotes: 'Declined to avoid dilution of focus and duplicate execution tracks.',
                 statusChangedAt: $meetingAt
             );
@@ -307,7 +307,7 @@ final class ExecutiveCommitteeFixtureService
                 createdAt: $meetingAt->modify('+2 days'),
                 dueAt: $meetingAt->modify('+10 days'),
                 description: 'Cross-functional execution item still being tracked in the active list.',
-                discussionStatus: Toast::DISCUSSION_PENDING,
+                status: Toast::STATUS_PENDING,
                 isBoosted: $offset >= -1
             );
             $this->entityManager->persist($openExecutionToast);
@@ -333,7 +333,7 @@ final class ExecutiveCommitteeFixtureService
             createdAt: $meetingAt->modify('-5 days'),
             dueAt: $meetingAt->modify('+7 days'),
             description: sprintf("Preparation item for the upcoming executive committee.\n\nExpected decision:\n- align on scope\n- confirm owner\n- lock the next milestone\n\nTopic: %s.", $topic),
-            discussionStatus: Toast::DISCUSSION_PENDING,
+            status: Toast::STATUS_PENDING,
             isBoosted: $offset <= 2
         );
         $this->entityManager->persist($agendaToast);
@@ -355,9 +355,8 @@ final class ExecutiveCommitteeFixtureService
         \DateTimeImmutable $createdAt,
         ?\DateTimeImmutable $dueAt,
         ?string $description,
-        string $discussionStatus,
+        string $status = Toast::STATUS_PENDING,
         ?string $discussionNotes = null,
-        string $status = Toast::STATUS_OPEN,
         ?\DateTimeImmutable $statusChangedAt = null,
         ?Toast $previousItem = null,
         bool $isBoosted = false,
@@ -370,7 +369,6 @@ final class ExecutiveCommitteeFixtureService
             ->setOwner($owner)
             ->setStatus($status)
             ->setIsBoosted($isBoosted)
-            ->setDiscussionStatus($discussionStatus)
             ->setDiscussionNotes($discussionNotes)
             ->setDueAt($dueAt)
             ->setStatusChangedAt($statusChangedAt)

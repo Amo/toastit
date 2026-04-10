@@ -69,7 +69,7 @@ final class UpdateDiscussionController extends AbstractController
         }
 
         $item
-            ->setDiscussionStatus(Toast::DISCUSSION_TREATED)
+            ->setStatus(Toast::STATUS_TOASTED)
             ->setDiscussionNotes(trim((string) ($payload['discussionNotes'] ?? '')) ?: null)
             ->setOwner($owner)
             ->setDueAt($dueAt)

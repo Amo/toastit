@@ -6,8 +6,8 @@ use App\Repository\WorkspaceMemberRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WorkspaceMemberRepository::class)]
-#[ORM\Table(name: 'team_member')]
-#[ORM\UniqueConstraint(name: 'uniq_workspace_member', columns: ['team_id', 'user_id'])]
+#[ORM\Table(name: 'workspace_member')]
+#[ORM\UniqueConstraint(name: 'uniq_workspace_member', columns: ['workspace_id', 'user_id'])]
 class WorkspaceMember
 {
     #[ORM\Id]
@@ -16,7 +16,7 @@ class WorkspaceMember
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Workspace::class, inversedBy: 'memberships')]
-    #[ORM\JoinColumn(name: 'team_id', nullable: false, onDelete: 'CASCADE')]
+    #[ORM\JoinColumn(name: 'workspace_id', nullable: false, onDelete: 'CASCADE')]
     private Workspace $workspace;
 
     #[ORM\ManyToOne(targetEntity: User::class)]

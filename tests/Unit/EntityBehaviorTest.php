@@ -164,6 +164,7 @@ final class EntityBehaviorTest extends TestCase
 
         self::assertTrue($toast->isNew());
         self::assertFalse($toast->isVetoed());
+        self::assertFalse($toast->isReady());
         self::assertFalse($toast->isToasted());
         self::assertSame([
             ['title' => 'Follow-up', 'ownerId' => 11, 'dueOn' => '2026-04-05'],
@@ -171,16 +172,25 @@ final class EntityBehaviorTest extends TestCase
         ], $toast->getFollowUpItems());
 
         $toast
-            ->setStatus(Toast::STATUS_VETOED)
-            ->setDiscussionStatus(Toast::DISCUSSION_TREATED)
+            ->setStatus(Toast::STATUS_DISCARDED)
             ->setIsBoosted(true)
             ->setBoostRank(3)
             ->setIsBoosted(false);
 
         self::assertTrue($toast->isVetoed());
-        self::assertTrue($toast->isToasted());
+        self::assertFalse($toast->isToasted());
         self::assertFalse($toast->isNew());
         self::assertNull($toast->getBoostRank());
+
+        $toast->setStatus(Toast::STATUS_TOASTED);
+        self::assertTrue($toast->isToasted());
+
+        $toast
+            ->setStatus(Toast::STATUS_PENDING)
+            ->setStatus(Toast::STATUS_READY);
+
+        self::assertTrue($toast->isReady());
+        self::assertTrue($toast->isNew());
 
         $vote = (new Vote())->setItem($toast)->setUser($author);
         $toast->addVote($vote)->addVote($vote);

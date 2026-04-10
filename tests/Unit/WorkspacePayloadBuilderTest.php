@@ -59,14 +59,12 @@ final class WorkspacePayloadBuilderTest extends TestCase
 
         $followUpLater = (new Toast())
             ->setTitle('Later')
-            ->setStatus(Toast::STATUS_OPEN)
-            ->setDiscussionStatus(Toast::DISCUSSION_PENDING)
+            ->setStatus(Toast::STATUS_PENDING)
             ->setOwner($member)
             ->setDueAt(new \DateTimeImmutable('2026-04-20'));
         $followUpEarlier = (new Toast())
             ->setTitle('Earlier')
-            ->setStatus(Toast::STATUS_OPEN)
-            ->setDiscussionStatus(Toast::DISCUSSION_PENDING)
+            ->setStatus(Toast::STATUS_PENDING)
             ->setOwner(null)
             ->setDueAt(null);
         ReflectionHelper::setId($followUpLater, 202);
@@ -79,7 +77,7 @@ final class WorkspacePayloadBuilderTest extends TestCase
             ->setWorkspace($workspace)
             ->setAuthor($member)
             ->setTitle('Resolved')
-            ->setDiscussionStatus(Toast::DISCUSSION_TREATED);
+            ->setStatus(Toast::STATUS_TOASTED);
         ReflectionHelper::setId($resolvedItem, 101);
         $workspace->addItem($activeItem)->addItem($resolvedItem);
 

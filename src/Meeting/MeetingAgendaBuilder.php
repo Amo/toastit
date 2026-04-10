@@ -14,7 +14,7 @@ final class MeetingAgendaBuilder
         $resolvedItems = [];
 
         foreach ($workspace->getItems() as $item) {
-            if (Toast::DISCUSSION_TREATED === $item->getDiscussionStatus()) {
+            if (Toast::STATUS_TOASTED === $item->getStatus()) {
                 $resolvedItems[] = $item;
                 continue;
             }

@@ -129,20 +129,17 @@ final class WorkspacePayloadBuilder
             'status' => $item->getStatus(),
             'isBoosted' => $item->isBoosted(),
             'boostRank' => $item->getBoostRank(),
-            'discussionStatus' => $item->getDiscussionStatus(),
             'discussionNotes' => $item->getDiscussionNotes(),
             'previousItem' => $item->getPreviousItem() ? [
                 'id' => $item->getPreviousItem()->getId(),
                 'title' => $item->getPreviousItem()->getTitle(),
                 'status' => $item->getPreviousItem()->getStatus(),
-                'discussionStatus' => $item->getPreviousItem()->getDiscussionStatus(),
             ] : null,
             'followUpItems' => array_map(
                 static fn (Toast $followUp): array => [
                     'id' => $followUp->getId(),
                     'title' => $followUp->getTitle(),
                     'status' => $followUp->getStatus(),
-                    'discussionStatus' => $followUp->getDiscussionStatus(),
                     'ownerId' => $followUp->getOwner()?->getId(),
                     'ownerName' => $followUp->getOwner()?->getDisplayName(),
                     'dueOn' => $followUp->getDueAt()?->format('Y-m-d'),
@@ -185,6 +182,9 @@ final class WorkspacePayloadBuilder
             'voteCount' => $item->getVoteCount(),
             'currentUserHasVoted' => $hasVoted,
             'currentUserCanEdit' => $item->isNew() && ($workspace->isOwnedBy($currentUser) || $item->getAuthor()->getId() === $currentUser->getId()),
+            'currentUserCanMarkReady' => !$workspace->isSoloWorkspace()
+                && $item->isNew()
+                && ($item->getOwner()?->getId() === $currentUser->getId()),
             'ownerName' => $item->getOwner()?->getDisplayName() ?? ($item->getOwner()?->getId() ? ($inviteeNames[$item->getOwner()->getId()] ?? null) : null),
         ];
     }

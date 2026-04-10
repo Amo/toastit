@@ -132,7 +132,7 @@ const assigneeFilterOptions = computed(() => {
 
 const statusFilterOptions = computed(() => [
   { value: 'active', label: `New (${displayedAgendaItems.value.length})` },
-  { value: 'vetoed', label: `Declined (${displayedVetoedItems.value.length})` },
+  { value: 'discarded', label: `Declined (${displayedVetoedItems.value.length})` },
   { value: 'resolved', label: `Toasted (${displayedResolvedItems.value.length})` },
 ]);
 
@@ -201,7 +201,7 @@ const syncArchivedToastObserver = async () => {
   await nextTick();
   disconnectArchivedToastObserver();
 
-  if (currentToastFilter.value === 'vetoed' && hasMoreVetoedItems.value && vetoedInfiniteLoader.value) {
+  if (currentToastFilter.value === 'discarded' && hasMoreVetoedItems.value && vetoedInfiniteLoader.value) {
     archivedToastObserver = new IntersectionObserver((entries) => {
       if (!entries.some((entry) => entry.isIntersecting)) {
         return;
@@ -406,18 +406,25 @@ const duePresetOptions = [
   { value: 'first_monday_next_month', label: 'First Monday next month' },
 ];
 const displayToastStatus = (item) => {
-  if (item.status === 'vetoed') return 'Declined';
-  if (item.discussionStatus === 'treated') return 'Toasted';
-  return 'Open';
+  if (item.status === 'discarded') return 'Declined';
+  if (item.status === 'toasted') return 'Toasted';
+  if (item.status === 'ready') return 'Ready';
+  return 'In progress';
 };
 
+const isActiveToast = (item) => item?.status === 'pending' || item?.status === 'ready';
+
 const toastStatusTone = (item) => {
-  if (item.status === 'vetoed') {
+  if (item.status === 'discarded') {
     return 'text-stone-400';
   }
 
-  if (item.discussionStatus === 'treated') {
+  if (item.status === 'toasted') {
     return 'text-amber-700';
+  }
+
+  if (item.status === 'ready') {
+    return 'text-emerald-700';
   }
 
   return 'text-amber-600';
@@ -430,6 +437,10 @@ const activeToastAccentClasses = (item) => {
 
   if (item.isBoosted) {
     return 'border-l-4 border-l-amber-500 border-t-amber-200 border-r-amber-200 border-b-amber-200';
+  }
+
+  if (item.status === 'ready') {
+    return 'border-l-4 border-l-emerald-500 border-t-emerald-200 border-r-emerald-200 border-b-emerald-200';
   }
 
   return 'border-stone-200';
@@ -1039,8 +1050,9 @@ const closeToastModal = () => {
 
 const relatedToastStatusLabel = (item) => {
   if (!item) return '';
-  if (item.status === 'vetoed') return 'Declined';
-  if (item.discussionStatus === 'treated') return 'Toasted';
+  if (item.status === 'discarded') return 'Declined';
+  if (item.status === 'toasted') return 'Toasted';
+  if (item.status === 'ready') return 'Ready';
   return 'New';
 };
 
@@ -1260,6 +1272,17 @@ const toastItem = async (itemId) => {
 
   if (!ok) {
     errorMessage.value = 'Unable to toast this item.';
+    return;
+  }
+
+  await fetchWorkspace();
+};
+
+const setReady = async (itemId, ready) => {
+  const { ok } = await workspacesApi.setReady(itemId, ready);
+
+  if (!ok) {
+    errorMessage.value = ready ? 'Unable to mark this toast as ready.' : 'Unable to mark this toast as in progress.';
     return;
   }
 
@@ -1563,6 +1586,17 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                       <i class="fa-solid fa-thumbs-up text-[0.7rem]" aria-hidden="true"></i>
                     </button>
                     <button
+                      v-if="item.currentUserCanMarkReady"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
+                      :class="item.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
+                      :disabled="isToastingMode"
+                      @click.stop="setReady(item.id, item.status !== 'ready')"
+                    >
+                      <i :class="item.status === 'ready' ? 'fa-solid fa-rotate-left text-[0.7rem]' : 'fa-solid fa-check text-[0.7rem]'" aria-hidden="true"></i>
+                      <span>{{ item.status === 'ready' ? 'In progress' : 'Ready' }}</span>
+                    </button>
+                    <button
                       v-if="workspace.currentUserIsOwner && isSoloWorkspace"
                       type="button"
                       class="inline-grid h-8 w-8 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
@@ -1585,11 +1619,11 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                       <button
                         type="button"
                         class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
-                        :class="item.status === 'vetoed' ? 'border-red-300 bg-red-100 text-red-700' : 'border-stone-200 bg-white text-stone-600 hover:border-red-200 hover:text-red-700'"
+                        :class="item.status === 'discarded' ? 'border-red-300 bg-red-100 text-red-700' : 'border-stone-200 bg-white text-stone-600 hover:border-red-200 hover:text-red-700'"
                         @click.stop="toggleVeto(item.id)"
                       >
                         <i class="fa-solid fa-ban text-xs" aria-hidden="true"></i>
-                        <span class="sr-only">{{ item.status === 'vetoed' ? 'Restore toast' : 'Decline toast' }}</span>
+                        <span class="sr-only">{{ item.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
                       </button>
                     </template>
                   </div>
@@ -1597,11 +1631,11 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
               </ToastListItem>
             </div>
 
-            <div v-else-if="currentToastFilter === 'vetoed' && displayedVetoedItems.length" class="space-y-3">
+            <div v-else-if="currentToastFilter === 'discarded' && displayedVetoedItems.length" class="space-y-3">
               <ToastListItem
                 v-for="item in visibleVetoedItems"
                 :key="item.id"
-                variant="vetoed"
+                variant="discarded"
                 :title="item.title"
                 :owner="item.owner"
                 :due-on-display="item.dueOnDisplay"
@@ -1625,7 +1659,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 <span>Loading more declined toasts...</span>
               </div>
             </div>
-            <EmptyState v-else-if="currentToastFilter === 'vetoed'" message="No declined toasts." />
+            <EmptyState v-else-if="currentToastFilter === 'discarded'" message="No declined toasts." />
 
             <div v-else-if="currentToastFilter === 'resolved' && displayedResolvedItems.length" class="space-y-3">
               <ToastListItem
@@ -1902,7 +1936,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
           </ModalHeader>
           <div class="absolute right-20 top-5 flex items-center gap-2">
               <button
-                v-if="selectedToastModal.status === 'vetoed' || selectedToastModal.discussionStatus === 'treated'"
+                v-if="selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted'"
                 type="button"
                 class="inline-grid h-8 w-8 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
                 title="Copy as new"
@@ -1912,7 +1946,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 <span class="sr-only">Copy as new</span>
               </button>
               <button
-                v-if="selectedToastModal.currentUserCanEdit && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && !isToastingMode"
+                v-if="selectedToastModal.currentUserCanEdit && isActiveToast(selectedToastModal) && !isToastingMode"
                 type="button"
                 class="inline-grid h-8 w-8 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
                 @click="openEditToastModal(selectedToastModal)"
@@ -1921,7 +1955,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 <span class="sr-only">Edit toast</span>
               </button>
               <button
-                v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && otherWorkspaces.length && !isToastingMode"
+                v-if="isActiveToast(selectedToastModal) && otherWorkspaces.length && !isToastingMode"
                 type="button"
                 class="inline-grid h-8 w-8 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
                 @click="openMoveCopyToastModal"
@@ -1930,7 +1964,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 <span class="sr-only">Move or copy toast</span>
               </button>
               <button
-                v-if="!isSoloWorkspace && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
+                v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
                 :class="selectedToastModal.currentUserHasVoted ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700'"
@@ -1941,7 +1975,18 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 <i class="fa-solid fa-thumbs-up text-[0.7rem]" aria-hidden="true"></i>
               </button>
               <button
-                v-if="workspace.currentUserIsOwner && isSoloWorkspace && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
+                v-if="selectedToastModal.currentUserCanMarkReady"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
+                :class="selectedToastModal.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
+                :disabled="isToastingMode"
+                @click="setReady(selectedToastModal.id, selectedToastModal.status !== 'ready')"
+              >
+                <i :class="selectedToastModal.status === 'ready' ? 'fa-solid fa-rotate-left text-[0.7rem]' : 'fa-solid fa-check text-[0.7rem]'" aria-hidden="true"></i>
+                <span>{{ selectedToastModal.status === 'ready' ? 'Mark in progress' : 'Mark ready' }}</span>
+              </button>
+              <button
+                v-if="workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(selectedToastModal)"
                 type="button"
                 class="inline-grid h-8 w-8 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
                 @click="toastItem(selectedToastModal.id)"
@@ -1949,7 +1994,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 <i class="fa-solid fa-check text-xs" aria-hidden="true"></i>
                 <span class="sr-only">Mark as toasted</span>
               </button>
-              <template v-if="workspace.currentUserIsOwner && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated' && !isToastingMode">
+              <template v-if="workspace.currentUserIsOwner && isActiveToast(selectedToastModal) && !isToastingMode">
                 <button
                   v-if="!isSoloWorkspace"
                   type="button"
@@ -1963,11 +2008,11 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 <button
                   type="button"
                   class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
-                  :class="selectedToastModal.status === 'vetoed' ? 'border-red-300 bg-red-100 text-red-700' : 'border-stone-200 bg-white text-stone-600 hover:border-red-200 hover:text-red-700'"
+                  :class="selectedToastModal.status === 'discarded' ? 'border-red-300 bg-red-100 text-red-700' : 'border-stone-200 bg-white text-stone-600 hover:border-red-200 hover:text-red-700'"
                   @click="toggleVeto(selectedToastModal.id)"
                 >
                   <i class="fa-solid fa-ban text-xs" aria-hidden="true"></i>
-                  <span class="sr-only">{{ selectedToastModal.status === 'vetoed' ? 'Restore toast' : 'Decline toast' }}</span>
+                  <span class="sr-only">{{ selectedToastModal.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
                 </button>
               </template>
           </div>
@@ -1988,7 +2033,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 </button>
               </div>
 
-              <div v-if="workspace.currentUserIsOwner && isToastingMode && selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'" class="space-y-4">
+              <div v-if="workspace.currentUserIsOwner && isToastingMode && isActiveToast(selectedToastModal)" class="space-y-4">
                 <label class="grid gap-2 text-sm font-medium text-stone-700">
                   <span>Decision notes</span>
                   <textarea
@@ -2058,7 +2103,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                 </div>
               </section>
 
-              <section v-if="selectedToastModal.discussionNotes && (!isToastingMode || selectedToastModal.discussionStatus === 'treated' || !workspace.currentUserIsOwner)" class="space-y-3">
+              <section v-if="selectedToastModal.discussionNotes && (!isToastingMode || selectedToastModal.status === 'toasted' || !workspace.currentUserIsOwner)" class="space-y-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Decision</p>
                 <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4">
                   <div class="tw-markdown text-stone-800" v-html="renderToastDescription(selectedToastModal.discussionNotes)"></div>
@@ -2075,7 +2120,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
                   <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" />
 
                   <CommentComposer
-                    v-if="selectedToastModal.status === 'open' && selectedToastModal.discussionStatus !== 'treated'"
+                    v-if="isActiveToast(selectedToastModal)"
                     :current-user="currentUser"
                     :value="commentDraftFor(selectedToastModal.id)"
                     :blocked="toastModalNavigationBlocked && isCommentDraftDirty"

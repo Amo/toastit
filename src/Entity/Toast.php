@@ -8,13 +8,13 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ToastRepository::class)]
-#[ORM\Table(name: 'parking_lot_item')]
+#[ORM\Table(name: 'toast')]
 class Toast
 {
-    public const STATUS_OPEN = 'open';
-    public const STATUS_VETOED = 'vetoed';
-    public const DISCUSSION_PENDING = 'pending';
-    public const DISCUSSION_TREATED = 'treated';
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_READY = 'ready';
+    public const STATUS_TOASTED = 'toasted';
+    public const STATUS_DISCARDED = 'discarded';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -22,7 +22,7 @@ class Toast
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Workspace::class, inversedBy: 'items')]
-    #[ORM\JoinColumn(name: 'team_id', nullable: false, onDelete: 'CASCADE')]
+    #[ORM\JoinColumn(name: 'workspace_id', nullable: false, onDelete: 'CASCADE')]
     private Workspace $workspace;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
@@ -36,16 +36,13 @@ class Toast
     private ?string $description = null;
 
     #[ORM\Column(length: 16)]
-    private string $status = self::STATUS_OPEN;
+    private string $status = self::STATUS_PENDING;
 
     #[ORM\Column]
     private bool $isBoosted = false;
 
     #[ORM\Column(nullable: true)]
     private ?int $boostRank = null;
-
-    #[ORM\Column(length: 16)]
-    private string $discussionStatus = self::DISCUSSION_PENDING;
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $discussionNotes = null;
@@ -70,7 +67,7 @@ class Toast
     private \DateTimeImmutable $createdAt;
 
     #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'followUpChildren')]
-    #[ORM\JoinColumn(name: 'previous_item_id', nullable: true, onDelete: 'SET NULL')]
+    #[ORM\JoinColumn(name: 'previous_toast_id', nullable: true, onDelete: 'SET NULL')]
     private ?self $previousItem = null;
 
     /** @var Collection<int, self> */
@@ -161,7 +158,7 @@ class Toast
 
     public function isVetoed(): bool
     {
-        return self::STATUS_VETOED === $this->status;
+        return self::STATUS_DISCARDED === $this->status;
     }
 
     public function isBoosted(): bool
@@ -192,26 +189,19 @@ class Toast
         return $this;
     }
 
-    public function getDiscussionStatus(): string
-    {
-        return $this->discussionStatus;
-    }
-
     public function isToasted(): bool
     {
-        return self::DISCUSSION_TREATED === $this->discussionStatus;
+        return self::STATUS_TOASTED === $this->status;
+    }
+
+    public function isReady(): bool
+    {
+        return self::STATUS_READY === $this->status;
     }
 
     public function isNew(): bool
     {
-        return !$this->isVetoed() && !$this->isToasted();
-    }
-
-    public function setDiscussionStatus(string $discussionStatus): self
-    {
-        $this->discussionStatus = $discussionStatus;
-
-        return $this;
+        return self::STATUS_PENDING === $this->status || self::STATUS_READY === $this->status;
     }
 
     public function getDiscussionNotes(): ?string

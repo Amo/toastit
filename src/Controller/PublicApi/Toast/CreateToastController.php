@@ -80,8 +80,9 @@ final class CreateToastController extends AbstractController
                 'supportedStatuses' => [
                     ToastRepository::PUBLIC_STATUS_ALL,
                     ToastRepository::PUBLIC_STATUS_NEW,
-                    ToastRepository::PUBLIC_STATUS_TREATED,
-                    ToastRepository::PUBLIC_STATUS_VETOED,
+                    ToastRepository::PUBLIC_STATUS_READY,
+                    ToastRepository::PUBLIC_STATUS_TOASTED,
+                    ToastRepository::PUBLIC_STATUS_DISCARDED,
                 ],
             ], 400);
         }
@@ -98,7 +99,6 @@ final class CreateToastController extends AbstractController
                     'title' => $toast->getTitle(),
                     'description' => $toast->getDescription(),
                     'status' => $toast->getStatus(),
-                    'discussionStatus' => $toast->getDiscussionStatus(),
                     'publicStatus' => self::resolvePublicStatus($toast),
                     'isBoosted' => $toast->isBoosted(),
                     'dueOn' => $toast->getDueAt()?->format('Y-m-d'),
@@ -209,11 +209,15 @@ final class CreateToastController extends AbstractController
     private static function resolvePublicStatus(Toast $toast): string
     {
         if ($toast->isVetoed()) {
-            return ToastRepository::PUBLIC_STATUS_VETOED;
+            return ToastRepository::PUBLIC_STATUS_DISCARDED;
         }
 
         if ($toast->isToasted()) {
-            return ToastRepository::PUBLIC_STATUS_TREATED;
+            return ToastRepository::PUBLIC_STATUS_TOASTED;
+        }
+
+        if ($toast->isReady()) {
+            return ToastRepository::PUBLIC_STATUS_READY;
         }
 
         return ToastRepository::PUBLIC_STATUS_NEW;

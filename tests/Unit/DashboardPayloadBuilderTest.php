@@ -37,8 +37,8 @@ final class DashboardPayloadBuilderTest extends TestCase
             ->addMembership((new WorkspaceMember())->setUser($guest));
 
         $workspace
-            ->addItem((new Toast())->setTitle('Open')->setDiscussionStatus(Toast::DISCUSSION_PENDING)->setOwner($user)->setDueAt(new \DateTimeImmutable('2000-01-01')))
-            ->addItem((new Toast())->setTitle('Resolved')->setDiscussionStatus(Toast::DISCUSSION_TREATED));
+            ->addItem((new Toast())->setTitle('Open')->setStatus(Toast::STATUS_PENDING)->setOwner($user)->setDueAt(new \DateTimeImmutable('2000-01-01')))
+            ->addItem((new Toast())->setTitle('Resolved')->setStatus(Toast::STATUS_TOASTED));
 
         $assignedAction = (new Toast())
             ->setWorkspace($workspace)

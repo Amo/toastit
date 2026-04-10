@@ -164,8 +164,11 @@ final class ToastCurationExecutionService
             return null;
         }
 
+        if ($toast->isVetoed()) {
+            $toast->setStatus(Toast::STATUS_PENDING);
+        }
+
         $toast
-            ->setStatus(Toast::STATUS_OPEN)
             ->setIsBoosted(true)
             ->setBoostRank($this->workspaceWorkflow->nextBoostRank($workspace));
 
@@ -185,7 +188,7 @@ final class ToastCurationExecutionService
         }
 
         $toast
-            ->setStatus(Toast::STATUS_VETOED)
+            ->setStatus(Toast::STATUS_DISCARDED)
             ->setIsBoosted(false)
             ->setStatusChangedAt(new \DateTimeImmutable());
 

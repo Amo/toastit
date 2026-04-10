@@ -32,11 +32,11 @@ final class ToggleVetoController extends AbstractController
 
         if ($item->isVetoed()) {
             $item
-                ->setStatus(Toast::STATUS_OPEN)
+                ->setStatus(Toast::STATUS_PENDING)
                 ->setStatusChangedAt(null);
         } else {
             $item
-                ->setStatus(Toast::STATUS_VETOED)
+                ->setStatus(Toast::STATUS_DISCARDED)
                 ->setIsBoosted(false)
                 ->setStatusChangedAt(new \DateTimeImmutable());
         }
@@ -46,7 +46,7 @@ final class ToggleVetoController extends AbstractController
         return $this->json([
             'ok' => true,
             'id' => $item->getId(),
-            'vetoed' => $item->isVetoed(),
+            'discarded' => $item->isVetoed(),
         ]);
     }
 }

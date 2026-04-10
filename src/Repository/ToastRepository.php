@@ -16,8 +16,9 @@ class ToastRepository extends ServiceEntityRepository
 {
     public const PUBLIC_STATUS_ALL = 'all';
     public const PUBLIC_STATUS_NEW = 'new';
-    public const PUBLIC_STATUS_TREATED = 'treated';
-    public const PUBLIC_STATUS_VETOED = 'vetoed';
+    public const PUBLIC_STATUS_READY = 'ready';
+    public const PUBLIC_STATUS_TOASTED = 'toasted';
+    public const PUBLIC_STATUS_DISCARDED = 'discarded';
 
     public function __construct(ManagerRegistry $registry)
     {
@@ -36,12 +37,10 @@ class ToastRepository extends ServiceEntityRepository
             ->leftJoin('toast.votes', 'vote')
             ->addSelect('vote')
             ->where('toast.owner = :user')
-            ->andWhere('toast.status = :openStatus')
-            ->andWhere('toast.discussionStatus = :pendingStatus')
+            ->andWhere('toast.status = :pendingStatus')
             ->andWhere('workspace.deletedAt IS NULL')
             ->setParameter('user', $user)
-            ->setParameter('openStatus', Toast::STATUS_OPEN)
-            ->setParameter('pendingStatus', Toast::DISCUSSION_PENDING)
+            ->setParameter('pendingStatus', Toast::STATUS_PENDING)
             ->orderBy('toast.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
@@ -53,8 +52,9 @@ class ToastRepository extends ServiceEntityRepository
         return \in_array($status, [
             self::PUBLIC_STATUS_ALL,
             self::PUBLIC_STATUS_NEW,
-            self::PUBLIC_STATUS_TREATED,
-            self::PUBLIC_STATUS_VETOED,
+            self::PUBLIC_STATUS_READY,
+            self::PUBLIC_STATUS_TOASTED,
+            self::PUBLIC_STATUS_DISCARDED,
         ], true);
     }
 
@@ -99,26 +99,32 @@ class ToastRepository extends ServiceEntityRepository
 
         if (self::PUBLIC_STATUS_NEW === $status) {
             $qb
-                ->andWhere('toast.status = :statusOpen')
-                ->andWhere('toast.discussionStatus = :discussionPending')
-                ->setParameter('statusOpen', Toast::STATUS_OPEN)
-                ->setParameter('discussionPending', Toast::DISCUSSION_PENDING);
+                ->andWhere('toast.status = :statusPending')
+                ->setParameter('statusPending', Toast::STATUS_PENDING);
 
             return;
         }
 
-        if (self::PUBLIC_STATUS_TREATED === $status) {
+        if (self::PUBLIC_STATUS_READY === $status) {
             $qb
-                ->andWhere('toast.discussionStatus = :discussionTreated')
-                ->setParameter('discussionTreated', Toast::DISCUSSION_TREATED);
+                ->andWhere('toast.status = :statusReady')
+                ->setParameter('statusReady', Toast::STATUS_READY);
 
             return;
         }
 
-        if (self::PUBLIC_STATUS_VETOED === $status) {
+        if (self::PUBLIC_STATUS_TOASTED === $status) {
+            $qb
+                ->andWhere('toast.status = :statusTreated')
+                ->setParameter('statusTreated', Toast::STATUS_TOASTED);
+
+            return;
+        }
+
+        if (self::PUBLIC_STATUS_DISCARDED === $status) {
             $qb
                 ->andWhere('toast.status = :statusVetoed')
-                ->setParameter('statusVetoed', Toast::STATUS_VETOED);
+                ->setParameter('statusVetoed', Toast::STATUS_DISCARDED);
         }
     }
 }

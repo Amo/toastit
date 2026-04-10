@@ -43,11 +43,11 @@ final class ToastingSessionSummaryBuilder
             sprintf('Ended by: %s', $session->getEndedBy()?->getDisplayName() ?? 'Session still active'),
             '',
             'Toast status legend:',
-            '- status=open: the toast is still active and not declined.',
-            '- status=vetoed: the toast was explicitly declined/rejected.',
-            '- discussion=pending: the toast has not yet been fully treated in toasting mode.',
-            '- discussion=treated: the toast was discussed and treated during a toasting session, usually with notes and/or follow-ups.',
-            '- followUpToasts: child toasts created as explicit next steps from a treated toast.',
+            '- status=pending: the toast is still active and in progress.',
+            '- status=ready: the assignee marked the toast as done and ready for review/decision in toasting mode.',
+            '- status=toasted: the toast was discussed and treated during a toasting session, usually with notes and/or follow-ups.',
+            '- status=discarded: the toast was explicitly declined/rejected.',
+            '- followUpToasts: child toasts created as explicit next steps from a toasted item.',
             '- sessionComments: comments written during the session window; they are discussion signals and context, not automatic decisions by themselves.',
             '',
             'Participants:',
@@ -118,7 +118,7 @@ final class ToastingSessionSummaryBuilder
     {
         $lines = [
             sprintf('- Toast #%d: %s', $item->getId(), $item->getTitle()),
-            sprintf('  status: %s / discussion: %s', $item->getStatus(), $item->getDiscussionStatus()),
+            sprintf('  status: %s', $item->getStatus()),
             sprintf('  author: %s', $item->getAuthor()->getDisplayName()),
             sprintf('  owner: %s', $item->getOwner()?->getDisplayName() ?? 'unassigned'),
             sprintf('  createdAt: %s', $item->getCreatedAt()->format(\DateTimeInterface::ATOM)),
@@ -148,12 +148,11 @@ final class ToastingSessionSummaryBuilder
 
             foreach ($followUps as $followUp) {
                 $lines[] = sprintf(
-                    '    - %s | owner: %s | dueOn: %s | status: %s / %s',
+                    '    - %s | owner: %s | dueOn: %s | status: %s',
                     $followUp->getTitle(),
                     $followUp->getOwner()?->getDisplayName() ?? 'unassigned',
                     $followUp->getDueAt()?->format('Y-m-d') ?? 'none',
                     $followUp->getStatus(),
-                    $followUp->getDiscussionStatus(),
                 );
             }
         }

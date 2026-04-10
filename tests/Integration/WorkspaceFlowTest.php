@@ -121,7 +121,7 @@ final class WorkspaceFlowTest extends WebTestCase
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $client->setServerParameter('HTTP_AUTHORIZATION', '');
 
-        self::assertSame('treated', $payload['resolvedItems'][0]['discussionStatus']);
+        self::assertSame('toasted', $payload['resolvedItems'][0]['status']);
         self::assertSame($followUpTitle, $payload['resolvedItems'][0]['followUpItems'][0]['title']);
 
         $followUp = static::getContainer()->get(EntityManagerInterface::class)

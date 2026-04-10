@@ -39,8 +39,11 @@ final class SetToastBoostController extends AbstractController
         }
 
         if (true === $payload['boosted']) {
+            if ($toast->isVetoed()) {
+                $toast->setStatus(Toast::STATUS_PENDING);
+            }
+
             $toast
-                ->setStatus(Toast::STATUS_OPEN)
                 ->setIsBoosted(true)
                 ->setBoostRank($this->workspaceWorkflow->nextBoostRank($workspace));
         } else {

@@ -14,6 +14,7 @@ const props = defineProps({
 const containerClass = {
   active: 'bg-white transition hover:shadow-toastit-panel',
   vetoed: 'border-stone-200 bg-white opacity-95 transition hover:shadow-toastit-panel',
+  discarded: 'border-stone-200 bg-white opacity-95 transition hover:shadow-toastit-panel',
   resolved: 'border-stone-200 bg-white opacity-95 transition hover:shadow-toastit-panel',
 };
 </script>

@@ -29,7 +29,7 @@ final class ToastController extends AbstractController
         }
 
         $item
-            ->setDiscussionStatus(Toast::DISCUSSION_TREATED)
+            ->setStatus(Toast::STATUS_TOASTED)
             ->setIsBoosted(false)
             ->setStatusChangedAt(new \DateTimeImmutable());
 

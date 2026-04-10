@@ -4,6 +4,10 @@
   - Enabled Markdown-friendly description updates through the MCP Toastit tools
   - Improved integration parity so API and MCP flows now cover creation, assignment, due date, comments, vote/boost, and description edits
 - FIX: replace legacy route fallback with proper not-found page
+- TECH: simplified toast workflow model and naming consistency
+  - Unified toast lifecycle into a single status field (`pending`, `ready`, `treated`, `vetoed`)
+  - Removed legacy dual-status storage to reduce ambiguity between discussion and workflow state
+  - Aligned database naming with the domain model (`workspace`, `workspace_member`, `toast`)
 
 ## 0.6.0 (April 10, 2026)
 - NEW: first public API for Toastit integrations
