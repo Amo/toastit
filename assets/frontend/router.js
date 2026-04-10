@@ -17,5 +17,6 @@ export const createSpaRouter = () => createRouter({
     { path: '/app/workspaces/:id', name: 'workspace' },
     { path: '/app/toasts/:id', name: 'toast' },
     { path: '/app/profile', name: 'profile' },
+    { path: '/:pathMatch(.*)*', name: 'not-found' },
   ],
 });

@@ -141,6 +141,10 @@ const dismissFlash = ({ type, index }) => {
   spa.removeFlash(type, index);
 };
 
+const redirectFromNotFound = () => {
+  window.location.href = authStore.isAuthenticated ? spa.urls.dashboardUrl : '/';
+};
+
 const syncAccessRefresh = () => {
   clearAccessRefreshTimer();
 
@@ -402,9 +406,31 @@ watch(() => authState.accessToken, syncAccessRefresh);
     <ProfilePage api-url="/api/profile" update-url="/api/profile" delete-url="/api/profile" :access-token="authState.accessToken" />
   </AppShell>
 
-  <main v-else class="toastit-shell">
-    <section class="tw-toastit-card mx-auto w-full max-w-xl p-8">
-      <p class="text-sm text-stone-500">Route non migree : {{ route.fullPath }}</p>
+  <AppShell
+    v-else-if="routeName === 'not-found'"
+    current-section="workspace"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="authState.user"
+    :show-app-navigation="authStore.isAuthenticated"
+    content-html=""
+  >
+    <section class="mx-auto w-full max-w-xl rounded-3xl border border-stone-200 bg-white p-8 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Error</p>
+      <h1 class="mt-3 text-3xl font-semibold text-stone-950">404 - Page not found</h1>
+      <p class="mt-3 text-sm text-stone-600">
+        The requested path does not exist.
+      </p>
+      <p class="mt-2 rounded-xl bg-stone-50 px-3 py-2 text-xs text-stone-500">
+        {{ route.fullPath }}
+      </p>
+      <button
+        type="button"
+        class="mt-6 inline-flex items-center rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-400"
+        @click="redirectFromNotFound"
+      >
+        Go back
+      </button>
     </section>
-  </main>
+  </AppShell>
 </template>
