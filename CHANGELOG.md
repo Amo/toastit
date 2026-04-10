@@ -1,3 +1,10 @@
+## 0.8.0 (April 10, 2026)
+- NEW: expanded workspace and toast workflow capabilities across API, MCP, and UI flows
+  - Added dedicated public API endpoints to create and manage workspaces for external integrations
+  - Added matching MCP server capabilities so workspace creation is directly available to agent workflows
+  - Added a “set ready” flow for toasts, including assignee-driven progression in non-solo workspaces
+  - Improved payload consistency and dashboard/workspace views to reflect the updated lifecycle actions
+
 ## 0.7.0 (April 10, 2026)
 - NEW: richer Public API editing support for Toastit integrations
   - Added a dedicated endpoint to update toast descriptions from external clients
