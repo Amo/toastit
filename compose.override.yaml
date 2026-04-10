@@ -50,6 +50,8 @@ services:
       XAI_BASE_URL: ${XAI_BASE_URL}
       XAI_MODEL: ${XAI_MODEL}
       XAI_TIMEOUT_SECONDS: ${XAI_TIMEOUT_SECONDS}
+      PUBLIC_API_HOST: ${PUBLIC_API_HOST:-api.toastit.test}
+      PUBLIC_API_HOST_PATTERN: ${PUBLIC_API_HOST_PATTERN:-^api\\.toastit\\.test$}
     volumes:
       - ./:/app
       - caddy_data:/data

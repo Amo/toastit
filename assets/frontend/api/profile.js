@@ -28,4 +28,16 @@ export class ProfileApi {
       body: JSON.stringify(payload),
     }).then((response) => this.client.parseJsonResponse(response));
   }
+
+  listPersonalTokens(url) {
+    return this.client.getJson(url);
+  }
+
+  createPersonalToken(url, payload) {
+    return this.client.postJson(url, payload);
+  }
+
+  revokePersonalToken(url) {
+    return this.client.delete(url);
+  }
 }

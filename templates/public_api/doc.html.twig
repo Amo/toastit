@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Toastit Public API</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --soft: #f8fafc;
+      --code-bg: #111827;
+      --code-text: #f9fafb;
+    }
+
+    body {
+      margin: 0 auto;
+      max-width: 1060px;
+      padding: 2rem 1rem 4rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 .65rem;
+      line-height: 1.25;
+    }
+
+    h1 { margin-top: .4rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.2rem; font-size: 1rem; }
+
+    p { margin: 0 0 .8rem; }
+
+    .muted { color: var(--muted); }
+
+    code {
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: .12rem .35rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: .92em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 8px;
+      padding: .9rem 1rem;
+      overflow: auto;
+      margin: .6rem 0 1rem;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: .7rem 0 1.4rem;
+      font-size: .95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      text-align: left;
+      padding: .55rem .65rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 600;
+    }
+
+    section.endpoint {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem;
+      margin: 0 0 1rem;
+    }
+
+    .meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Toastit Public API</h1>
+  <p class="muted">Base URL: <code>https://api.toastit.cc</code></p>
+
+  <h2>Authentication</h2>
+  <p>Use a Personal Access Token (PAT) created from your Toastit profile page.</p>
+  <pre><code>Authorization: Bearer tpat_...</code></pre>
+
+  <h2>Versioning</h2>
+  <p>All JSON API calls must send this header:</p>
+  <pre><code>Accept: {{ expected_accept }}</code></pre>
+  <p class="muted">If missing or invalid, API returns <code>406 unsupported_api_version</code>.</p>
+
+  <h2>Common Errors</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>HTTP</th>
+        <th>When</th>
+        <th>Body</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>401</code></td>
+        <td>Missing/invalid/revoked PAT</td>
+        <td>Empty body</td>
+      </tr>
+      <tr>
+        <td><code>403</code></td>
+        <td>Authenticated but action forbidden</td>
+        <td><code>{ "ok": false, "error": "forbidden" }</code></td>
+      </tr>
+      <tr>
+        <td><code>404</code></td>
+        <td>Workspace/Toast not found (or not accessible)</td>
+        <td>Framework error payload/empty depending context</td>
+      </tr>
+      <tr>
+        <td><code>406</code></td>
+        <td>Invalid/missing versioned <code>Accept</code></td>
+        <td><code>{ "ok": false, "error": "unsupported_api_version", "expectedAccept": "..." }</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Endpoints (v1)</h2>
+
+  <section class="endpoint">
+    <h3><code>GET /workspaces</code></h3>
+    <p class="meta">List only workspaces accessible by the authenticated user.</p>
+    <p><strong>Request body:</strong> none</p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{
+  "ok": true,
+  "workspaces": [
+    {
+      "id": 15,
+      "name": "Our key project",
+      "isDefault": false,
+      "isSoloWorkspace": false,
+      "meetingMode": "idle",
+      "memberCount": 6,
+      "currentUserIsOwner": true,
+      "createdAt": "2026-04-03T07:43:07+00:00"
+    }
+  ]
+}</code></pre>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>GET /workspaces/{id}/toasts</code></h3>
+    <p class="meta">List toasts from one workspace with status filter and pagination.</p>
+    <p><strong>Query params:</strong> <code>status=all|new|treated|vetoed</code>, <code>page</code> (default <code>1</code>), <code>perPage</code> (default <code>20</code>, max <code>100</code>)</p>
+    <p><strong>Request body:</strong> none</p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{
+  "ok": true,
+  "toasts": [
+    {
+      "id": 123,
+      "title": "My toast",
+      "description": "Optional",
+      "status": "open",
+      "discussionStatus": "pending",
+      "publicStatus": "new",
+      "isBoosted": false,
+      "dueOn": "2026-04-30",
+      "createdAt": "2026-04-10T10:15:22+00:00",
+      "assigneeEmail": "someone@example.com",
+      "author": {
+        "id": 9,
+        "displayName": "Alice",
+        "email": "alice@example.com"
+      },
+      "voteCount": 2
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "perPage": 20,
+    "total": 42,
+    "totalPages": 3,
+    "nextPageUrl": "https://api.toastit.cc/workspaces/15/toasts?status=all&page=2&perPage=20"
+  }
+}</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 invalid_status</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>POST /workspaces/{id}/toasts</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{
+  "title": "My toast",
+  "description": "Optional",
+  "assigneeEmail": "someone@example.com",
+  "dueOn": "2026-04-30"
+}</code></pre>
+    <p><strong>Success <code>201</code>:</strong></p>
+    <pre><code>{ "ok": true, "toast": { "id": 123 } }</code></pre>
+    <p><strong>Validation errors <code>400</code>:</strong> <code>missing_title</code>, <code>unknown_assignee</code>, <code>invalid_due_on</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PATCH /toasts/{id}/assignee</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "assigneeEmail": "someone@example.com" }</code></pre>
+    <p class="muted">Use empty value to clear: <code>{ "assigneeEmail": "" }</code></p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true, "toast": { "id": 123, "assigneeEmail": "someone@example.com" } }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 missing_assignee_email</code>, <code>400 unknown_assignee</code>, <code>400 toast_not_editable</code>, <code>403 forbidden</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PATCH /toasts/{id}/due-date</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "dueOn": "2026-05-10" }</code></pre>
+    <p class="muted">Use empty value to clear: <code>{ "dueOn": "" }</code></p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true, "toast": { "id": 123, "dueOn": "2026-05-10" } }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 missing_due_on</code>, <code>400 invalid_due_on</code>, <code>400 toast_not_editable</code>, <code>403 forbidden</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>GET /toasts/{id}/comments</code></h3>
+    <p><strong>Query params:</strong> <code>page</code> (default <code>1</code>), <code>perPage</code> (default <code>20</code>, max <code>100</code>)</p>
+    <p><strong>Request body:</strong> none</p>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{
+  "ok": true,
+  "comments": [
+    {
+      "id": 456,
+      "content": "Comment text",
+      "createdAt": "2026-04-10T10:16:35+00:00",
+      "author": {
+        "id": 9,
+        "displayName": "Alice",
+        "email": "alice@example.com"
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "perPage": 20,
+    "total": 7,
+    "totalPages": 1,
+    "nextPageUrl": null
+  }
+}</code></pre>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>POST /toasts/{id}/comments</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "content": "Comment text" }</code></pre>
+    <p><strong>Success <code>201</code>:</strong></p>
+    <pre><code>{ "ok": true, "comment": { "id": 456 } }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 missing_content</code>, <code>400 comments_closed</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PUT /toasts/{id}/boost</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "boosted": true }</code></pre>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true, "toast": { "id": 123, "boosted": true } }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 invalid_boosted_flag</code></p>
+  </section>
+
+  <section class="endpoint">
+    <h3><code>PUT /toasts/{id}/vote</code></h3>
+    <p><strong>Request body JSON:</strong></p>
+    <pre><code>{ "voted": true }</code></pre>
+    <p><strong>Success <code>200</code>:</strong></p>
+    <pre><code>{ "ok": true, "toast": { "id": 123, "voted": true, "voteCount": 4 } }</code></pre>
+    <p><strong>Validation/errors:</strong> <code>400 invalid_voted_flag</code>, <code>400 vote_not_allowed</code></p>
+  </section>
+
+</body>
+</html>

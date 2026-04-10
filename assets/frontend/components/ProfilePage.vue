@@ -38,6 +38,15 @@ const avatarErrorMessage = ref('');
 const preferencesErrorMessage = ref('');
 const highlightedPreferenceKey = ref('');
 const highlightedPreferenceState = ref('');
+const personalTokens = ref([]);
+const isLoadingPersonalTokens = ref(false);
+const isCreatingPersonalToken = ref(false);
+const isRevokingPersonalTokenId = ref(null);
+const personalTokenErrorMessage = ref('');
+const newPersonalTokenName = ref('');
+const newPersonalTokenExpiresAt = ref('');
+const newlyCreatedPersonalToken = ref('');
+const isCopyingPersonalToken = ref(false);
 const profile = ref({
   displayName: '',
   firstName: '',
@@ -65,6 +74,7 @@ const MAX_AVATAR_SIZE = 256;
 const profileSections = [
   { key: 'infos', label: 'Infos' },
   { key: 'preferences', label: 'Preferences' },
+  { key: 'api', label: 'API tokens' },
   { key: 'trash', label: 'Trash' },
   { key: 'account', label: 'Account' },
 ];
@@ -84,6 +94,10 @@ const currentProfileSectionDescription = computed(() => {
 
   if (currentProfileSection.value === 'trash') {
     return 'Review and restore your deleted workspaces.';
+  }
+
+  if (currentProfileSection.value === 'api') {
+    return 'Create and revoke personal access tokens for the public API.';
   }
 
   if (currentProfileSection.value === 'account') {
@@ -287,6 +301,53 @@ const buildProcessedAvatarFile = async (file) => {
   }
 };
 
+const formatDateTime = (value) => {
+  if (!value) {
+    return 'Never';
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsedDate);
+};
+
+const buildExpiresAtPayload = (localDateTime) => {
+  if (!localDateTime) {
+    return null;
+  }
+
+  const parsedDate = new Date(localDateTime);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return parsedDate.toISOString();
+};
+
+const fetchPersonalTokens = async () => {
+  isLoadingPersonalTokens.value = true;
+  personalTokenErrorMessage.value = '';
+
+  const { ok, data } = await profileApi.listPersonalTokens('/api/profile/personal-tokens');
+  isLoadingPersonalTokens.value = false;
+
+  if (!ok || !Array.isArray(data?.tokens)) {
+    personalTokenErrorMessage.value = 'Unable to load personal access tokens.';
+    return;
+  }
+
+  personalTokens.value = data.tokens;
+};
+
 const fetchProfile = async () => {
   isLoading.value = true;
   const { ok, data } = await profileApi.getProfile(props.apiUrl);
@@ -309,6 +370,7 @@ const fetchProfile = async () => {
   }
 
   isLoading.value = false;
+  await fetchPersonalTokens();
 };
 
 const saveProfile = async () => {
@@ -415,6 +477,74 @@ const restoreWorkspace = async (workspaceId) => {
   }
 
   await fetchProfile();
+};
+
+const createPersonalToken = async () => {
+  const name = newPersonalTokenName.value.trim();
+  if (!name) {
+    personalTokenErrorMessage.value = 'Token title is required.';
+    return;
+  }
+
+  const expiresAt = buildExpiresAtPayload(newPersonalTokenExpiresAt.value.trim());
+  if (newPersonalTokenExpiresAt.value.trim() && !expiresAt) {
+    personalTokenErrorMessage.value = 'Expiration date is invalid.';
+    return;
+  }
+
+  isCreatingPersonalToken.value = true;
+  personalTokenErrorMessage.value = '';
+  newlyCreatedPersonalToken.value = '';
+
+  const payload = { name };
+  if (expiresAt) {
+    payload.expiresAt = expiresAt;
+  }
+
+  const { ok, data } = await profileApi.createPersonalToken('/api/profile/personal-tokens', payload);
+  isCreatingPersonalToken.value = false;
+
+  if (!ok || !data?.token?.plainTextToken) {
+    personalTokenErrorMessage.value = 'Unable to create personal access token.';
+    return;
+  }
+
+  newlyCreatedPersonalToken.value = data.token.plainTextToken;
+  newPersonalTokenName.value = '';
+  newPersonalTokenExpiresAt.value = '';
+  await fetchPersonalTokens();
+};
+
+const revokePersonalToken = async (tokenId) => {
+  isRevokingPersonalTokenId.value = tokenId;
+  personalTokenErrorMessage.value = '';
+
+  const { ok } = await profileApi.revokePersonalToken(`/api/profile/personal-tokens/${tokenId}`);
+  isRevokingPersonalTokenId.value = null;
+
+  if (!ok) {
+    personalTokenErrorMessage.value = 'Unable to revoke this token.';
+    return;
+  }
+
+  if (newlyCreatedPersonalToken.value) {
+    newlyCreatedPersonalToken.value = '';
+  }
+
+  await fetchPersonalTokens();
+};
+
+const copyNewPersonalToken = async () => {
+  if (!newlyCreatedPersonalToken.value || !navigator?.clipboard?.writeText) {
+    return;
+  }
+
+  isCopyingPersonalToken.value = true;
+  try {
+    await navigator.clipboard.writeText(newlyCreatedPersonalToken.value);
+  } finally {
+    isCopyingPersonalToken.value = false;
+  }
 };
 
 onMounted(fetchProfile);
@@ -590,6 +720,83 @@ onUnmounted(() => {
                   </select>
                 </label>
               </div>
+            </div>
+          </template>
+
+          <template v-if="currentProfileSection === 'api'">
+            <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
+              <div>
+                <h3 class="text-base font-semibold text-stone-950">Personal access tokens</h3>
+                <p class="mt-1 text-sm text-stone-600">
+                  Use these tokens to call the public API with the <code class="rounded bg-stone-100 px-1 py-0.5 text-xs">Authorization: Bearer ...</code> header.
+                </p>
+              </div>
+
+              <div class="grid gap-4 rounded-2xl border border-stone-200 bg-white p-4">
+                <TextInputField
+                  v-model="newPersonalTokenName"
+                  label="Token title"
+                  placeholder="CI integration"
+                />
+                <TextInputField
+                  v-model="newPersonalTokenExpiresAt"
+                  type="datetime-local"
+                  label="Expiration date (optional)"
+                />
+                <div class="flex justify-end">
+                  <PrimaryActionButton :disabled="isCreatingPersonalToken" @click="createPersonalToken">
+                    {{ isCreatingPersonalToken ? 'Creating...' : 'Create token' }}
+                  </PrimaryActionButton>
+                </div>
+              </div>
+
+              <div v-if="newlyCreatedPersonalToken" class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p class="text-sm font-semibold text-amber-900">Copy this token now: it will not be shown again.</p>
+                <p class="mt-2 break-all rounded-xl border border-amber-200 bg-white px-3 py-2 font-mono text-xs text-amber-950">{{ newlyCreatedPersonalToken }}</p>
+                <div class="mt-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    class="rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+                    :disabled="isCopyingPersonalToken"
+                    @click="copyNewPersonalToken"
+                  >
+                    {{ isCopyingPersonalToken ? 'Copying...' : 'Copy token' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-100"
+                    @click="newlyCreatedPersonalToken = ''"
+                  >
+                    Hide
+                  </button>
+                </div>
+              </div>
+
+              <p v-if="personalTokenErrorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ personalTokenErrorMessage }}</p>
+
+              <EmptyState v-if="isLoadingPersonalTokens" message="Loading tokens..." />
+              <div v-else-if="personalTokens.length" class="space-y-3">
+                <div
+                  v-for="token in personalTokens"
+                  :key="token.id"
+                  class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div class="min-w-0 space-y-1">
+                    <p class="font-medium text-stone-950">{{ token.name }}</p>
+                    <p class="text-xs text-stone-500">Created: {{ formatDateTime(token.createdAt) }}</p>
+                    <p class="text-xs text-stone-500">Last used: {{ formatDateTime(token.lastUsedAt) }}</p>
+                    <p class="text-xs text-stone-500">Expires: {{ formatDateTime(token.expiresAt) }}</p>
+                    <p v-if="token.revokedAt" class="text-xs font-semibold text-rose-700">Revoked: {{ formatDateTime(token.revokedAt) }}</p>
+                  </div>
+                  <SecondaryActionButton
+                    :disabled="Boolean(token.revokedAt) || isRevokingPersonalTokenId === token.id"
+                    @click="revokePersonalToken(token.id)"
+                  >
+                    {{ token.revokedAt ? 'Revoked' : (isRevokingPersonalTokenId === token.id ? 'Revoking...' : 'Revoke') }}
+                  </SecondaryActionButton>
+                </div>
+              </div>
+              <EmptyState v-else message="No personal access tokens yet." />
             </div>
           </template>
 

@@ -2,9 +2,10 @@
 
 namespace App\Entity;
 
+use App\Repository\ToastCommentRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: ToastCommentRepository::class)]
 class ToastComment
 {
     #[ORM\Id]

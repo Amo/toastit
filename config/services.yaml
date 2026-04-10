@@ -16,6 +16,8 @@ parameters:
     app.xai_base_url: '%env(XAI_BASE_URL)%'
     app.xai_model: '%env(XAI_MODEL)%'
     app.xai_timeout_seconds: '%env(int:XAI_TIMEOUT_SECONDS)%'
+    app.public_api_host: '%env(PUBLIC_API_HOST)%'
+    app.public_api_host_pattern: '%env(PUBLIC_API_HOST_PATTERN)%'
 
 services:
     # default configuration for services in *this* file
@@ -84,6 +86,14 @@ services:
     App\Security\JwtTokenService:
         arguments:
             $secret: '%env(APP_SECRET)%'
+
+    App\Security\PersonalAccessTokenAuthenticator:
+        arguments:
+            $publicApiHost: '%app.public_api_host%'
+
+    App\PublicApi\PublicApiVersionService:
+        arguments:
+            $publicApiHost: '%app.public_api_host%'
 
     App\Meeting\XaiTextService:
         arguments:

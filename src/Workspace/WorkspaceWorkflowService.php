@@ -63,6 +63,22 @@ final class WorkspaceWorkflowService
         return null;
     }
 
+    public function findWorkspaceInviteeByEmail(Workspace $workspace, string $email): ?User
+    {
+        $email = strtolower(trim($email));
+        if ('' === $email) {
+            return null;
+        }
+
+        foreach ($this->getWorkspaceInvitees($workspace) as $invitee) {
+            if (strtolower($invitee->getEmail()) === $email) {
+                return $invitee;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @return array<int, string>
      */

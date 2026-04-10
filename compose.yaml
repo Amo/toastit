@@ -18,9 +18,11 @@ services:
       XAI_BASE_URL: ${XAI_BASE_URL}
       XAI_MODEL: ${XAI_MODEL}
       XAI_TIMEOUT_SECONDS: ${XAI_TIMEOUT_SECONDS}
-      SERVER_NAME: :80
+      PUBLIC_API_HOST: ${PUBLIC_API_HOST:-api.toastit.test}
+      PUBLIC_API_HOST_PATTERN: ${PUBLIC_API_HOST_PATTERN:-^api\\.toastit\\.test$}
+      SERVER_NAME: ${SERVER_NAME:-toastit.test, api.toastit.test}
     ports:
-      - "${APP_PORT:-8080}:80"
+      - "${APP_PORT:-80}:80"
     volumes:
       - ./:/app
       - caddy_data:/data

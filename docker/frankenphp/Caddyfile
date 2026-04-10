@@ -3,7 +3,7 @@
     admin off
 }
 
-{$SERVER_NAME:localhost} {
+{$SERVER_NAME:toastit.test, api.toastit.test} {
     root * /app/public
     encode zstd br gzip
     php_server

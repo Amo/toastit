@@ -12,6 +12,13 @@ security:
         dev:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        public_api:
+            host: '%env(PUBLIC_API_HOST_PATTERN)%'
+            pattern: ^/
+            stateless: true
+            provider: app_users
+            custom_authenticators:
+                - App\Security\PersonalAccessTokenAuthenticator
         api:
             pattern: ^/api
             stateless: true
@@ -23,6 +30,8 @@ security:
         - { path: ^/api/auth, roles: PUBLIC_ACCESS }
         - { path: ^/api/inbound/email$, roles: PUBLIC_ACCESS }
         - { path: ^/api/inbound/action/, roles: PUBLIC_ACCESS }
+        - { host: '%env(PUBLIC_API_HOST_PATTERN)%', path: ^/doc/?$, roles: PUBLIC_ACCESS }
+        - { host: '%env(PUBLIC_API_HOST_PATTERN)%', path: ^/, roles: ROLE_USER }
         - { path: ^/api/admin, roles: ROLE_ROOT }
         - { path: ^/api, roles: ROLE_USER }
 
