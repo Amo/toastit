@@ -1,3 +1,20 @@
+## 0.6.0 (April 10, 2026)
+- NEW: first public API for Toastit integrations
+  - Added a dedicated API domain flow (`api.toastit.cc`) with versioning via `Accept` header
+  - Added personal access token (PAT) authentication for external API calls
+  - Added profile controls to create, list, and revoke personal API tokens
+  - Added public endpoints to:
+    - list accessible workspaces
+    - create toasts
+    - update assignee and due date
+    - post comments
+    - set boost and vote states
+  - Added paginated listing endpoints for:
+    - workspace toasts (with status filter)
+    - toast comments
+  - Added a public API documentation page at `/doc`
+- TECH: refined changelog wording and formalized `CHANGELOG update` convention
+
 ## 0.5.1 (April 09, 2026)
 - FIX: improved reliability for AI prompt loading
   - Prevented a case where AI-generated refinements could fail even when prompts existed
