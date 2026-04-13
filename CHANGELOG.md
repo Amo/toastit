@@ -1,3 +1,9 @@
+## 1.0.2 (April 13, 2026)
+- NEW: legal notice and developer access links
+  - Added a public `Legal notice & GDPR` page with privacy, cookie, and operator/hosting information
+  - Added direct links to Public API docs and MCP server code from the profile API section and homepage footer
+  - Added a proper site title and favicon across app and public API documentation pages
+
 ## 1.0.1 (April 13, 2026)
 - FIX: improved production magic-link reliability with hardened reCAPTCHA Enterprise configuration
 
