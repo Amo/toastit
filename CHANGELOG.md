@@ -1,3 +1,6 @@
+## 1.0.1 (April 13, 2026)
+- FIX: improved production magic-link reliability with hardened reCAPTCHA Enterprise configuration
+
 ## 1.0.0 (April 13, 2026)
 - NEW: Toastit v1 major product release
   - Introduced the new full-width workspace experience with a persistent left navigation and tabular toast views
