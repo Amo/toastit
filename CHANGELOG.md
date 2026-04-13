@@ -1,3 +1,10 @@
+## 0.9.3 (April 13, 2026)
+- FIX: hardened production ADC wiring for reCAPTCHA Enterprise
+  - Corrected service-account credential mounting for both app and worker containers
+  - Updated runtime environment template to document ADC credential path usage
+- UX: faster magic-link continuation
+  - Reduced automatic magic-link submit delay from 2s to 500ms while keeping the fallback click path
+
 ## 0.9.2 (April 13, 2026)
 - SECURITY: reCAPTCHA Enterprise moved to Google-recommended server validation
   - Migrated magic-link protection to the official reCAPTCHA Enterprise PHP client using ADC/service-account authentication
