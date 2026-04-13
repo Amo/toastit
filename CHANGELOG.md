@@ -1,3 +1,14 @@
+## 0.9.0 (April 13, 2026)
+- NEW: clearer homepage and faster login access
+  - Simplified the homepage messaging around personal inbox capture and pro meeting execution
+  - Added a prominent “login” action in the public header with a dedicated email login modal
+  - Added a full-width product flow visual to make the onboarding path easier to understand
+- FIX: improved PIN and magic-link reliability
+  - PIN unlock now stays valid after long inactivity instead of forcing a full sign-out/sign-in loop
+  - Magic-link flow is smoother with automatic continuation and a safe manual fallback
+- SECURITY: stronger magic-link protection
+  - Added reCAPTCHA Enterprise verification on magic-link consume to reduce automated abuse risk
+
 ## 0.8.0 (April 10, 2026)
 - NEW: expanded workspace and toast workflow capabilities across API, MCP, and UI flows
   - Added dedicated public API endpoints to create and manage workspaces for external integrations
