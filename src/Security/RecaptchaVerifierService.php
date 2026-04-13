@@ -2,24 +2,24 @@
 
 namespace App\Security;
 
-use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Google\Cloud\RecaptchaEnterprise\V1\Assessment;
+use Google\Cloud\RecaptchaEnterprise\V1\Client\RecaptchaEnterpriseServiceClient;
+use Google\Cloud\RecaptchaEnterprise\V1\CreateAssessmentRequest;
+use Google\Cloud\RecaptchaEnterprise\V1\Event;
 
 final class RecaptchaVerifierService
 {
     public function __construct(
-        private readonly HttpClientInterface $httpClient,
-        private readonly string $siteKey,
-        private readonly string $projectId,
-        private readonly string $apiKey,
+        private readonly ?string $siteKey,
+        private readonly ?string $projectId,
         private readonly float $minimumScore,
     ) {
     }
 
     public function isEnabled(): bool
     {
-        return '' !== trim($this->siteKey)
-            && '' !== trim($this->projectId)
-            && '' !== trim($this->apiKey);
+        return '' !== trim((string) $this->siteKey)
+            && '' !== trim((string) $this->projectId);
     }
 
     public function verifyV3(string $token, string $expectedAction, ?string $remoteIp = null): bool
@@ -32,41 +32,40 @@ final class RecaptchaVerifierService
             return false;
         }
 
-        $event = [
-            'token' => $token,
-            'siteKey' => $this->siteKey,
-            'expectedAction' => $expectedAction,
-        ];
+        $event = (new Event())
+            ->setSiteKey((string) $this->siteKey)
+            ->setToken($token)
+            ->setExpectedAction($expectedAction);
 
         if (null !== $remoteIp && '' !== trim($remoteIp)) {
-            $event['userIpAddress'] = $remoteIp;
+            $event->setUserIpAddress($remoteIp);
         }
 
-        $url = sprintf(
-            'https://recaptchaenterprise.googleapis.com/v1/projects/%s/assessments?key=%s',
-            rawurlencode($this->projectId),
-            rawurlencode($this->apiKey),
-        );
+        $assessment = (new Assessment())
+            ->setEvent($event);
 
         try {
-            $response = $this->httpClient->request('POST', $url, [
-                'json' => [
-                    'event' => $event,
-                ],
+            $client = new RecaptchaEnterpriseServiceClient([
+                // Avoid requiring grpc extension; use REST transport with ADC credentials.
+                'transport' => 'rest',
             ]);
-            $payload = $response->toArray(false);
+            $request = (new CreateAssessmentRequest())
+                ->setParent($client->projectName((string) $this->projectId))
+                ->setAssessment($assessment);
+            $response = $client->createAssessment($request);
         } catch (\Throwable) {
             return false;
         }
 
-        if (!($payload['tokenProperties']['valid'] ?? false)) {
+        $tokenProperties = $response->getTokenProperties();
+        if (!$tokenProperties->getValid()) {
             return false;
         }
 
-        if (($payload['tokenProperties']['action'] ?? '') !== $expectedAction) {
+        if ($tokenProperties->getAction() !== $expectedAction) {
             return false;
         }
 
-        return (float) ($payload['riskAnalysis']['score'] ?? 0.0) >= $this->minimumScore;
+        return $response->getRiskAnalysis()->getScore() >= $this->minimumScore;
     }
 }

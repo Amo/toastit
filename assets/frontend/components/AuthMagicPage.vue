@@ -24,7 +24,9 @@ const ensureRecaptcha = async () => {
     return true;
   }
 
-  const recaptchaReady = () => typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function';
+  const recaptchaReady = () => typeof window.grecaptcha !== 'undefined'
+    && typeof window.grecaptcha.enterprise !== 'undefined'
+    && typeof window.grecaptcha.enterprise.execute === 'function';
 
   if (recaptchaReady()) {
     return true;
@@ -33,7 +35,7 @@ const ensureRecaptcha = async () => {
   const existing = document.querySelector('script[data-toastit-recaptcha="true"]');
   if (!existing) {
     const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(props.recaptchaSiteKey)}`;
+    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(props.recaptchaSiteKey)}`;
     script.async = true;
     script.defer = true;
     script.dataset.toastitRecaptcha = 'true';
@@ -61,8 +63,8 @@ const buildRecaptchaPayload = async () => {
     return null;
   }
 
-  await new Promise((resolve) => window.grecaptcha.ready(resolve));
-  const recaptchaToken = await window.grecaptcha.execute(props.recaptchaSiteKey, { action: RECAPTCHA_ACTION });
+  await new Promise((resolve) => window.grecaptcha.enterprise.ready(resolve));
+  const recaptchaToken = await window.grecaptcha.enterprise.execute(props.recaptchaSiteKey, { action: RECAPTCHA_ACTION });
 
   if (!recaptchaToken) {
     return null;

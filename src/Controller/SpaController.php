@@ -10,7 +10,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class SpaController extends AbstractController
 {
     public function __construct(
-        private readonly string $recaptchaSiteKey,
+        private readonly ?string $recaptchaSiteKey,
     ) {
     }
 
@@ -26,7 +26,7 @@ final class SpaController extends AbstractController
                 'accessToken' => null,
                 'user' => null,
                 'pinLockExpiresAt' => null,
-                'recaptchaSiteKey' => $this->recaptchaSiteKey,
+                'recaptchaSiteKey' => (string) $this->recaptchaSiteKey,
                 'flashes' => [
                     'success' => $flashBag->get('success'),
                     'error' => $flashBag->get('error'),

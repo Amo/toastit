@@ -20,7 +20,6 @@ parameters:
     app.public_api_host_pattern: '%env(PUBLIC_API_HOST_PATTERN)%'
     app.recaptcha_site_key: '%env(default::RECAPTCHA_SITE_KEY)%'
     app.recaptcha_project_id: '%env(default::RECAPTCHA_PROJECT_ID)%'
-    app.recaptcha_api_key: '%env(default::RECAPTCHA_API_KEY)%'
     app.recaptcha_min_score: '%env(float:RECAPTCHA_MIN_SCORE)%'
 
 services:
@@ -99,7 +98,6 @@ services:
         arguments:
             $siteKey: '%app.recaptcha_site_key%'
             $projectId: '%app.recaptcha_project_id%'
-            $apiKey: '%app.recaptcha_api_key%'
             $minimumScore: '%app.recaptcha_min_score%'
 
     App\Security\PersonalAccessTokenAuthenticator:

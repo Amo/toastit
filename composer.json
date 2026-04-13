@@ -10,6 +10,7 @@
         "doctrine/doctrine-bundle": "^3.2",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
+        "google/cloud-recaptcha-enterprise": "^2.2",
         "league/commonmark": "^2.7",
         "league/flysystem": "^3.33",
         "league/flysystem-local": "^3.31",
