@@ -24,6 +24,10 @@ services:
       XAI_BASE_URL: ${XAI_BASE_URL}
       XAI_MODEL: ${XAI_MODEL}
       XAI_TIMEOUT_SECONDS: ${XAI_TIMEOUT_SECONDS}
+      RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY}
+      RECAPTCHA_PROJECT_ID: ${RECAPTCHA_PROJECT_ID}
+      RECAPTCHA_API_KEY: ${RECAPTCHA_API_KEY}
+      RECAPTCHA_MIN_SCORE: ${RECAPTCHA_MIN_SCORE}
     depends_on:
       database:
         condition: service_healthy
@@ -63,6 +67,10 @@ services:
       XAI_BASE_URL: ${XAI_BASE_URL}
       XAI_MODEL: ${XAI_MODEL}
       XAI_TIMEOUT_SECONDS: ${XAI_TIMEOUT_SECONDS}
+      RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY}
+      RECAPTCHA_PROJECT_ID: ${RECAPTCHA_PROJECT_ID}
+      RECAPTCHA_API_KEY: ${RECAPTCHA_API_KEY}
+      RECAPTCHA_MIN_SCORE: ${RECAPTCHA_MIN_SCORE}
     depends_on:
       database:
         condition: service_healthy
