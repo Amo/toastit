@@ -1,3 +1,8 @@
+## 0.10.2 (April 13, 2026)
+- FIX: streamlined user account menu navigation
+  - Removed redundant `Inbox` and `Workspace` entries from the user dropdown (desktop and mobile)
+  - Kept access focused on account-level destinations (`My profile`, `Admin` when available, `Sign out`)
+
 ## 0.10.1 (April 13, 2026)
 - FIX: clearer inbox email helper and faster copy UX
   - Expanded the inbox helper to list inbound email features: toast creation, `todo`, and `summary`
