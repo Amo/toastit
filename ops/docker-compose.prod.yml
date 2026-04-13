@@ -27,6 +27,7 @@ services:
       RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY}
       RECAPTCHA_PROJECT_ID: ${RECAPTCHA_PROJECT_ID}
       RECAPTCHA_MIN_SCORE: ${RECAPTCHA_MIN_SCORE}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
     depends_on:
       database:
         condition: service_healthy
@@ -40,6 +41,7 @@ services:
     volumes:
       - app_media:/app/public/media
       - app_var:/app/var
+      - ./creds/recaptcha-enterprise-sa.json:/run/creds/recaptcha-enterprise-sa.json:ro
 
   worker:
     build:
@@ -69,12 +71,14 @@ services:
       RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY}
       RECAPTCHA_PROJECT_ID: ${RECAPTCHA_PROJECT_ID}
       RECAPTCHA_MIN_SCORE: ${RECAPTCHA_MIN_SCORE}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
     depends_on:
       database:
         condition: service_healthy
     volumes:
       - app_media:/app/public/media
       - app_var:/app/var
+      - ./creds/recaptcha-enterprise-sa.json:/run/creds/recaptcha-enterprise-sa.json:ro
 
   database:
     image: mariadb:${MARIADB_VERSION:-11.4}
