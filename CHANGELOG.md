@@ -1,3 +1,6 @@
+## 0.10.0 (April 13, 2026)
+  - NEW: add weekly operational summary flow with language-aware prompts
+
 ## 0.9.3 (April 13, 2026)
 - FIX: hardened production ADC wiring for reCAPTCHA Enterprise
   - Corrected service-account credential mounting for both app and worker containers
