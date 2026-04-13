@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { WorkspacesApi } from '../api/workspaces';
-import { defaultDueDateForPreset, isLateToast, renderToastDescription } from '../utils/workspaceFormatting';
+import { defaultDueDateForPreset, renderToastDescription } from '../utils/workspaceFormatting';
 import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
 import CommentThread from './CommentThread.vue';
@@ -21,7 +21,6 @@ import SessionArchiveModal from './SessionArchiveModal.vue';
 import ToastCurationModal from './ToastCurationModal.vue';
 import ToastExecutionPlanPanel from './ToastExecutionPlanPanel.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
-import ToastListItem from './ToastListItem.vue';
 import ToastNavigationFooter from './ToastNavigationFooter.vue';
 
 const props = defineProps({
@@ -80,6 +79,7 @@ const sessionArchiveNotice = ref('');
 const isSessionArchiveGenerating = ref(false);
 const isSessionArchiveSaving = ref(false);
 const isSessionArchiveSending = ref(false);
+const isMobileViewport = ref(false);
 const commentDrafts = ref({});
 const workspaceBackgroundObjectUrl = ref('');
 const inboxAddressCopied = ref(false);
@@ -271,28 +271,13 @@ const workspaceUrl = computed(() => {
 
   return isInboxWorkspace.value ? '/app/inbox' : `/app/workspaces/${workspace.value.id}`;
 });
-const permalinkUrl = computed(() => selectedToastModal.value ? `/app/toasts/${selectedToastModal.value.id}` : null);
 const isSoloWorkspace = computed(() => workspace.value?.isSoloWorkspace === true);
 const resolvedWorkspaceBackgroundUrl = computed(() => workspaceBackgroundObjectUrl.value || workspace.value?.permalinkBackgroundUrl || '');
 
-const standaloneBackgroundStyle = computed(() => {
+const workspaceHeaderBackgroundStyle = computed(() => {
   const backgroundUrl = resolvedWorkspaceBackgroundUrl.value;
 
-  if (!standaloneMode.value || !backgroundUrl) {
-    return {};
-  }
-
-  return {
-    backgroundImage: `linear-gradient(rgba(28, 25, 23, 0.8), rgba(28, 25, 23, 0.1), rgba(28, 25, 23, 0.8)), url("${backgroundUrl}")`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-  };
-});
-
-const workspacePageBackgroundStyle = computed(() => {
-  const backgroundUrl = resolvedWorkspaceBackgroundUrl.value;
-
-  if (standaloneMode.value || !backgroundUrl) {
+  if (!backgroundUrl) {
     return {};
   }
 
@@ -300,32 +285,36 @@ const workspacePageBackgroundStyle = computed(() => {
     backgroundImage: `linear-gradient(rgba(19, 36, 68, 0.44), rgba(32, 74, 135, 0.14), rgba(17, 24, 39, 0.48)), url("${backgroundUrl}")`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    filter: 'blur(15px) saturate(0.95)',
-    transform: 'scale(1.03)',
   };
 });
 
 const workspaceHeaderStats = computed(() => [
   {
-    label: `${newToastCount.value} new toast${newToastCount.value > 1 ? 's' : ''}`,
+    label: isMobileViewport.value
+      ? String(newToastCount.value)
+      : `${newToastCount.value} new toast${newToastCount.value > 1 ? 's' : ''}`,
     icon: 'fa-solid fa-bread-slice',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
   },
   {
-    label: `${toastedToastCount.value} toasted toast${toastedToastCount.value > 1 ? 's' : ''}`,
+    label: isMobileViewport.value
+      ? String(toastedToastCount.value)
+      : `${toastedToastCount.value} toasted toast${toastedToastCount.value > 1 ? 's' : ''}`,
     icon: 'fa-regular fa-calendar-check',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
   },
   {
-    label: isInboxWorkspace.value ? 'inbox' : (isSoloWorkspace.value ? 'solo' : `${memberCount.value} member${memberCount.value > 1 ? 's' : ''}`),
+    label: isMobileViewport.value
+      ? String(isInboxWorkspace.value ? memberCount.value : memberCount.value)
+      : (isInboxWorkspace.value ? 'inbox' : (isSoloWorkspace.value ? 'solo' : `${memberCount.value} member${memberCount.value > 1 ? 's' : ''}`)),
     icon: isSoloWorkspace.value ? 'fa-regular fa-user' : 'fa-solid fa-users',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
   },
-  ...(workspace.value?.isInboxWorkspace ? [{
+  ...(!isMobileViewport.value && workspace.value?.isInboxWorkspace ? [{
     label: 'Hidden workspace',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white uppercase tracking-[0.18em] text-xs font-semibold' : 'bg-sky-100 text-sky-700 uppercase tracking-[0.18em] text-xs font-semibold',
   }] : []),
-  ...(workspace.value?.isDefault ? [{
+  ...(!isMobileViewport.value && workspace.value?.isDefault ? [{
     label: 'Default workspace',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white uppercase tracking-[0.18em] text-xs font-semibold' : 'bg-amber-100 text-amber-700 uppercase tracking-[0.18em] text-xs font-semibold',
   }] : []),
@@ -333,6 +322,10 @@ const workspaceHeaderStats = computed(() => [
 
 const workspaceHeaderActions = computed(() => {
   if (!workspace.value) {
+    return [];
+  }
+
+  if (isMobileViewport.value) {
     return [];
   }
 
@@ -433,21 +426,6 @@ const toastStatusTone = (item) => {
   return 'text-amber-600';
 };
 
-const activeToastAccentClasses = (item) => {
-  if (isLateToast(item)) {
-    return 'border-l-4 border-l-red-600 border-t-red-200 border-r-red-200 border-b-red-200';
-  }
-
-  if (item.isBoosted) {
-    return 'border-l-4 border-l-amber-500 border-t-amber-200 border-r-amber-200 border-b-amber-200';
-  }
-
-  if (item.status === 'ready') {
-    return 'border-l-4 border-l-emerald-500 border-t-emerald-200 border-r-emerald-200 border-b-emerald-200';
-  }
-
-  return 'border-stone-200';
-};
 
 const resetItemForm = () => {
   itemForm.value = {
@@ -1079,6 +1057,10 @@ const openToastById = (toastId) => {
   }
 };
 
+const openToastPermalink = (toastId) => {
+  router.push(`/app/toasts/${toastId}`);
+};
+
 const currentToastSequence = () => {
   if (!selectedToastModal.value) {
     return [];
@@ -1252,10 +1234,51 @@ const demoteMember = async (memberId) => {
   await fetchWorkspace();
 };
 
+const setVoteStateLocally = (itemId, voted, voteCount) => {
+  const apply = (items) => {
+    const target = items.find((candidate) => candidate.id === itemId);
+    if (!target) {
+      return;
+    }
+
+    target.currentUserHasVoted = voted;
+    target.voteCount = voteCount;
+  };
+
+  apply(agendaItems.value);
+  apply(vetoedItems.value);
+  apply(resolvedItems.value);
+};
+
 const toggleVote = async (itemId) => {
   if (isToastingMode.value) return;
-  await workspacesApi.toggleVote(itemId);
-  await fetchWorkspace();
+
+  const currentItem = [
+    ...agendaItems.value,
+    ...vetoedItems.value,
+    ...resolvedItems.value,
+  ].find((candidate) => candidate.id === itemId);
+
+  if (!currentItem) {
+    const response = await workspacesApi.toggleVote(itemId);
+    if (!response.ok) {
+      errorMessage.value = 'Unable to update vote.';
+    }
+    return;
+  }
+
+  const previousVoted = !!currentItem.currentUserHasVoted;
+  const previousCount = Number(currentItem.voteCount ?? 0);
+  const nextVoted = !previousVoted;
+  const nextCount = Math.max(0, previousCount + (nextVoted ? 1 : -1));
+
+  setVoteStateLocally(itemId, nextVoted, nextCount);
+
+  const response = await workspacesApi.toggleVote(itemId);
+  if (!response.ok) {
+    setVoteStateLocally(itemId, previousVoted, previousCount);
+    errorMessage.value = 'Unable to update vote.';
+  }
 };
 
 const toggleBoost = async (itemId) => {
@@ -1492,10 +1515,16 @@ const handleWorkspaceKeydown = (event) => {
   openCreateToastModal();
 };
 
+const syncViewport = () => {
+  isMobileViewport.value = window.innerWidth < 1024;
+};
+
 onMounted(() => {
+  syncViewport();
   applyFiltersFromRoute();
   fetchWorkspace();
   window.addEventListener('keydown', handleWorkspaceKeydown);
+  window.addEventListener('resize', syncViewport);
 });
 
 onUnmounted(() => {
@@ -1503,6 +1532,7 @@ onUnmounted(() => {
     clearTimeout(inboxAddressCopiedTimeout);
   }
   window.removeEventListener('keydown', handleWorkspaceKeydown);
+  window.removeEventListener('resize', syncViewport);
   disconnectArchivedToastObserver();
   revokeWorkspaceBackgroundObjectUrl();
 });
@@ -1542,35 +1572,28 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
 </script>
 
 <template>
-  <section class="tw-toastit-shell relative space-y-6">
-    <div
-      v-if="standaloneMode && workspace?.permalinkBackgroundUrl"
-      class="pointer-events-none fixed inset-0 z-0"
-      :style="standaloneBackgroundStyle"
-    ></div>
-    <div
-      v-if="!standaloneMode && resolvedWorkspaceBackgroundUrl"
-      class="pointer-events-none fixed inset-0 z-0"
-    >
-      <div class="absolute inset-0" :style="workspacePageBackgroundStyle"></div>
-      <div class="absolute inset-0 bg-white/8"></div>
-    </div>
+  <section class="relative space-y-6">
     <div v-if="isLoading" class="relative z-10 tw-toastit-card p-6"><EmptyState message="Loading..." /></div>
     <div v-else-if="errorMessage" class="relative z-10 tw-toastit-card p-6 text-sm text-red-600">{{ errorMessage }}</div>
     <template v-else-if="workspace">
       <div class="relative z-10">
       <template v-if="!standaloneMode">
-      <div class="relative">
+      <div
+        class="relative px-4 lg:px-6"
+        :class="resolvedWorkspaceBackgroundUrl ? 'rounded-none lg:rounded-3xl py-4 lg:py-6' : 'py-4 lg:py-0'"
+        :style="resolvedWorkspaceBackgroundUrl ? workspaceHeaderBackgroundStyle : {}"
+      >
         <PageHeader
           :title="workspace.name"
           :stats="workspaceHeaderStats"
           :actions="workspaceHeaderActions"
           :inverted="!!resolvedWorkspaceBackgroundUrl"
+          :tight="isMobileViewport"
           @action="handleWorkspaceHeaderAction"
         />
       </div>
 
-      <div class="mt-4 space-y-0">
+      <div class="mt-0 space-y-0 lg:mt-4">
         <div v-if="isInboxWorkspace" class="mb-4 tw-toastit-card border border-sky-100 bg-sky-50/80 p-5 text-sm text-sky-900">
           <p class="font-semibold">Email-to-toast inbox</p>
           <p class="mt-2 text-sky-800">
@@ -1615,7 +1638,16 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
         </div>
 
         <div class="tw-toastit-card p-6 space-y-4">
-            <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400 lg:hidden"
+              @click="openCreateToastModal"
+            >
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              <span>New toast</span>
+            </button>
+
+            <div class="hidden gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] lg:grid">
               <input v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast" @keydown.enter.prevent="createItem">
               <button type="button" class="inline-grid h-[3.125rem] place-items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="openCreateToastModal">
                 <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
@@ -1627,118 +1659,196 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
               </button>
             </div>
 
-            <div class="flex flex-wrap items-start gap-3 pt-4">
-              <div
-                v-if="isSoloWorkspace"
-                class="inline-flex flex-wrap items-center gap-2 rounded-full border border-stone-200 bg-white p-1"
-              >
-                <button
-                  v-for="option in statusFilterOptions"
-                  :key="option.value"
-                  type="button"
-                  class="rounded-full px-4 py-2 text-sm font-medium transition"
-                  :class="currentToastFilter === option.value ? 'bg-amber-500 text-stone-950 shadow-sm' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950'"
-                  @click="currentToastFilter = option.value"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-              <CompactDropdown v-else v-model="currentToastFilter" icon="fa-solid fa-filter" :options="statusFilterOptions" />
-              <CompactDropdown v-if="!isSoloWorkspace" v-model="currentAssigneeFilter" icon="fa-solid fa-user-check" :options="assigneeFilterOptions" />
+            <div class="flex flex-nowrap items-start gap-2 pt-4">
+              <CompactDropdown v-model="currentToastFilter" class="min-w-0 flex-1" icon="fa-solid fa-filter" :options="statusFilterOptions" />
+              <CompactDropdown v-if="!isSoloWorkspace" v-model="currentAssigneeFilter" class="min-w-0 flex-1" icon="fa-solid fa-user-check" :options="assigneeFilterOptions" />
             </div>
 
             <EmptyState v-if="currentToastFilter === 'active' && !displayedAgendaItems.length" message="No new toasts." />
-            <div v-else-if="currentToastFilter === 'active'" class="space-y-3">
-              <ToastListItem
-                v-for="(item, index) in displayedAgendaItems"
-                :key="item.id"
-                variant="active"
-                :title="item.title"
-                :owner="item.owner"
-                :due-on-display="item.dueOnDisplay"
-                :author="item.author"
-                :comments-count="item.comments?.length ?? 0"
-                :accent-class="activeToastAccentClasses(item)"
-                @open="openToastModal(item)"
-              >
-                <template #actions>
-                  <div class="flex items-center gap-2">
+            <div v-else-if="currentToastFilter === 'active'" class="overflow-hidden rounded-2xl border border-stone-200">
+              <div class="divide-y divide-stone-100 bg-white lg:hidden">
+                <div
+                  v-for="item in displayedAgendaItems"
+                  :key="item.id"
+                  class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
+                  @click="openToastPermalink(item.id)"
+                >
+                  <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
+                    {{ item.title }}
+                  </p>
+                  <div class="flex items-center justify-between gap-3">
+                    <p class="min-w-0 truncate text-xs text-stone-600">
+                      {{ item.owner?.displayName ?? 'Unassigned' }} • {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.status === 'ready' ? 'Ready' : 'In progress' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
+                    </p>
                     <button
                       v-if="!isSoloWorkspace"
                       type="button"
-                      class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
-                      :class="item.currentUserHasVoted ? 'bg-amber-500 text-stone-950' : 'bg-stone-100 text-stone-700'"
+                      class="inline-grid h-8 min-w-8 place-items-center rounded-full border px-1.5 text-xs font-semibold transition"
+                      :class="item.currentUserHasVoted ? 'border-amber-500 bg-amber-500 text-stone-950' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
                       :disabled="isToastingMode"
+                      title="Vote"
                       @click.stop="toggleVote(item.id)"
                     >
-                      <span>{{ item.voteCount }}</span>
-                      <i class="fa-solid fa-thumbs-up text-[0.7rem]" aria-hidden="true"></i>
+                      {{ item.voteCount }}
                     </button>
-                    <button
-                      v-if="item.currentUserCanMarkReady"
-                      type="button"
-                      class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
-                      :class="item.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
-                      :disabled="isToastingMode"
-                      @click.stop="setReady(item.id, item.status !== 'ready')"
-                    >
-                      <i :class="item.status === 'ready' ? 'fa-solid fa-rotate-left text-[0.7rem]' : 'fa-solid fa-check text-[0.7rem]'" aria-hidden="true"></i>
-                      <span>{{ item.status === 'ready' ? 'In progress' : 'Ready' }}</span>
-                    </button>
-                    <button
-                      v-if="workspace.currentUserIsOwner && isSoloWorkspace"
-                      type="button"
-                      class="inline-grid h-8 w-8 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
-                      @click.stop="toastItem(item.id)"
-                    >
-                      <i class="fa-solid fa-check text-xs" aria-hidden="true"></i>
-                      <span class="sr-only">Mark as toasted</span>
-                    </button>
-                    <template v-if="workspace.currentUserIsOwner && !isToastingMode">
-                      <button
-                        v-if="!isSoloWorkspace"
-                        type="button"
-                        class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
-                        :class="item.isBoosted ? 'border-amber-500 bg-amber-500 text-stone-950' : 'border-stone-200 bg-white text-stone-600 hover:border-amber-200 hover:text-amber-700'"
-                        @click.stop="toggleBoost(item.id)"
-                      >
-                        <i class="fa-solid fa-rocket text-xs" aria-hidden="true"></i>
-                        <span class="sr-only">{{ item.isBoosted ? 'Remove boost' : 'Boost' }}</span>
-                      </button>
-                      <button
-                        type="button"
-                        class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
-                        :class="item.status === 'discarded' ? 'border-red-300 bg-red-100 text-red-700' : 'border-stone-200 bg-white text-stone-600 hover:border-red-200 hover:text-red-700'"
-                        @click.stop="toggleVeto(item.id)"
-                      >
-                        <i class="fa-solid fa-ban text-xs" aria-hidden="true"></i>
-                        <span class="sr-only">{{ item.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
-                      </button>
-                    </template>
                   </div>
-                </template>
-              </ToastListItem>
+                </div>
+              </div>
+              <table class="hidden min-w-full divide-y divide-stone-200 bg-white text-sm lg:table">
+                <thead class="bg-stone-50 text-left text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                  <tr>
+                    <th class="px-4 py-3">Title</th>
+                    <th class="px-4 py-3">Owner</th>
+                    <th class="px-4 py-3">Due</th>
+                    <th class="px-4 py-3">State</th>
+                    <th class="px-4 py-3">Comments</th>
+                    <th class="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                  <tr
+                    v-for="item in displayedAgendaItems"
+                    :key="item.id"
+                    class="cursor-pointer transition hover:bg-stone-50"
+                    @click="openToastPermalink(item.id)"
+                  >
+                    <td class="px-4 py-3">
+                      <span class="text-left font-medium text-stone-900">
+                        {{ item.title }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-stone-700">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
+                    <td class="px-4 py-3 text-stone-700">{{ item.dueOnDisplay ?? 'No due date' }}</td>
+                    <td class="px-4 py-3">
+                      <span
+                        class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
+                        :class="item.status === 'ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-700'"
+                      >
+                        {{ item.status === 'ready' ? 'Ready' : 'In progress' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-stone-700">{{ item.comments?.length ?? 0 }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center justify-end gap-2">
+                        <button
+                          v-if="!isSoloWorkspace"
+                          type="button"
+                          class="inline-grid h-8 min-w-8 place-items-center rounded-full border px-1.5 text-xs font-semibold transition"
+                          :class="item.currentUserHasVoted ? 'border-amber-500 bg-amber-500 text-stone-950' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+                          :disabled="isToastingMode"
+                          title="Vote"
+                          @click.stop="toggleVote(item.id)"
+                        >
+                          {{ item.voteCount }}
+                        </button>
+                        <button
+                          v-if="item.currentUserCanMarkReady"
+                          type="button"
+                          class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
+                          :class="item.status === 'ready' ? 'border-emerald-300 bg-emerald-100 text-emerald-700' : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'"
+                          :disabled="isToastingMode"
+                          title="Toggle ready"
+                          @click.stop="setReady(item.id, item.status !== 'ready')"
+                        >
+                          <i :class="item.status === 'ready' ? 'fa-solid fa-rotate-left text-xs' : 'fa-solid fa-check text-xs'" aria-hidden="true"></i>
+                          <span class="sr-only">{{ item.status === 'ready' ? 'Set in progress' : 'Set ready' }}</span>
+                        </button>
+                        <button
+                          v-if="workspace.currentUserIsOwner && isSoloWorkspace"
+                          type="button"
+                          class="inline-grid h-8 w-8 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                          title="Mark toasted"
+                          @click.stop="toastItem(item.id)"
+                        >
+                          <i class="fa-solid fa-check text-xs" aria-hidden="true"></i>
+                          <span class="sr-only">Mark as toasted</span>
+                        </button>
+                        <button
+                          v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace"
+                          type="button"
+                          class="inline-grid h-8 w-8 place-items-center rounded-full border transition"
+                          :class="item.isBoosted ? 'border-amber-500 bg-amber-500 text-stone-950' : 'border-stone-200 bg-white text-stone-600 hover:border-amber-200 hover:text-amber-700'"
+                          title="Boost"
+                          @click.stop="toggleBoost(item.id)"
+                        >
+                          <i class="fa-solid fa-rocket text-xs" aria-hidden="true"></i>
+                          <span class="sr-only">{{ item.isBoosted ? 'Remove boost' : 'Boost' }}</span>
+                        </button>
+                        <button
+                          v-if="workspace.currentUserIsOwner && !isToastingMode"
+                          type="button"
+                          class="inline-grid h-8 w-8 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-red-200 hover:text-red-700"
+                          title="Decline toast"
+                          @click.stop="toggleVeto(item.id)"
+                        >
+                          <i class="fa-solid fa-ban text-xs" aria-hidden="true"></i>
+                          <span class="sr-only">Decline toast</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             <div v-else-if="currentToastFilter === 'discarded' && displayedVetoedItems.length" class="space-y-3">
-              <ToastListItem
-                v-for="item in visibleVetoedItems"
-                :key="item.id"
-                variant="discarded"
-                :title="item.title"
-                :owner="item.owner"
-                :due-on-display="item.dueOnDisplay"
-                :author="item.author"
-                :comments-count="item.comments?.length ?? 0"
-                @open="openToastModal(item)"
-              >
-                <template #actions>
-                  <div class="text-right">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Declined</p>
-                    <p class="mt-2 text-sm font-medium text-stone-700">{{ item.statusChangedAtDisplay }}</p>
+              <div class="overflow-hidden rounded-2xl border border-stone-200">
+                <div class="divide-y divide-stone-100 bg-white lg:hidden">
+                  <div
+                    v-for="item in visibleVetoedItems"
+                    :key="item.id"
+                    class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
+                    @click="openToastPermalink(item.id)"
+                  >
+                    <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
+                      {{ item.title }}
+                    </p>
+                    <p class="min-w-0 truncate text-xs text-stone-600">
+                      {{ item.owner?.displayName ?? 'Unassigned' }} • {{ item.statusChangedAtDisplay }}
+                    </p>
                   </div>
-                </template>
-              </ToastListItem>
+                </div>
+                <table class="hidden min-w-full divide-y divide-stone-200 bg-white text-sm lg:table">
+                  <thead class="bg-stone-50 text-left text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    <tr>
+                      <th class="px-4 py-3">Title</th>
+                      <th class="px-4 py-3">Owner</th>
+                      <th class="px-4 py-3">Declined at</th>
+                      <th class="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-stone-100">
+                    <tr
+                      v-for="item in visibleVetoedItems"
+                      :key="item.id"
+                      class="cursor-pointer transition hover:bg-stone-50"
+                      @click="openToastPermalink(item.id)"
+                    >
+                      <td class="px-4 py-3">
+                        <span class="text-left font-medium text-stone-900">
+                          {{ item.title }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 text-stone-700">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
+                      <td class="px-4 py-3 text-stone-700">{{ item.statusChangedAtDisplay }}</td>
+                      <td class="px-4 py-3">
+                        <div class="flex items-center justify-end gap-2">
+                          <button
+                            v-if="workspace.currentUserIsOwner && !isToastingMode"
+                            type="button"
+                            class="inline-grid h-8 w-8 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                            title="Restore toast"
+                            @click.stop="toggleVeto(item.id)"
+                          >
+                            <i class="fa-solid fa-rotate-left text-xs" aria-hidden="true"></i>
+                            <span class="sr-only">Restore toast</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               <div
                 v-if="hasMoreVetoedItems"
                 ref="vetoedInfiniteLoader"
@@ -1751,24 +1861,48 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
             <EmptyState v-else-if="currentToastFilter === 'discarded'" message="No declined toasts." />
 
             <div v-else-if="currentToastFilter === 'resolved' && displayedResolvedItems.length" class="space-y-3">
-              <ToastListItem
-                v-for="item in visibleResolvedItems"
-                :key="item.id"
-                variant="resolved"
-                :title="item.title"
-                :owner="item.owner"
-                :due-on-display="item.dueOnDisplay"
-                :author="item.author"
-                :comments-count="item.comments?.length ?? 0"
-                @open="openToastModal(item)"
-              >
-                <template #actions>
-                  <div class="text-right">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Toasted</p>
-                    <p class="mt-2 text-sm font-medium text-stone-700">{{ item.statusChangedAtDisplay }}</p>
+              <div class="overflow-hidden rounded-2xl border border-stone-200">
+                <div class="divide-y divide-stone-100 bg-white lg:hidden">
+                  <div
+                    v-for="item in visibleResolvedItems"
+                    :key="item.id"
+                    class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
+                    @click="openToastPermalink(item.id)"
+                  >
+                    <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
+                      {{ item.title }}
+                    </p>
+                    <p class="min-w-0 truncate text-xs text-stone-600">
+                      {{ item.owner?.displayName ?? 'Unassigned' }} • {{ item.statusChangedAtDisplay }}
+                    </p>
                   </div>
-                </template>
-              </ToastListItem>
+                </div>
+                <table class="hidden min-w-full divide-y divide-stone-200 bg-white text-sm lg:table">
+                  <thead class="bg-stone-50 text-left text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    <tr>
+                      <th class="px-4 py-3">Title</th>
+                      <th class="px-4 py-3">Owner</th>
+                      <th class="px-4 py-3">Toasted at</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-stone-100">
+                    <tr
+                      v-for="item in visibleResolvedItems"
+                      :key="item.id"
+                      class="cursor-pointer transition hover:bg-stone-50"
+                      @click="openToastPermalink(item.id)"
+                    >
+                      <td class="px-4 py-3">
+                        <span class="text-left font-medium text-stone-900">
+                          {{ item.title }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 text-stone-700">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
+                      <td class="px-4 py-3 text-stone-700">{{ item.statusChangedAtDisplay }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               <div
                 v-if="hasMoreResolvedItems"
                 ref="resolvedInfiniteLoader"
@@ -1988,27 +2122,8 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
       <ModalDialog v-if="selectedToastModal" max-width-class="max-w-4xl" @close="closeToastModal">
         <div class="relative border-b border-stone-100">
           <ModalHeader eyebrow="Toast details" :title="selectedToastModal.title" @close="closeToastModal">
-            <template #eyebrow>
-              <ToastStatusBadge :label="displayToastStatus(selectedToastModal)" :tone-class="toastStatusTone(selectedToastModal)" />
-              <a
-                v-if="permalinkUrl"
-                :href="permalinkUrl"
-                class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 transition hover:text-amber-700"
-                title="Open standalone toast permalink"
-              >
-                <i class="fa-solid fa-link" aria-hidden="true"></i>
-                <span>Permalink</span>
-              </a>
-              <a
-                v-if="standaloneMode"
-                :href="workspaceUrl"
-                class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 transition hover:text-amber-700"
-              >
-                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                <span>{{ workspace.name }}</span>
-              </a>
-            </template>
             <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
+              <ToastStatusBadge :label="displayToastStatus(selectedToastModal)" :tone-class="toastStatusTone(selectedToastModal)" />
               <span class="inline-flex items-center gap-2">
                 <i class="fa-regular fa-user" aria-hidden="true"></i>
                 <span>{{ selectedToastModal.author.displayName }}</span>
@@ -2023,7 +2138,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
               </span>
             </div>
           </ModalHeader>
-          <div class="absolute right-20 top-5 flex items-center gap-2">
+          <div class="absolute right-4 top-4 flex items-center gap-2 md:right-20 md:top-5">
               <button
                 v-if="selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted'"
                 type="button"

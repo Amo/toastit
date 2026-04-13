@@ -7,6 +7,7 @@ defineProps({
   stats: { type: Array, default: () => [] },
   actions: { type: Array, default: () => [] },
   inverted: { type: Boolean, default: false },
+  tight: { type: Boolean, default: false },
 });
 
 defineEmits(['action']);
@@ -29,15 +30,15 @@ const actionClass = (action, inverted) => {
 </script>
 
 <template>
-  <div class="space-y-2">
+  <div :class="tight ? 'space-y-0' : 'space-y-2'">
     <EyebrowLabel v-if="eyebrow" :tone-class="inverted ? 'text-white/90' : 'text-amber-600'">{{ eyebrow }}</EyebrowLabel>
 
-    <div class="flex items-start justify-between gap-4">
-      <div>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-3">
           <h1 class="text-4xl font-semibold tracking-tight" :class="inverted ? 'text-white' : 'text-stone-950'">{{ title }}</h1>
         </div>
-        <div v-if="stats.length" class="mt-3 flex flex-wrap gap-3 text-sm" :class="inverted ? 'text-white/85' : 'text-stone-500'">
+        <div v-if="stats.length" :class="[tight ? 'mt-1' : 'mt-3', 'flex flex-wrap gap-3 text-sm', inverted ? 'text-white/85' : 'text-stone-500']">
           <span
             v-for="(stat, index) in stats"
             :key="`${stat.label}-${index}`"
@@ -50,7 +51,7 @@ const actionClass = (action, inverted) => {
         </div>
       </div>
 
-      <div v-if="actions.length" class="flex flex-wrap items-center justify-end gap-3">
+      <div v-if="actions.length" class="flex flex-wrap items-center gap-3 sm:justify-end">
         <button
           v-for="action in actions"
           :key="action.id"

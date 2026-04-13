@@ -45,14 +45,17 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="!mt-0 fixed inset-0 flex items-center justify-center bg-stone-950/20 px-4 py-[5vh] backdrop-blur-[9px]"
+    class="!mt-0 fixed inset-0 bg-white md:flex md:items-center md:justify-center md:bg-stone-950/20 md:px-4 md:py-[5vh] md:backdrop-blur-[9px]"
     :class="zIndexClass"
     @pointerdown.self="handleBackdropPointerDown"
     @pointerup.self="handleBackdropPointerUp"
     @pointerleave="resetBackdropPointerState"
     @pointercancel="resetBackdropPointerState"
   >
-    <div class="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-2xl" :class="maxWidthClass">
+    <div
+      class="flex h-full w-full flex-col overflow-hidden bg-white md:h-auto md:max-h-[90vh] md:rounded-[1.75rem] md:shadow-2xl"
+      :class="maxWidthClass"
+    >
       <slot />
     </div>
   </div>

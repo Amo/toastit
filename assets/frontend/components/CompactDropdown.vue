@@ -39,13 +39,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="root" class="relative inline-flex min-w-[11rem] flex-col">
+  <div ref="root" class="relative inline-flex min-w-0 flex-col">
     <button
       type="button"
-      class="inline-flex items-center justify-between gap-3 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+      class="inline-flex w-full items-center justify-between gap-3 rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
       @click="open = !open"
     >
-      <span class="inline-flex items-center gap-2">
+      <span class="inline-flex min-w-0 items-center gap-2">
         <i
           v-if="icon && !(selectedOption() && hasIdentity(selectedOption()))"
           :class="icon"
@@ -61,7 +61,7 @@ onUnmounted(() => {
           :title="selectedOption().label"
           size-class="h-6 w-6 text-[0.65rem]"
         />
-        <span>{{ selectedOption()?.label ?? '' }}</span>
+        <span class="truncate">{{ selectedOption()?.label ?? '' }}</span>
       </span>
       <i class="fa-solid fa-chevron-down text-xs text-stone-400" aria-hidden="true"></i>
     </button>

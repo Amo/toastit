@@ -1,6 +1,7 @@
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref, useSlots } from 'vue';
-import { authStore } from '../authStore';
+import { computed, nextTick, onMounted, onUnmounted, ref, useSlots, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { authState, authStore } from '../authStore';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 
@@ -15,11 +16,46 @@ const props = defineProps({
   publicCtaHref: { type: String, default: '' },
 });
 const emit = defineEmits(['public-cta-click']);
+const route = useRoute();
 
 const userMenuOpen = ref(false);
 const keyboardShortcutsOpen = ref(false);
+const mobileNavOpen = ref(false);
 const contentRef = ref(null);
 const slots = useSlots();
+const navigationWorkspaces = ref([]);
+const profileSections = [
+  { key: 'infos', label: 'Infos' },
+  { key: 'preferences', label: 'Preferences' },
+  { key: 'api', label: 'API tokens' },
+  { key: 'trash', label: 'Trash' },
+  { key: 'account', label: 'Account' },
+];
+
+const currentWorkspaceId = computed(() => {
+  if (route.name !== 'workspace') {
+    return null;
+  }
+
+  const id = Number(route.params.id);
+  return Number.isFinite(id) ? id : null;
+});
+const currentProfileSection = computed(() => {
+  if (route.name !== 'profile') {
+    return 'infos';
+  }
+
+  const section = typeof route.query.section === 'string' ? route.query.section : 'infos';
+  return profileSections.some((item) => item.key === section) ? section : 'infos';
+});
+
+const navigationOpenCount = computed(() => navigationWorkspaces.value
+  .reduce((total, workspace) => total + Number(workspace?.openItemCount ?? 0), 0));
+const navigationAssignedCount = computed(() => navigationWorkspaces.value
+  .reduce((total, workspace) => total + Number(workspace?.assignedOpenItemCount ?? 0), 0));
+const profileSectionHref = (sectionKey) => (
+  sectionKey === 'infos' ? '/app/profile' : `/app/profile?section=${sectionKey}`
+);
 
 const isTypingTarget = (target) => {
   if (!(target instanceof HTMLElement)) {
@@ -60,6 +96,31 @@ const lockSession = () => {
   window.dispatchEvent(new CustomEvent('toastit:lock-session'));
 };
 
+const loadNavigationWorkspaces = async () => {
+  if (!props.showAppNavigation || !authState.accessToken) {
+    navigationWorkspaces.value = [];
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/dashboard', {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${authState.accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const payload = await response.json();
+    navigationWorkspaces.value = Array.isArray(payload?.workspaces) ? payload.workspaces : [];
+  } catch {
+    navigationWorkspaces.value = [];
+  }
+};
+
 onMounted(async () => {
   await nextTick();
 
@@ -68,22 +129,29 @@ onMounted(async () => {
   }
 
   window.addEventListener('keydown', handleGlobalAppKeydown);
+  await loadNavigationWorkspaces();
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalAppKeydown);
 });
+
+watch(() => authState.accessToken, loadNavigationWorkspaces);
+watch(() => props.showAppNavigation, loadNavigationWorkspaces);
+watch(() => route.fullPath, () => {
+  mobileNavOpen.value = false;
+});
 </script>
 
 <template>
   <div class="min-h-screen bg-stone-50">
-    <header class="sticky top-0 z-50 border-b border-stone-200/80 bg-white/90 backdrop-blur">
-      <div class="tw-toastit-shell">
+    <header v-if="!showAppNavigation" class="sticky top-0 z-50 border-b border-stone-200/80 bg-white/90 backdrop-blur">
+      <div class="tw-toastit-shell px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div :class="showAppNavigation ? 'flex items-center justify-between gap-4' : 'flex w-full items-center justify-between gap-4'">
-            <a :href="dashboardUrl" class="inline-flex items-center gap-0 text-stone-950">
-              <span class="inline-grid h-10 w-10 place-items-center rounded-2xl border border-amber-200 bg-amber-100 text-sm font-black text-amber-700 shadow-[0_6px_16px_rgba(180,83,9,0.18)]">T</span>
-              <span class="-ml-1 text-2xl font-bold tracking-[0.04em] text-stone-950">oastIt</span>
+            <a :href="dashboardUrl" class="inline-flex items-center gap-2 text-stone-950">
+              <img :src="'/assets/logo.png'" alt="Toastit" class="h-10 w-auto object-contain">
+              <span class="text-lg font-black tracking-[0.12em] text-stone-950">TOASTIT</span>
             </a>
 
             <a
@@ -242,11 +310,281 @@ onUnmounted(() => {
       </div>
     </ModalDialog>
 
-    <main class="py-6">
-      <div v-if="slots.default" class="tw-toastit-shell">
-        <slot />
-      </div>
-      <div v-else class="tw-toastit-shell" ref="contentRef" v-html="contentHtml"></div>
+    <main :class="showAppNavigation ? 'py-0 lg:py-6' : 'py-0'">
+      <template v-if="showAppNavigation">
+        <div class="px-0 lg:px-6">
+          <div class="mb-0 flex items-center justify-between rounded-none border border-stone-200 bg-white px-4 py-3 lg:hidden">
+            <a :href="dashboardUrl" class="inline-flex items-center text-stone-950">
+              <img :src="'/assets/logo.png'" alt="Toastit" class="h-9 w-auto object-contain">
+            </a>
+            <button
+              type="button"
+              class="inline-grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:border-stone-300"
+              @click="mobileNavOpen = true"
+            >
+              <i class="fa-solid fa-bars text-sm" aria-hidden="true"></i>
+              <span class="sr-only">Open navigation</span>
+            </button>
+          </div>
+          <div class="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+            <aside class="hidden lg:block">
+              <div class="space-y-4 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm">
+                <a :href="dashboardUrl" class="inline-flex items-center text-stone-950">
+                  <img :src="'/assets/logo.png'" alt="Toastit" class="h-10 w-auto object-contain">
+                </a>
+                <div class="my-1 h-px bg-stone-100"></div>
+                <p class="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Navigation</p>
+                <a
+                  :href="dashboardUrl"
+                  class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  :class="currentSection === 'workspace' ? 'bg-amber-100 text-amber-900' : 'text-stone-700 hover:bg-stone-100'"
+                >
+                  <span class="inline-flex items-center gap-3">
+                    <i class="fa-solid fa-table-columns w-4 text-center" aria-hidden="true"></i>
+                    <span>Workspaces</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1">
+                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
+                      {{ navigationOpenCount }}
+                    </span>
+                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      {{ navigationAssignedCount }}
+                    </span>
+                  </span>
+                </a>
+                <div class="space-y-1 pl-5">
+                  <a
+                    v-for="workspace in navigationWorkspaces"
+                    :key="workspace.id"
+                    :href="`/app/workspaces/${workspace.id}`"
+                    class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
+                    :class="currentWorkspaceId === workspace.id ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                  >
+                    <span class="truncate">{{ workspace.name }}</span>
+                    <span class="inline-flex items-center gap-1">
+                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
+                        {{ workspace.openItemCount ?? 0 }}
+                      </span>
+                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                        {{ workspace.assignedOpenItemCount ?? 0 }}
+                      </span>
+                    </span>
+                  </a>
+                </div>
+                <a
+                  href="/app/inbox"
+                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  :class="currentSection === 'inbox' ? 'bg-sky-100 text-sky-900' : 'text-stone-700 hover:bg-stone-100'"
+                >
+                  <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
+                  <span>Inbox</span>
+                </a>
+                <a
+                  :href="profileUrl"
+                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  :class="currentSection === 'profile' ? 'bg-stone-100 text-stone-900' : 'text-stone-700 hover:bg-stone-100'"
+                >
+                  <i class="fa-solid fa-user w-4 text-center" aria-hidden="true"></i>
+                  <span>My profile</span>
+                </a>
+                <div v-if="currentSection === 'profile'" class="space-y-1 pl-5">
+                  <a
+                    v-for="section in profileSections"
+                    :key="section.key"
+                    :href="profileSectionHref(section.key)"
+                    class="flex items-center rounded-xl px-3 py-2 text-sm transition"
+                    :class="currentProfileSection === section.key ? 'bg-stone-100 font-semibold text-stone-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                  >
+                    <span class="truncate">{{ section.label }}</span>
+                  </a>
+                </div>
+                <a
+                  v-if="user?.isRoot"
+                  href="/admin"
+                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                >
+                  <i class="fa-solid fa-shield-halved w-4 text-center" aria-hidden="true"></i>
+                  <span>Admin</span>
+                </a>
+                <div class="my-1 h-px bg-stone-100"></div>
+                <div class="flex items-center justify-between gap-2 px-1">
+                  <button
+                    type="button"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                    title="Shortcuts"
+                    @click="keyboardShortcutsOpen = true"
+                  >
+                    <i class="fa-solid fa-keyboard text-sm" aria-hidden="true"></i>
+                    <span class="sr-only">Shortcuts</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                    title="Lock session"
+                    @click="lockSession"
+                  >
+                    <i class="fa-solid fa-lock text-sm" aria-hidden="true"></i>
+                    <span class="sr-only">Lock session</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full bg-amber-500 text-stone-950 transition hover:bg-amber-400"
+                    title="Sign out"
+                    @click="logout"
+                  >
+                    <i class="fa-solid fa-right-from-bracket text-sm" aria-hidden="true"></i>
+                    <span class="sr-only">Sign out</span>
+                  </button>
+                </div>
+              </div>
+            </aside>
+
+            <div class="min-w-0">
+              <div v-if="slots.default">
+                <slot />
+              </div>
+              <div v-else ref="contentRef" v-html="contentHtml"></div>
+            </div>
+          </div>
+
+          <div v-if="mobileNavOpen" class="fixed inset-0 z-50 lg:hidden">
+            <button
+              type="button"
+              class="absolute inset-0 bg-stone-950/45"
+              @click="mobileNavOpen = false"
+            >
+              <span class="sr-only">Close navigation</span>
+            </button>
+            <aside class="absolute inset-y-0 left-0 w-[18rem] overflow-y-auto border-r border-stone-200 bg-white p-4 shadow-2xl">
+              <div class="mb-4 flex items-center justify-between">
+                <a :href="dashboardUrl" class="inline-flex items-center text-stone-950">
+                  <img :src="'/assets/logo.png'" alt="Toastit" class="h-9 w-auto object-contain">
+                </a>
+                <button
+                  type="button"
+                  class="inline-grid h-8 w-8 place-items-center rounded-full border border-stone-200 bg-white text-stone-700"
+                  @click="mobileNavOpen = false"
+                >
+                  <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
+                  <span class="sr-only">Close navigation</span>
+                </button>
+              </div>
+              <div class="space-y-4">
+                <div class="my-1 h-px bg-stone-100"></div>
+                <p class="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Navigation</p>
+                <a
+                  :href="dashboardUrl"
+                  class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  :class="currentSection === 'workspace' ? 'bg-amber-100 text-amber-900' : 'text-stone-700 hover:bg-stone-100'"
+                >
+                  <span class="inline-flex items-center gap-3">
+                    <i class="fa-solid fa-table-columns w-4 text-center" aria-hidden="true"></i>
+                    <span>Workspaces</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1">
+                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
+                      {{ navigationOpenCount }}
+                    </span>
+                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      {{ navigationAssignedCount }}
+                    </span>
+                  </span>
+                </a>
+                <div class="space-y-1 pl-5">
+                  <a
+                    v-for="workspace in navigationWorkspaces"
+                    :key="workspace.id"
+                    :href="`/app/workspaces/${workspace.id}`"
+                    class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
+                    :class="currentWorkspaceId === workspace.id ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                  >
+                    <span class="truncate">{{ workspace.name }}</span>
+                    <span class="inline-flex items-center gap-1">
+                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
+                        {{ workspace.openItemCount ?? 0 }}
+                      </span>
+                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                        {{ workspace.assignedOpenItemCount ?? 0 }}
+                      </span>
+                    </span>
+                  </a>
+                </div>
+                <a
+                  href="/app/inbox"
+                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  :class="currentSection === 'inbox' ? 'bg-sky-100 text-sky-900' : 'text-stone-700 hover:bg-stone-100'"
+                >
+                  <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
+                  <span>Inbox</span>
+                </a>
+                <a
+                  :href="profileUrl"
+                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  :class="currentSection === 'profile' ? 'bg-stone-100 text-stone-900' : 'text-stone-700 hover:bg-stone-100'"
+                >
+                  <i class="fa-solid fa-user w-4 text-center" aria-hidden="true"></i>
+                  <span>My profile</span>
+                </a>
+                <div v-if="currentSection === 'profile'" class="space-y-1 pl-5">
+                  <a
+                    v-for="section in profileSections"
+                    :key="section.key"
+                    :href="profileSectionHref(section.key)"
+                    class="flex items-center rounded-xl px-3 py-2 text-sm transition"
+                    :class="currentProfileSection === section.key ? 'bg-stone-100 font-semibold text-stone-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                  >
+                    <span class="truncate">{{ section.label }}</span>
+                  </a>
+                </div>
+                <a
+                  v-if="user?.isRoot"
+                  href="/admin"
+                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                >
+                  <i class="fa-solid fa-shield-halved w-4 text-center" aria-hidden="true"></i>
+                  <span>Admin</span>
+                </a>
+                <div class="my-1 h-px bg-stone-100"></div>
+                <div class="flex items-center justify-between gap-2 px-1">
+                  <button
+                    type="button"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                    title="Shortcuts"
+                    @click="keyboardShortcutsOpen = true"
+                  >
+                    <i class="fa-solid fa-keyboard text-sm" aria-hidden="true"></i>
+                    <span class="sr-only">Shortcuts</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
+                    title="Lock session"
+                    @click="lockSession"
+                  >
+                    <i class="fa-solid fa-lock text-sm" aria-hidden="true"></i>
+                    <span class="sr-only">Lock session</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full bg-amber-500 text-stone-950 transition hover:bg-amber-400"
+                    title="Sign out"
+                    @click="logout"
+                  >
+                    <i class="fa-solid fa-right-from-bracket text-sm" aria-hidden="true"></i>
+                    <span class="sr-only">Sign out</span>
+                  </button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <div v-if="slots.default" class="tw-toastit-shell px-4 sm:px-6 lg:px-8">
+          <slot />
+        </div>
+        <div v-else class="tw-toastit-shell px-4 sm:px-6 lg:px-8" ref="contentRef" v-html="contentHtml"></div>
+      </template>
     </main>
   </div>
 </template>

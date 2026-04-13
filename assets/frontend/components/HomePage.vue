@@ -22,10 +22,11 @@ const highlights = [
 ];
 
 const flowImageUrl = '/asset/toastit-flow.jpeg';
+const currentYear = new Date().getFullYear();
 </script>
 
 <template>
-  <section class="mx-auto max-w-4xl space-y-10 py-10 lg:py-14">
+  <section class="mx-auto max-w-4xl space-y-10 pb-0 pt-10 lg:pt-14">
     <div class="space-y-4 text-center">
       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Toastit</p>
       <h1 class="text-4xl font-semibold tracking-tight text-stone-950 lg:text-5xl">From inbox chaos to accountable execution.</h1>
@@ -53,5 +54,68 @@ const flowImageUrl = '/asset/toastit-flow.jpeg';
         <p class="mt-2 text-sm leading-6 text-stone-700">{{ item.description }}</p>
       </article>
     </div>
+
+    <footer class="relative left-1/2 right-1/2 w-screen -translate-x-1/2 bg-stone-950 text-stone-100">
+      <div class="mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
+        <div class="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div>
+            <div class="flex items-center gap-3">
+              <img :src="'/assets/logo.png'" alt="Toastit" class="h-9 w-auto object-contain">
+              <span class="text-lg font-black tracking-[0.12em] text-white">TOASTIT</span>
+            </div>
+            <p class="mt-4 max-w-md text-sm leading-7 text-stone-300">
+              Route inbox noise to actionable todos with AI, then run meetings with decisions, follow-ups, and clear accountability.
+            </p>
+            <button
+              type="button"
+              class="mt-5 inline-flex items-center justify-center rounded-full bg-amber-400 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-300"
+              @click="$emit('open-login')"
+            >
+              Login
+            </button>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Individuals</p>
+            <ul class="mt-3 space-y-2 text-sm text-stone-200">
+              <li>Forward any email to create a toast</li>
+              <li>Receive your todo digest by email</li>
+              <li>Get a 7-day operational summary</li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Pros & Power Users</p>
+            <ul class="mt-3 space-y-2 text-sm text-stone-200">
+              <li>AI-supported meeting execution</li>
+              <li>Decision logs and follow-up tracking</li>
+              <li>MCP + API automation from anywhere</li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Legal</p>
+            <ul class="mt-3 space-y-2 text-sm text-stone-200">
+              <li>Legal notice</li>
+              <li>GDPR: soon</li>
+              <li>
+                Made with grit by
+                <a
+                  href="https://x.com/amo__"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="font-semibold text-stone-100 underline decoration-stone-500 underline-offset-2 transition hover:text-white"
+                >
+                  @amo__
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-8 border-t border-stone-800 pt-4 text-xs text-stone-400">
+          © {{ currentYear }} Toastit. Built for inbox-to-execution.
+        </div>
+      </div>
+    </footer>
   </section>
 </template>

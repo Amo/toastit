@@ -7,8 +7,6 @@ import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 import PageHeader from './PageHeader.vue';
-import ToastListItem from './ToastListItem.vue';
-import WorkspaceCompactRow from './WorkspaceCompactRow.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -17,14 +15,11 @@ const props = defineProps({
 
 const payload = ref({ workspaces: [] });
 const isLoading = ref(true);
-const isUpdatingActionId = ref(null);
 const isSendingWeeklySummary = ref(false);
 const summaryFeedback = ref('');
 const creatingWorkspace = ref(false);
 const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
-const draggedWorkspaceId = ref(null);
-const armedWorkspaceDragId = ref(null);
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
@@ -41,51 +36,6 @@ const fetchDashboard = async () => {
     workspaces: [],
   };
   isLoading.value = false;
-};
-
-const persistWorkspaceOrder = async () => {
-  await workspacesApi.reorderWorkspaceList(payload.value.workspaces.map((workspace) => workspace.id));
-};
-
-const reorderWorkspaces = async (targetWorkspaceId) => {
-  const sourceWorkspaceId = draggedWorkspaceId.value;
-
-  if (!sourceWorkspaceId || sourceWorkspaceId === targetWorkspaceId) {
-    draggedWorkspaceId.value = null;
-    return;
-  }
-
-  const currentIndex = payload.value.workspaces.findIndex((workspace) => workspace.id === sourceWorkspaceId);
-  const targetIndex = payload.value.workspaces.findIndex((workspace) => workspace.id === targetWorkspaceId);
-
-  if (currentIndex < 0 || targetIndex < 0) {
-    draggedWorkspaceId.value = null;
-    return;
-  }
-
-  const nextWorkspaces = [...payload.value.workspaces];
-  const [draggedWorkspace] = nextWorkspaces.splice(currentIndex, 1);
-  nextWorkspaces.splice(targetIndex, 0, draggedWorkspace);
-  payload.value = {
-    ...payload.value,
-    workspaces: nextWorkspaces,
-  };
-  draggedWorkspaceId.value = null;
-  await persistWorkspaceOrder();
-};
-
-const armWorkspaceDrag = (workspaceId) => {
-  armedWorkspaceDragId.value = workspaceId;
-};
-
-const onWorkspaceDragStart = (event, workspaceId) => {
-  if (armedWorkspaceDragId.value !== workspaceId) {
-    event.preventDefault();
-    return;
-  }
-
-  draggedWorkspaceId.value = workspaceId;
-  armedWorkspaceDragId.value = null;
 };
 
 const createWorkspace = async () => {
@@ -172,18 +122,6 @@ const openToast = (toastId) => {
   router.push(`/app/toasts/${toastId}`);
 };
 
-const toastAction = async (toastId) => {
-  isUpdatingActionId.value = toastId;
-  const { ok } = await workspacesApi.toastItem(toastId);
-  isUpdatingActionId.value = null;
-
-  if (!ok) {
-    return;
-  }
-
-  await fetchDashboard();
-};
-
 const openHome = () => {
   window.location.href = '/app';
 };
@@ -238,20 +176,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="tw-toastit-shell space-y-6">
-    <PageHeader
-      eyebrow="Home"
-      title="Your work."
-      :stats="dashboardHeaderStats"
-      :actions="dashboardHeaderActions"
-      @action="handleDashboardHeaderAction"
-    />
-    <p v-if="summaryFeedback" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
-      {{ summaryFeedback }}
-    </p>
+  <section class="space-y-6">
+    <div class="px-4 lg:px-6">
+      <PageHeader
+        eyebrow="Home"
+        title="Your work."
+        :stats="dashboardHeaderStats"
+        :actions="dashboardHeaderActions"
+        @action="handleDashboardHeaderAction"
+      />
+      <p v-if="summaryFeedback" class="mt-4 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+        {{ summaryFeedback }}
+      </p>
+    </div>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <div class="tw-toastit-card overflow-hidden p-6">
+    <div class="tw-toastit-card overflow-hidden p-6">
         <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">My actions</p>
@@ -274,69 +213,64 @@ onUnmounted(() => {
 
         <EmptyState v-if="isLoading" message="Loading..." />
         <EmptyState v-else-if="!(payload.myActions?.actions?.length ?? 0)" message="No assigned actions right now." />
-        <div v-else class="space-y-4">
-          <ToastListItem
-            v-for="action in payload.myActions.actions"
-            :key="action.id"
-            :title="action.title"
-            :owner="action.owner"
-            :author="action.author"
-            :due-on-display="action.dueOnDisplay"
-            :comments-count="action.commentsCount"
-            :accent-class="action.isLate ? 'border-red-200' : (action.isDueSoon ? 'border-amber-200' : 'border-stone-200')"
-            @open="openToast(action.id)"
-          >
-            <template #actions>
-              <div class="flex flex-col items-end gap-2">
-                <div class="flex flex-wrap justify-end gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
-                  <span class="rounded-full bg-stone-100 px-3 py-1 text-stone-600">{{ action.workspace.name }}</span>
-                  <span v-if="action.isBoosted" class="rounded-full bg-amber-500 px-3 py-1 text-stone-950">Boosted</span>
-                  <span v-if="action.isLate" class="rounded-full bg-red-600 px-3 py-1 text-white">Late</span>
-                  <span v-else-if="action.isDueSoon" class="rounded-full bg-amber-100 px-3 py-1 text-amber-700">Due soon</span>
-                </div>
-                <button
-                  v-if="action.workspace.isSoloWorkspace"
-                  type="button"
-                  class="rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
-                  :disabled="isUpdatingActionId === action.id"
-                  @click.stop="toastAction(action.id)"
-                >
-                  {{ isUpdatingActionId === action.id ? 'Toasting...' : 'Mark toasted' }}
-                </button>
-              </div>
-            </template>
-          </ToastListItem>
-        </div>
-      </div>
-
-      <aside class="tw-toastit-card h-fit overflow-hidden p-0 xl:sticky xl:top-24">
-        <div class="mb-1 flex items-start justify-between gap-3 px-5 pt-5 pb-4">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">My workspaces</p>
-            <h2 class="mt-2 text-xl font-semibold tracking-tight text-stone-950">Keep the room in view.</h2>
+        <div v-else class="overflow-hidden rounded-2xl border border-stone-200">
+          <div class="divide-y divide-stone-100 bg-white lg:hidden">
+            <div
+              v-for="action in payload.myActions.actions"
+              :key="action.id"
+              class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
+              @click="openToast(action.id)"
+            >
+              <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
+                {{ action.title }}
+              </p>
+              <p class="min-w-0 truncate text-xs text-stone-600">
+                {{ action.workspace.name }} • {{ action.owner?.displayName || 'Unassigned' }} • {{ action.dueOnDisplay || 'No due date' }} • {{ action.isLate ? 'Late' : (action.isDueSoon ? 'Due soon' : 'On track') }}
+              </p>
+            </div>
           </div>
-          <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600">
-            <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
-            <span>{{ payload.workspaces.length }}</span>
-          </span>
+          <table class="hidden min-w-full divide-y divide-stone-200 bg-white text-sm lg:table">
+            <thead class="bg-stone-50 text-left text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+              <tr>
+                <th class="px-4 py-3">Toast</th>
+                <th class="px-4 py-3">Due</th>
+                <th class="px-4 py-3">State</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+              <tr
+                v-for="action in payload.myActions.actions"
+                :key="action.id"
+                class="cursor-pointer transition hover:bg-stone-50"
+                @click="openToast(action.id)"
+              >
+                <td class="px-4 py-3">
+                  <p class="block w-full truncate text-left font-medium text-stone-900">
+                    {{ action.title }}
+                  </p>
+                  <p class="mt-1 truncate text-xs text-stone-600">
+                    {{ action.workspace.name }} • {{ action.owner?.displayName || 'Unassigned' }}
+                  </p>
+                </td>
+                <td class="px-4 py-3 text-stone-700">{{ action.dueOnDisplay || 'No due date' }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    v-if="action.isLate"
+                    class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700"
+                  >Late</span>
+                  <span
+                    v-else-if="action.isDueSoon"
+                    class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
+                  >Due soon</span>
+                  <span
+                    v-else
+                    class="inline-flex rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-700"
+                  >On track</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <EmptyState v-if="isLoading" message="Loading..." />
-        <EmptyState v-else-if="!payload.workspaces.length" message="No workspaces yet." />
-        <div v-else class="border-t border-stone-200/80">
-          <WorkspaceCompactRow
-            v-for="workspace in payload.workspaces"
-            :key="workspace.id"
-            :workspace="workspace"
-            :is-armed-for-drag="armedWorkspaceDragId === workspace.id"
-            @open="openWorkspace(workspace.id)"
-            @arm-drag="armWorkspaceDrag(workspace.id)"
-            @drag-start="onWorkspaceDragStart($event, workspace.id)"
-            @drag-end="draggedWorkspaceId = null; armedWorkspaceDragId = null"
-            @drop="reorderWorkspaces(workspace.id)"
-          />
-        </div>
-      </aside>
     </div>
 
     <ModalDialog v-if="isCreateWorkspaceModalOpen" max-width-class="max-w-4xl" @close="closeCreateWorkspaceModal">

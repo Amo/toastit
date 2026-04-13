@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { authStore } from '../authStore';
 import { ProfileApi } from '../api/profile';
@@ -67,7 +67,6 @@ const apiClient = new ToastitApiClient(props.accessToken, {
   },
 });
 const route = useRoute();
-const router = useRouter();
 const profileApi = new ProfileApi(apiClient);
 const MIN_AVATAR_SIZE = 64;
 const MAX_AVATAR_SIZE = 256;
@@ -129,18 +128,6 @@ const inboundRewordLanguageBadgeLabel = computed(() => {
   return `Forced: ${inboundRewordLanguageLabel.value}`;
 });
 
-const goToProfileSection = async (sectionKey) => {
-  const nextSection = normalizeProfileSection(sectionKey);
-  const nextQuery = { ...route.query };
-
-  if (nextSection === 'infos') {
-    delete nextQuery.section;
-  } else {
-    nextQuery.section = nextSection;
-  }
-
-  await router.replace({ query: nextQuery });
-};
 let preferencesSaveTimer = null;
 let preferencesHighlightTimer = null;
 let preferencesSaveSequence = 0;
@@ -559,7 +546,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="tw-toastit-shell space-y-6">
+  <section class="space-y-6">
     <PageHero
       eyebrow="Profile"
       :title="profile.displayName || 'My profile'"
@@ -568,23 +555,7 @@ onUnmounted(() => {
 
     <div class="tw-toastit-card p-6">
       <EmptyState v-if="isLoading" message="Loading..." />
-      <div v-else class="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
-        <aside class="space-y-2">
-          <button
-            v-for="section in profileSections"
-            :key="section.key"
-            type="button"
-            class="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-medium transition"
-            :class="currentProfileSection === section.key
-              ? 'border-amber-300 bg-amber-50 text-amber-900'
-              : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'"
-            @click="goToProfileSection(section.key)"
-          >
-            <span>{{ section.label }}</span>
-          </button>
-        </aside>
-
-        <div class="space-y-8">
+      <div v-else class="space-y-8">
           <template v-if="currentProfileSection === 'infos'">
             <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -842,7 +813,6 @@ onUnmounted(() => {
               </div>
             </div>
           </template>
-        </div>
       </div>
     </div>
 
