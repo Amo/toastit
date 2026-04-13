@@ -40,10 +40,6 @@ final class ApiRefreshTokenService
             return new RefreshTokenResult(null, 'invalid_refresh_token');
         }
 
-        if ($refreshToken->isInactive($now)) {
-            return new RefreshTokenResult(null, 'refresh_inactive');
-        }
-
         return new RefreshTokenResult($refreshToken, null);
     }
 

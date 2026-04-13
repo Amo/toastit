@@ -54,7 +54,7 @@ onMounted(async () => {
     <section class="tw-toastit-card mx-auto w-full max-w-xl p-8">
       <p v-if="errorMessage" class="text-sm text-rose-700">{{ errorMessage }}</p>
       <template v-else-if="readyToContinue">
-        <EmptyState message="Magic link confirmed. Continue to sign in." />
+        <EmptyState message="Your link is valid. Continue to sign in." />
         <div class="mt-6 text-center">
           <button
             type="button"
@@ -66,7 +66,7 @@ onMounted(async () => {
           </button>
         </div>
       </template>
-      <EmptyState v-else message="Checking your magic link..." />
+      <EmptyState v-else message="Checking your link..." />
     </section>
   </main>
 </template>

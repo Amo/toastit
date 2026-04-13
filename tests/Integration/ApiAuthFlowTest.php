@@ -57,7 +57,7 @@ final class ApiAuthFlowTest extends WebTestCase
         self::assertSame($pinPayload['refreshToken'], $refreshPayload['refreshToken']);
     }
 
-    public function testRefreshFailsAfterThirtyMinutesOfInactivity(): void
+    public function testRefreshStillWorksAfterThirtyMinutesOfInactivity(): void
     {
         $client = static::createClient();
         $this->clearMailpit();
@@ -95,10 +95,11 @@ final class ApiAuthFlowTest extends WebTestCase
             'refreshToken' => $pinPayload['refreshToken'],
             'pin' => '1234',
         ]);
-        self::assertResponseStatusCodeSame(401);
+        self::assertResponseIsSuccessful();
         $refreshPayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertFalse($refreshPayload['ok']);
-        self::assertSame('refresh_inactive', $refreshPayload['error']);
+        self::assertTrue($refreshPayload['ok']);
+        self::assertArrayHasKey('accessToken', $refreshPayload);
+        self::assertSame($pinPayload['refreshToken'], $refreshPayload['refreshToken']);
     }
 
     public function testMagicLinkUnlockUsesPinUnlockTokenEvenIfARefreshTokenExists(): void

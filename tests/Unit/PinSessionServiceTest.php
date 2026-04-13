@@ -30,7 +30,7 @@ final class PinSessionServiceTest extends TestCase
         self::assertFalse($manager->isVerified());
     }
 
-    public function testExpiredVerificationReturnsFalse(): void
+    public function testStoredVerificationRemainsValid(): void
     {
         $session = new Session(new MockArraySessionStorage());
         $session->set('security.pin_verified_at', time() - 3600);
@@ -41,6 +41,6 @@ final class PinSessionServiceTest extends TestCase
 
         $manager = new PinSessionService($requestStack);
 
-        self::assertFalse($manager->isVerified());
+        self::assertTrue($manager->isVerified());
     }
 }

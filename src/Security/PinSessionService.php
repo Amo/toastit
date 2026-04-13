@@ -27,11 +27,7 @@ final class PinSessionService
     {
         $timestamp = $this->getVerifiedAtTimestamp();
 
-        if (!is_int($timestamp)) {
-            return false;
-        }
-
-        return (time() - $timestamp) < 3600;
+        return is_int($timestamp);
     }
 
     public function getVerifiedAtTimestamp(): ?int
@@ -41,14 +37,4 @@ final class PinSessionService
         return is_int($timestamp) ? $timestamp : null;
     }
 
-    public function getExpiresAtTimestamp(): ?int
-    {
-        $verifiedAt = $this->getVerifiedAtTimestamp();
-
-        if (null === $verifiedAt) {
-            return null;
-        }
-
-        return $verifiedAt + 3600;
-    }
 }

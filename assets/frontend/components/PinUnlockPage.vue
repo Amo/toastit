@@ -35,7 +35,14 @@ const submit = async () => {
   });
 
   if (!ok || !data) {
-    errorMessage.value = 'Invalid PIN.';
+    const error = String(data?.error ?? '');
+    if (error === 'invalid_pin') {
+      errorMessage.value = 'Invalid PIN.';
+    } else if (error === 'invalid_refresh_token' || error === 'invalid_pin_unlock_token' || error === 'missing_unlock_context') {
+      errorMessage.value = 'Session expired. Please sign in again.';
+    } else {
+      errorMessage.value = 'Unable to unlock session.';
+    }
     pin.value = '';
     nextTick(() => pinInputRef.value?.focusFirst());
     return;

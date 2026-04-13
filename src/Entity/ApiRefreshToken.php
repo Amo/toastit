@@ -99,9 +99,4 @@ class ApiRefreshToken
     {
         return $this->expiresAt <= $now;
     }
-
-    public function isInactive(\DateTimeImmutable $now): bool
-    {
-        return $this->lastUsedAt->modify('+30 minutes') <= $now;
-    }
 }

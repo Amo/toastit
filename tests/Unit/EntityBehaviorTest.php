@@ -222,8 +222,6 @@ final class EntityBehaviorTest extends TestCase
 
         self::assertFalse($refreshToken->isExpired(new \DateTimeImmutable('2026-04-08 08:00:00')));
         self::assertTrue($refreshToken->isExpired(new \DateTimeImmutable('2026-04-09 08:00:00')));
-        self::assertFalse($refreshToken->isInactive(new \DateTimeImmutable('2026-04-02 08:29:00')));
-        self::assertTrue($refreshToken->isInactive(new \DateTimeImmutable('2026-04-02 08:30:00')));
 
         $challenge = (new LoginChallenge())
             ->setUser($user)
