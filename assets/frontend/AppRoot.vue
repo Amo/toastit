@@ -7,7 +7,10 @@ import { AuthApi } from './api/auth';
 import AppShell from './components/AppShell.vue';
 import AuthMagicPage from './components/AuthMagicPage.vue';
 import EmailActionConfirmPage from './components/EmailActionConfirmPage.vue';
-import LoginPage from './components/LoginPage.vue';
+import HomePage from './components/HomePage.vue';
+import LoginModalForm from './components/LoginModalForm.vue';
+import ModalDialog from './components/ModalDialog.vue';
+import ModalHeader from './components/ModalHeader.vue';
 import AuthVerifyPage from './components/AuthVerifyPage.vue';
 import PinSetupPage from './components/PinSetupPage.vue';
 import PinUnlockPage from './components/PinUnlockPage.vue';
@@ -30,10 +33,12 @@ const routeName = computed(() => route.name);
 let pinLockTimerId = null;
 let accessRefreshTimerId = null;
 const authRefreshPending = ref(false);
+const loginModalOpen = ref(false);
 const authApi = new AuthApi(new ToastitApiClient(''));
 
 const protectedRouteNames = ['dashboard', 'inbox', 'workspace', 'toast', 'profile', 'admin-dashboard', 'admin-users', 'admin-prompts'];
 const rootRouteNames = ['admin-dashboard', 'admin-users', 'admin-prompts'];
+const authEntryRouteNames = ['home', 'auth-verify', 'auth-magic', 'pin-setup', 'pin-unlock'];
 const accessTokenExpired = computed(() => {
   const expiresAt = authStore.getAccessTokenExpiresAt();
 
@@ -106,6 +111,11 @@ const syncPinLock = () => {
 };
 
 const syncProtectedRoutes = () => {
+  if (authStore.isAuthenticated && authEntryRouteNames.includes(String(routeName.value))) {
+    router.replace('/app');
+    return;
+  }
+
   if (routeName.value === 'home' && !authState.accessToken && authState.refreshToken && authState.user) {
     router.replace('/pin/unlock');
     return;
@@ -139,6 +149,10 @@ const syncProtectedRoutes = () => {
 
 const dismissFlash = ({ type, index }) => {
   spa.removeFlash(type, index);
+};
+
+const openLoginModal = () => {
+  loginModalOpen.value = true;
 };
 
 const redirectFromNotFound = () => {
@@ -212,6 +226,7 @@ onUnmounted(() => {
 watch(() => routeName.value, syncPinLock);
 watch(() => route.fullPath, () => {
   spa.clearFlashes();
+  loginModalOpen.value = false;
   syncProtectedRoutes();
 });
 watch(() => authState.pinLockExpiresAt, syncPinLock);
@@ -227,15 +242,19 @@ watch(() => authState.accessToken, syncAccessRefresh);
     :profile-url="spa.urls.profileUrl"
     :user="null"
     :show-app-navigation="false"
+    public-cta-label="login"
+    @public-cta-click="openLoginModal"
     content-html=""
   >
-    <LoginPage
-      :email="bootstrap.email || authState.pendingEmail"
-      :dashboard-url="spa.urls.dashboardUrl"
-      :is-authenticated="authStore.isAuthenticated"
-      :flashes="spa.flashes"
-      @dismiss-flash="dismissFlash"
-    />
+    <HomePage @open-login="openLoginModal" />
+    <ModalDialog v-if="loginModalOpen" max-width-class="max-w-xl" @close="loginModalOpen = false">
+      <ModalHeader
+        eyebrow="Login"
+        title="Continue with email"
+        @close="loginModalOpen = false"
+      />
+      <LoginModalForm :email="bootstrap.email || authState.pendingEmail" />
+    </ModalDialog>
   </AppShell>
 
   <AppShell
@@ -264,7 +283,7 @@ watch(() => authState.accessToken, syncAccessRefresh);
     :show-app-navigation="false"
     content-html=""
   >
-    <AuthMagicPage />
+    <AuthMagicPage :recaptcha-site-key="bootstrap.recaptchaSiteKey || ''" />
   </AppShell>
 
   <AppShell

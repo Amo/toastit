@@ -1,6 +1,7 @@
 import { reactive } from 'vue';
 
 const STORAGE_KEY = 'toastit.auth';
+const LAST_LOGIN_EMAIL_KEY = 'toastit.lastLoginEmail';
 const PIN_LOCK_TTL_SECONDS = 15 * 60;
 
 const defaultState = () => ({
@@ -87,6 +88,17 @@ export const authStore = {
     authState.pendingEmail = email || user?.email || '';
     authState.user = user ?? authState.user;
     persist();
+  },
+  rememberLastLoginEmail(email) {
+    const normalized = String(email ?? '').trim();
+    if (!normalized) {
+      return;
+    }
+
+    localStorage.setItem(LAST_LOGIN_EMAIL_KEY, normalized);
+  },
+  getLastLoginEmail() {
+    return localStorage.getItem(LAST_LOGIN_EMAIL_KEY) ?? '';
   },
   setReturnToPath(path) {
     authState.returnToPath = path;

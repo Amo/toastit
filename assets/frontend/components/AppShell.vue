@@ -11,7 +11,10 @@ const props = defineProps({
   user: { type: Object, default: null },
   contentHtml: { type: String, required: true },
   showAppNavigation: { type: Boolean, default: true },
+  publicCtaLabel: { type: String, default: '' },
+  publicCtaHref: { type: String, default: '' },
 });
+const emit = defineEmits(['public-cta-click']);
 
 const userMenuOpen = ref(false);
 const keyboardShortcutsOpen = ref(false);
@@ -77,11 +80,27 @@ onUnmounted(() => {
     <header class="sticky top-0 z-50 border-b border-stone-200/80 bg-white/90 backdrop-blur">
       <div class="tw-toastit-shell">
         <div class="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex items-center justify-between gap-4">
+          <div :class="showAppNavigation ? 'flex items-center justify-between gap-4' : 'flex w-full items-center justify-between gap-4'">
             <a :href="dashboardUrl" class="inline-flex items-center gap-0 text-stone-950">
               <span class="inline-grid h-10 w-10 place-items-center rounded-2xl border border-amber-200 bg-amber-100 text-sm font-black text-amber-700 shadow-[0_6px_16px_rgba(180,83,9,0.18)]">T</span>
               <span class="-ml-1 text-2xl font-bold tracking-[0.04em] text-stone-950">oastIt</span>
             </a>
+
+            <a
+              v-if="!showAppNavigation && publicCtaHref && publicCtaLabel"
+              :href="publicCtaHref"
+              class="inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-400"
+            >
+              {{ publicCtaLabel }}
+            </a>
+            <button
+              v-else-if="!showAppNavigation && publicCtaLabel"
+              type="button"
+              class="inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-400"
+              @click="emit('public-cta-click')"
+            >
+              {{ publicCtaLabel }}
+            </button>
 
             <button
               v-if="showAppNavigation"

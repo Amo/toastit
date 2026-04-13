@@ -9,6 +9,11 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class SpaController extends AbstractController
 {
+    public function __construct(
+        private readonly string $recaptchaSiteKey,
+    ) {
+    }
+
     #[Route('/{path}', name: 'app_spa', methods: ['GET'], requirements: ['path' => '^(?!api(?:/|$)|build(?:/|$)|styles(?:/|$)|_wdt(?:/|$)|_profiler(?:/|$)).*'], defaults: ['path' => ''])]
     public function __invoke(Request $request): Response
     {
@@ -21,6 +26,7 @@ final class SpaController extends AbstractController
                 'accessToken' => null,
                 'user' => null,
                 'pinLockExpiresAt' => null,
+                'recaptchaSiteKey' => $this->recaptchaSiteKey,
                 'flashes' => [
                     'success' => $flashBag->get('success'),
                     'error' => $flashBag->get('error'),

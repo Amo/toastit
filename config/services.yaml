@@ -18,6 +18,10 @@ parameters:
     app.xai_timeout_seconds: '%env(int:XAI_TIMEOUT_SECONDS)%'
     app.public_api_host: '%env(PUBLIC_API_HOST)%'
     app.public_api_host_pattern: '%env(PUBLIC_API_HOST_PATTERN)%'
+    app.recaptcha_site_key: '%env(default::RECAPTCHA_SITE_KEY)%'
+    app.recaptcha_project_id: '%env(default::RECAPTCHA_PROJECT_ID)%'
+    app.recaptcha_api_key: '%env(default::RECAPTCHA_API_KEY)%'
+    app.recaptcha_min_score: '%env(float:RECAPTCHA_MIN_SCORE)%'
 
 services:
     # default configuration for services in *this* file
@@ -37,6 +41,10 @@ services:
     App\Routing\AppUrlGenerator:
         arguments:
             $defaultUri: '%app.default_uri%'
+
+    App\Controller\SpaController:
+        arguments:
+            $recaptchaSiteKey: '%app.recaptcha_site_key%'
 
     App\Workspace\InboundEmailAddressService:
         arguments:
@@ -86,6 +94,13 @@ services:
     App\Security\JwtTokenService:
         arguments:
             $secret: '%env(APP_SECRET)%'
+
+    App\Security\RecaptchaVerifierService:
+        arguments:
+            $siteKey: '%app.recaptcha_site_key%'
+            $projectId: '%app.recaptcha_project_id%'
+            $apiKey: '%app.recaptcha_api_key%'
+            $minimumScore: '%app.recaptcha_min_score%'
 
     App\Security\PersonalAccessTokenAuthenticator:
         arguments:

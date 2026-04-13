@@ -31,7 +31,7 @@ export class AuthApi {
     return this.client.getJson(`/api/auth/magic/${selector}/${token}`);
   }
 
-  finalizeMagicLink(selector, token) {
-    return this.client.postJson(`/api/auth/magic/${selector}/${token}/consume`, {});
+  finalizeMagicLink(selector, token, payload = {}) {
+    return this.client.postJson(`/api/auth/magic/${selector}/${token}/consume`, payload);
   }
 }
