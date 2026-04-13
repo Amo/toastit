@@ -1,5 +1,13 @@
 ## 0.10.0 (April 13, 2026)
-  - NEW: add weekly operational summary flow with language-aware prompts
+- NEW: weekly operational summary by email (7-day window)
+  - Added a one-click dashboard action to send a 7-day recap email
+  - Added inbound email trigger: send an email with subject `summary` to receive the same recap
+  - Built the summary from key task slices:
+    - tasks you created and completed in the last 7 calendar days
+    - tasks you created in the last 7 calendar days
+    - tasks assigned to you and completed in the last 7 calendar days
+  - Added language-aware AI prompting based on user language preference (with auto-detect fallback)
+  - Enriched AI context with decision notes, follow-up details, and recent comments for more useful operational reporting
 
 ## 0.9.3 (April 13, 2026)
 - FIX: hardened production ADC wiring for reCAPTCHA Enterprise

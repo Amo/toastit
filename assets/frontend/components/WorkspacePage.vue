@@ -82,9 +82,12 @@ const isSessionArchiveSaving = ref(false);
 const isSessionArchiveSending = ref(false);
 const commentDrafts = ref({});
 const workspaceBackgroundObjectUrl = ref('');
+const inboxAddressCopied = ref(false);
+const inboxAddressInput = ref(null);
 const vetoedInfiniteLoader = ref(null);
 const resolvedInfiniteLoader = ref(null);
 let archivedToastObserver = null;
+let inboxAddressCopiedTimeout = null;
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
@@ -1328,6 +1331,56 @@ const transferToast = async () => {
   window.location.href = `/app/toasts/${result.toastId}`;
 };
 
+const copyInboxAddress = async () => {
+  const address = String(currentUser.value?.inboxEmailAddress ?? '').trim();
+  if (!address) {
+    return;
+  }
+
+  const markCopied = () => {
+    inboxAddressCopied.value = true;
+    if (inboxAddressCopiedTimeout) {
+      clearTimeout(inboxAddressCopiedTimeout);
+    }
+    inboxAddressCopiedTimeout = window.setTimeout(() => {
+      inboxAddressCopied.value = false;
+      inboxAddressCopiedTimeout = null;
+    }, 3000);
+  };
+
+  if (navigator?.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(address);
+      markCopied();
+      return;
+    } catch {
+      // Fallback below.
+    }
+  }
+
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = address;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    if (copied) {
+      markCopied();
+    }
+  } catch {
+    // Keep button unchanged on copy failure.
+  }
+};
+
+const selectInboxAddress = () => {
+  inboxAddressInput.value?.focus();
+  inboxAddressInput.value?.select();
+};
+
 const updateItemField = (itemId, key, value) => {
   if (!payload.value) return;
 
@@ -1446,6 +1499,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (inboxAddressCopiedTimeout) {
+    clearTimeout(inboxAddressCopiedTimeout);
+  }
   window.removeEventListener('keydown', handleWorkspaceKeydown);
   disconnectArchivedToastObserver();
   revokeWorkspaceBackgroundObjectUrl();
@@ -1519,10 +1575,43 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
           <p class="font-semibold">Email-to-toast inbox</p>
           <p class="mt-2 text-sky-800">
             Forward email to
-            <span class="font-mono">{{ currentUser?.inboxEmailAddress }}</span>
-            to create a new toast automatically.
           </p>
-          <p class="mt-2 text-sky-700">This workspace is hidden from the regular workspace list and stays read-only from a configuration standpoint.</p>
+          <div class="mt-2 inline-flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-sky-200 bg-white px-3 py-2">
+            <input
+              ref="inboxAddressInput"
+              :value="currentUser?.inboxEmailAddress ?? ''"
+              type="text"
+              readonly
+              class="w-full border-0 bg-transparent p-0 font-mono text-sm text-sky-950 outline-none ring-0 focus:ring-0"
+              @click="selectInboxAddress"
+              @focus="selectInboxAddress"
+            >
+            <button
+              type="button"
+              class="inline-grid h-7 w-7 place-items-center rounded-full border transition"
+              :class="inboxAddressCopied ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-sky-200 bg-white text-sky-800 hover:border-sky-300 hover:text-sky-950'"
+              @click="copyInboxAddress"
+            >
+              <i :class="inboxAddressCopied ? 'fa-solid fa-check text-xs' : 'fa-regular fa-copy text-xs'" aria-hidden="true"></i>
+              <span class="sr-only">{{ inboxAddressCopied ? 'Copied' : 'Copy inbox address' }}</span>
+            </button>
+          </div>
+          <p class="mt-2 text-sky-800">to use inbound email features:</p>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-sky-800">
+            <li><span class="font-semibold">toast creation</span>: send any email to create a new toast automatically.</li>
+            <li>
+              <span class="font-semibold">todo list</span>:
+              send an email with title
+              <span class="inline-flex rounded-full bg-sky-200 px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-sky-900">todo</span>
+              to receive your current todo digest.
+            </li>
+            <li>
+              <span class="font-semibold">summary</span>:
+              send an email with title
+              <span class="inline-flex rounded-full bg-sky-200 px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-sky-900">summary</span>
+              to receive your 7-day operational recap.
+            </li>
+          </ul>
         </div>
 
         <div class="tw-toastit-card p-6 space-y-4">
