@@ -19,6 +19,14 @@ const RECAPTCHA_ACTION = 'magic_link_consume';
 
 const api = new AuthApi(new ToastitApiClient(''));
 
+const resolveMagicLinkErrorMessage = (data) => {
+  if (data?.error === 'invalid_recaptcha') {
+    return 'Security validation failed. Please retry from your email link.';
+  }
+
+  return 'This magic link is invalid or expired.';
+};
+
 const ensureRecaptcha = async () => {
   if (!props.recaptchaSiteKey) {
     return true;
@@ -99,7 +107,7 @@ const completeMagicLink = async () => {
   continuePending.value = false;
 
   if (!ok || !data) {
-    errorMessage.value = 'This magic link is invalid or expired.';
+    errorMessage.value = resolveMagicLinkErrorMessage(data);
     return;
   }
 
@@ -120,7 +128,7 @@ onMounted(async () => {
   const { ok, data } = await api.consumeMagicLink(route.params.selector, route.params.token);
 
   if (!ok || !data) {
-    errorMessage.value = 'This magic link is invalid or expired.';
+    errorMessage.value = resolveMagicLinkErrorMessage(data);
     return;
   }
 
