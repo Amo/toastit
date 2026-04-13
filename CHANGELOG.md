@@ -1,3 +1,9 @@
+## 0.9.2 (April 13, 2026)
+- SECURITY: reCAPTCHA Enterprise moved to Google-recommended server validation
+  - Migrated magic-link protection to the official reCAPTCHA Enterprise PHP client using ADC/service-account authentication
+  - Removed API-key based verification path in favor of enterprise assessment calls
+  - Updated frontend execution to use `grecaptcha.enterprise` for token generation consistency
+
 ## 0.9.1 (April 13, 2026)
 - FIX: production stability after reCAPTCHA rollout
   - Wired reCAPTCHA environment variables into both app and worker runtime containers
