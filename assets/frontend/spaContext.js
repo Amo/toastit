@@ -33,6 +33,7 @@ export const createSpaContext = (bootstrap) => {
         actionsUrl: '/app/actions',
         dashboardUrl: '/app',
         profileUrl: '/app/profile',
+        publicApiDocUrl: bootstrap.publicApiDocUrl || '/doc',
       };
     },
   };

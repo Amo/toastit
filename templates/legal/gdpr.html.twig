@@ -1,0 +1,78 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}GDPR | Toastit{% endblock %}
+
+{% block body %}
+  <main class="mx-auto w-full max-w-4xl px-6 py-10 lg:px-8 lg:py-14">
+    <div class="rounded-[1.5rem] border border-stone-200 bg-white p-6 lg:p-8">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">GDPR</p>
+      <h1 class="mt-3 text-3xl font-semibold tracking-tight text-stone-950">Data processing notice</h1>
+      <p class="mt-2 text-sm text-stone-600">Last updated: April 13, 2026</p>
+
+      <div class="mt-6 space-y-6 text-sm leading-7 text-stone-700">
+        <section>
+          <h2 class="text-base font-semibold text-stone-900">Legal and contact information</h2>
+          <ul class="mt-2 list-disc space-y-1 pl-5">
+            <li>Owner, operator, and data controller: Amaury Leroux de Lens (France)</li>
+            <li>Contact: hello at toastit . cc</li>
+            <li>Hosting: OVH.fr</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-stone-900">1. Purpose limitation</h2>
+          <p>
+            Toastit stores only the information required to provide the service you explicitly use
+            (account access, task/workspace operations, inbound processing, and requested summaries).
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-stone-900">2. No marketing use</h2>
+          <p>
+            Your data is not used for advertising, profiling, audience resale, or marketing campaigns.
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-stone-900">3. Cookies</h2>
+          <p>
+            Toastit does not use tracking or marketing cookies. We only use session-related cookies
+            needed for authentication and secure login continuity.
+          </p>
+          <p class="mt-2">
+            We also use Google reCAPTCHA Enterprise only on authentication-related actions to protect
+            against abuse and automated attacks. In this context, reCAPTCHA may set technical security
+            cookies (for example <code>_GRECAPTCHA</code>) that are used strictly for fraud and bot-risk evaluation.
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-stone-900">4. Third-party transfers</h2>
+          <p>
+            Data is not shared with third parties except when strictly necessary to deliver transactional
+            emails you requested (for example login links/codes, digests, or summary emails).
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-stone-900">5. Cookie consent banner</h2>
+          <p>
+            Given our current setup (session/authentication cookies and security-only reCAPTCHA usage),
+            Toastit does not use a marketing cookie consent banner.
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-stone-900">6. Future changes and user acceptance</h2>
+          <p>
+            Toastit may evolve over time. If future changes introduce new data processing purposes
+            (for example marketing usage, non-essential cookies, or additional third-party services),
+            we will update this page and request explicit user acceptance when legally required before
+            continuing those specific processing activities.
+          </p>
+        </section>
+      </div>
+    </div>
+  </main>
+{% endblock %}

@@ -44,6 +44,7 @@ services:
     App\Controller\SpaController:
         arguments:
             $recaptchaSiteKey: '%app.recaptcha_site_key%'
+            $publicApiHost: '%app.public_api_host%'
 
     App\Workspace\InboundEmailAddressService:
         arguments:

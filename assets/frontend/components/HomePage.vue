@@ -28,7 +28,6 @@ const currentYear = new Date().getFullYear();
 <template>
   <section class="mx-auto max-w-4xl space-y-10 pb-0 pt-10 lg:pt-14">
     <div class="space-y-4 text-center">
-      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Toastit</p>
       <h1 class="text-4xl font-semibold tracking-tight text-stone-950 lg:text-5xl">From inbox chaos to accountable execution.</h1>
       <p class="mx-auto max-w-2xl text-base leading-7 text-stone-600">
         Toastit helps individual users clear inbox backlog with AI todo capture, and helps pro teams run meetings with clear agendas, decisions, and follow-up actions.
@@ -57,7 +56,7 @@ const currentYear = new Date().getFullYear();
 
     <footer class="relative left-1/2 right-1/2 w-screen -translate-x-1/2 bg-stone-950 text-stone-100">
       <div class="mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
-        <div class="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div class="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <div>
             <div class="flex items-center gap-3">
               <img :src="'/assets/logo.png'" alt="Toastit" class="h-9 w-auto object-contain">
@@ -96,8 +95,14 @@ const currentYear = new Date().getFullYear();
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Legal</p>
             <ul class="mt-3 space-y-2 text-sm text-stone-200">
-              <li>Legal notice</li>
-              <li>GDPR: soon</li>
+              <li>
+                <a
+                  href="/gdpr"
+                  class="underline decoration-stone-600 underline-offset-2 transition hover:text-white"
+                >
+                  Legal notice &amp; GDPR
+                </a>
+              </li>
               <li>
                 Made with grit by
                 <a
@@ -107,6 +112,32 @@ const currentYear = new Date().getFullYear();
                   class="font-semibold text-stone-100 underline decoration-stone-500 underline-offset-2 transition hover:text-white"
                 >
                   @amo__
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Developers</p>
+            <ul class="mt-3 space-y-2 text-sm text-stone-200">
+              <li>
+                <a
+                  href="https://api.toastit.cc/doc"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline decoration-stone-600 underline-offset-2 transition hover:text-white"
+                >
+                  Public API documentation
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/Amo/toastit-mcp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline decoration-stone-600 underline-offset-2 transition hover:text-white"
+                >
+                  MCP server code (GitHub)
                 </a>
               </li>
             </ul>

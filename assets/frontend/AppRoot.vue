@@ -422,7 +422,13 @@ watch(() => authState.accessToken, syncAccessRefresh);
     :user="authState.user"
     content-html=""
   >
-    <ProfilePage api-url="/api/profile" update-url="/api/profile" delete-url="/api/profile" :access-token="authState.accessToken" />
+    <ProfilePage
+      api-url="/api/profile"
+      update-url="/api/profile"
+      delete-url="/api/profile"
+      :access-token="authState.accessToken"
+      :public-api-doc-url="spa.urls.publicApiDocUrl"
+    />
   </AppShell>
 
   <AppShell

@@ -11,6 +11,7 @@ final class SpaController extends AbstractController
 {
     public function __construct(
         private readonly ?string $recaptchaSiteKey,
+        private readonly ?string $publicApiHost,
     ) {
     }
 
@@ -27,11 +28,22 @@ final class SpaController extends AbstractController
                 'user' => null,
                 'pinLockExpiresAt' => null,
                 'recaptchaSiteKey' => (string) $this->recaptchaSiteKey,
+                'publicApiDocUrl' => $this->buildPublicApiDocUrl($request),
                 'flashes' => [
                     'success' => $flashBag->get('success'),
                     'error' => $flashBag->get('error'),
                 ],
             ],
         ]);
+    }
+
+    private function buildPublicApiDocUrl(Request $request): string
+    {
+        $host = trim((string) $this->publicApiHost);
+        if ('' === $host) {
+            return '/doc';
+        }
+
+        return sprintf('%s://%s/doc', $request->getScheme(), $host);
     }
 }

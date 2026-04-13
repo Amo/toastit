@@ -19,6 +19,7 @@ const props = defineProps({
   updateUrl: { type: String, required: true },
   deleteUrl: { type: String, required: true },
   accessToken: { type: String, required: true },
+  publicApiDocUrl: { type: String, default: '/doc' },
 });
 
 const isLoading = ref(true);
@@ -701,6 +702,26 @@ onUnmounted(() => {
                 <p class="mt-1 text-sm text-stone-600">
                   Use these tokens to call the public API with the <code class="rounded bg-stone-100 px-1 py-0.5 text-xs">Authorization: Bearer ...</code> header.
                 </p>
+                <div class="mt-3 flex flex-col gap-2">
+                  <a
+                    :href="publicApiDocUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-2 text-sm font-medium text-amber-700 transition hover:text-amber-800"
+                  >
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs" aria-hidden="true"></i>
+                    Open public API documentation
+                  </a>
+                  <a
+                    href="https://github.com/Amo/toastit-mcp"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-2 text-sm font-medium text-amber-700 transition hover:text-amber-800"
+                  >
+                    <i class="fa-brands fa-github text-sm" aria-hidden="true"></i>
+                    Open MCP server code (GitHub)
+                  </a>
+                </div>
               </div>
 
               <div class="grid gap-4 rounded-2xl border border-stone-200 bg-white p-4">
