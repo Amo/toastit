@@ -1,3 +1,22 @@
+## 1.0.0 (April 13, 2026)
+- NEW: Toastit v1 major product release
+  - Introduced the new full-width workspace experience with a persistent left navigation and tabular toast views
+  - Added a mobile-first navigation model (burger menu + full-screen mobile task surfaces)
+  - Refined toast interaction model:
+    - row click opens the toast permalink directly
+    - list actions are optimized by context (mobile vs desktop, list vs detail)
+    - vote updates are now in-place without full workspace refresh
+- UX: major homepage refresh
+  - Added a dedicated full-width “super footer” with core value pillars and legal block
+  - Clarified positioning for both personas:
+    - individual users (inbox-to-todo capture)
+    - professional users (meeting execution, decisions, follow-ups)
+  - Integrated brand logo usage across public and in-app navigation surfaces
+- FIX: responsive layout and modal consistency polish
+  - Restored desktop modal behavior while keeping mobile full-screen modal flow
+  - Removed mobile spacing/overflow regressions across workspace headers and toast lists
+  - Improved mobile readability with compact stats, tighter header spacing, and cleaner list density
+
 ## 0.10.2 (April 13, 2026)
 - FIX: streamlined user account menu navigation
   - Removed redundant `Inbox` and `Workspace` entries from the user dropdown (desktop and mobile)
