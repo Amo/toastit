@@ -1,3 +1,10 @@
+## 0.10.1 (April 13, 2026)
+- FIX: clearer inbox email helper and faster copy UX
+  - Expanded the inbox helper to list inbound email features: toast creation, `todo`, and `summary`
+  - Improved readability of email-title commands by surfacing `todo` and `summary` as highlighted labels
+  - Added one-click copy for the inbound email address with auto-select on click/focus
+  - Replaced copy toast text feedback with a compact green check state on the button (3s)
+
 ## 0.10.0 (April 13, 2026)
 - NEW: weekly operational summary by email (7-day window)
   - Added a one-click dashboard action to send a 7-day recap email
