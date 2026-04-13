@@ -1,3 +1,8 @@
+## 0.9.1 (April 13, 2026)
+- FIX: production stability after reCAPTCHA rollout
+  - Wired reCAPTCHA environment variables into both app and worker runtime containers
+  - Prevented production startup failures caused by missing reCAPTCHA runtime configuration
+
 ## 0.9.0 (April 13, 2026)
 - NEW: clearer homepage and faster login access
   - Simplified the homepage messaging around personal inbox capture and pro meeting execution
