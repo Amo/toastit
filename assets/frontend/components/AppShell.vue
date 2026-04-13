@@ -166,8 +166,6 @@ onUnmounted(() => {
                   <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
                 </div>
                 <div class="space-y-2">
-                  <a href="/app/inbox" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Inbox</a>
-                  <a :href="dashboardUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Workspace</a>
                   <a v-if="user?.isRoot" href="/admin" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Admin</a>
                   <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
                   <button class="flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" type="button" @click="logout">
@@ -182,8 +180,6 @@ onUnmounted(() => {
               <div class="space-y-1">
                 <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
               </div>
-              <a href="/app/inbox" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Inbox</a>
-              <a :href="dashboardUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Workspace</a>
               <a v-if="user?.isRoot" href="/admin" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Admin</a>
               <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
               <button class="w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950" type="button" @click="logout">Sign out</button>
