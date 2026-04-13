@@ -130,7 +130,7 @@ onMounted(async () => {
   }
   autoSubmitTimerId = window.setTimeout(() => {
     completeMagicLink();
-  }, 2000);
+  }, 500);
 });
 
 onUnmounted(() => {
