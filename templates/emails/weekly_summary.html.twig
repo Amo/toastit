@@ -1,0 +1,11 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block email_body %}
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Your weekly operational summary</h1>
+    <p style="margin:0 0 24px;font-size:16px;line-height:1.6;">
+        Here is your 7-day recap based on toastit actions.
+    </p>
+    <div style="margin:0;padding:20px;border:1px solid #eceff3;border-radius:20px;background:#faf8f4;font-size:15px;line-height:1.7;color:#1f1209;">
+        {{ summary_html|raw }}
+    </div>
+{% endblock %}

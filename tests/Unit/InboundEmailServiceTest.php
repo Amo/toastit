@@ -656,6 +656,111 @@ JSON),
         self::assertSame('2026-04-15', $toast->getDueAt()?->format('Y-m-d'));
     }
 
+    public function testSubjectSummarySendsWeeklySummaryEmail(): void
+    {
+        $actor = (new User())
+            ->setEmail('owner@example.com')
+            ->setFirstName('Owner')
+            ->setInboundEmailAlias('018f2e9a-9d9f-7f1f-8f7a-123456789abd');
+
+        $userRepository = $this->createMock(UserRepository::class);
+        $userRepository
+            ->expects(self::once())
+            ->method('findOneByInboundEmailAlias')
+            ->with('018f2e9a-9d9f-7f1f-8f7a-123456789abd')
+            ->willReturn($actor);
+
+        $toastRepositoryForSummary = $this->createMock(ToastRepository::class);
+        $toastRepositoryForSummary
+            ->expects(self::once())
+            ->method('findCreatedByUserSince')
+            ->with($actor, self::isInstanceOf(\DateTimeImmutable::class))
+            ->willReturn([]);
+        $toastRepositoryForSummary
+            ->expects(self::once())
+            ->method('findCreatedByUserAndCompletedSince')
+            ->with($actor, self::isInstanceOf(\DateTimeImmutable::class))
+            ->willReturn([]);
+        $toastRepositoryForSummary
+            ->expects(self::once())
+            ->method('findAssignedToUserAndCompletedSince')
+            ->with($actor, self::isInstanceOf(\DateTimeImmutable::class))
+            ->willReturn([]);
+
+        $xaiText = $this->createMock(XaiTextService::class);
+        $xaiText->expects(self::never())->method('generateText');
+
+        $mailerTransport = $this->createMock(MailerInterface::class);
+        $mailerTransport
+            ->expects(self::once())
+            ->method('send')
+            ->with(self::callback(static function (\Symfony\Component\Mime\RawMessage $message): bool {
+                self::assertInstanceOf(Email::class, $message);
+                self::assertSame('Re: summary', $message->getSubject());
+                self::assertStringContainsString('No matching tasks were found', (string) $message->getTextBody());
+
+                return true;
+            }));
+
+        $transactionalMailer = new TransactionalMailer(
+            $mailerTransport,
+            new Environment(new FilesystemLoader(dirname(__DIR__, 2).'/templates')),
+            new CommonMarkConverter(),
+            'no-reply@toastit.local',
+        );
+
+        $service = new InboundEmailService(
+            new InboundEmailAddressService('in.toastit.cc'),
+            $userRepository,
+            $this->createMock(WorkspaceRepository::class),
+            $this->createMock(ToastRepository::class),
+            new InboxWorkspaceService(
+                $this->createMock(WorkspaceRepository::class),
+                $this->createMock(WorkspaceMemberRepository::class),
+                $this->createMock(EntityManagerInterface::class),
+            ),
+            new ToastCreationService($this->createMock(EntityManagerInterface::class)),
+            new TodoDigestService(
+                $toastRepositoryForSummary,
+                $xaiText,
+                $transactionalMailer,
+                new AssignedToastPriorityService(),
+                $this->createPromptTemplateService(['todo_digest_system' => 'todo digest system prompt']),
+            ),
+            new ToastDraftRefinementService(
+                new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
+                new WorkspaceWorkflowService(),
+                $this->createPromptTemplateService(['toast_draft_refinement_system' => 'refinement system prompt']),
+            ),
+            new ToastReplyTokenService(
+                $this->createMock(EntityManagerInterface::class),
+                $this->createMock(ToastReplyTokenRepository::class),
+            ),
+            new InboundReplyAddressService('in.toastit.cc'),
+            new WorkspaceSuggestionService(
+                $this->createMock(WorkspaceRepository::class),
+                new XaiTextService(new MockHttpClient([]), '', 'https://api.x.ai/v1', 'test-model', 30),
+                $this->createPromptTemplateService(['workspace_suggestion_system' => 'workspace suggestion system prompt']),
+            ),
+            $transactionalMailer,
+            new ToastTransferService(new WorkspaceWorkflowService(), $this->createMock(EntityManagerInterface::class)),
+            new WorkspaceWorkflowService(),
+            new JwtTokenService('unit-test-secret'),
+            new AppUrlGenerator($this->createMock(UrlGeneratorInterface::class), 'https://toastit.test'),
+            $this->createMock(EntityManagerInterface::class),
+        );
+
+        $result = $service->ingest(
+            'toast+018f2e9a-9d9f-7f1f-8f7a-123456789abd@in.toastit.cc',
+            'sender@example.com',
+            'summary',
+            'Please send my weekly summary.',
+        );
+
+        self::assertInstanceOf(InboundEmailResult::class, $result);
+        self::assertSame('weekly_summary_sent', $result->getKind());
+    }
+
     /**
      * @param array<string, string> $promptByCode
      */

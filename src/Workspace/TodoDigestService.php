@@ -11,6 +11,8 @@ use App\Repository\ToastRepository;
 
 final class TodoDigestService
 {
+    private const WEEKLY_SUMMARY_WINDOW_DAYS = 7;
+
     public function __construct(
         private readonly ToastRepository $toastRepository,
         private readonly XaiTextService $xaiText,
@@ -85,6 +87,106 @@ final class TodoDigestService
         );
     }
 
+    public function sendWeeklySummary(User $user): void
+    {
+        $this->sendWeeklySummaryReply($user, null, null, null);
+    }
+
+    public function sendWeeklySummaryReply(
+        User $user,
+        ?string $originalSubject,
+        ?string $messageId,
+        ?string $references,
+        ?string $replyToAddress = null,
+    ): void {
+        $windowStart = (new \DateTimeImmutable('today'))->modify(sprintf('-%d days', self::WEEKLY_SUMMARY_WINDOW_DAYS - 1));
+        $windowEnd = new \DateTimeImmutable();
+        $createdByUser = $this->toastRepository->findCreatedByUserSince($user, $windowStart);
+        $createdAndCompletedByUser = $this->toastRepository->findCreatedByUserAndCompletedSince($user, $windowStart);
+        $assignedAndCompletedByUser = $this->toastRepository->findAssignedToUserAndCompletedSince($user, $windowStart);
+
+        if ([] === $createdByUser && [] === $createdAndCompletedByUser && [] === $assignedAndCompletedByUser) {
+            $languageInstruction = $this->buildWeeklySummaryLanguageInstruction($user);
+
+            $this->transactionalMailer->sendWeeklySummary(
+                $user,
+                sprintf(
+                    "## Weekly operational summary (%s to %s)\n\nNo matching tasks were found during the last 7 calendar days.\n\nLanguage preference: %s.",
+                    $windowStart->format('Y-m-d'),
+                    $windowEnd->format('Y-m-d'),
+                    $languageInstruction
+                ),
+                $originalSubject,
+                $messageId,
+                $references,
+                $replyToAddress,
+            );
+
+            return;
+        }
+
+        $systemPrompt = $this->promptTemplate->resolveSystemPrompt('weekly_operational_summary_system', '');
+        if ('' === trim($systemPrompt)) {
+            $systemPrompt = implode("\n", [
+                'Return markdown only.',
+                'Write an operational weekly summary for a 1:1 with a manager.',
+                'Use section titles in the output language selected by the language instruction.',
+                'Required sections: weekly overview, completed tasks, created tasks, watchouts/next week focus.',
+                'Use concise bullets, mention concrete outcomes and risks.',
+            ]);
+        }
+
+        $languageInstruction = $this->buildWeeklySummaryLanguageInstruction($user);
+        $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
+            'weekly_operational_summary_system',
+            implode("\n", [
+                'User: {{ user_display_name }}',
+                'Email: {{ user_email }}',
+                'Window start: {{ window_start }}',
+                'Window end: {{ window_end }}',
+                'Language instruction: {{ language_instruction }}',
+                '',
+                'Created by user and completed during the window:',
+                '{{ created_and_completed }}',
+                '',
+                'Created by user during the window:',
+                '{{ created_by_user }}',
+                '',
+                'Assigned to user and completed during the window:',
+                '{{ assigned_and_completed }}',
+            ]),
+            [
+                'user_display_name' => $user->getDisplayName(),
+                'user_email' => $user->getEmail(),
+                'window_start' => $windowStart->format('Y-m-d'),
+                'window_end' => $windowEnd->format('Y-m-d'),
+                'language_instruction' => $languageInstruction,
+                'created_and_completed' => $this->buildWeeklySummaryTaskList($createdAndCompletedByUser, 'completed_at'),
+                'created_by_user' => $this->buildWeeklySummaryTaskList($createdByUser, 'created_at'),
+                'assigned_and_completed' => $this->buildWeeklySummaryTaskList($assignedAndCompletedByUser, 'completed_at'),
+            ],
+        );
+
+        $rawSummary = $this->xaiText->generateText(
+            $systemPrompt,
+            $userPrompt,
+            [
+                'source' => 'weekly_operational_summary',
+                'userId' => $user->getId(),
+            ],
+        );
+        $summary = $this->extractMarkdownResult($rawSummary);
+
+        $this->transactionalMailer->sendWeeklySummary(
+            $user,
+            $summary,
+            $originalSubject,
+            $messageId,
+            $references,
+            $replyToAddress,
+        );
+    }
+
     /**
      * @param list<Toast> $assignedToasts
      */
@@ -117,5 +219,93 @@ final class TodoDigestService
         }
 
         return trim($rawSummary);
+    }
+
+    /**
+     * @param list<Toast> $toasts
+     */
+    private function buildWeeklySummaryTaskList(array $toasts, string $timeField): string
+    {
+        if ([] === $toasts) {
+            return 'none';
+        }
+
+        $lines = [];
+
+        foreach ($toasts as $toast) {
+            $lines[] = sprintf('  id: %d', $toast->getId() ?? 0);
+            $lines[] = sprintf('- title: %s', $toast->getTitle());
+            $lines[] = sprintf('  workspace: %s', $toast->getWorkspace()->getName());
+            $lines[] = sprintf('  assignee: %s', $toast->getOwner()?->getDisplayName() ?? 'none');
+            $lines[] = sprintf('  author: %s', $toast->getAuthor()->getDisplayName());
+            $lines[] = sprintf('  status: %s', $toast->getStatus());
+            $lines[] = sprintf('  created_at: %s', $toast->getCreatedAt()->format('Y-m-d H:i'));
+            $lines[] = sprintf('  completed_at: %s', $toast->getStatusChangedAt()?->format('Y-m-d H:i') ?? 'none');
+            $lines[] = sprintf('  due_on: %s', $toast->getDueAt()?->format('Y-m-d') ?? 'none');
+            $lines[] = sprintf('  key_time: %s', 'completed_at' === $timeField
+                ? ($toast->getStatusChangedAt()?->format('Y-m-d H:i') ?? 'none')
+                : $toast->getCreatedAt()->format('Y-m-d H:i'));
+            $lines[] = sprintf('  description: %s', trim((string) ($toast->getDescription() ?? 'none')));
+            $lines[] = sprintf('  decision_notes: %s', trim((string) ($toast->getDiscussionNotes() ?? 'none')));
+            $lines[] = sprintf('  follow_up_text: %s', trim((string) ($toast->getFollowUp() ?? 'none')));
+            $lines[] = sprintf('  follow_up_items: %s', $this->buildFollowUpItemsText($toast));
+            $lines[] = sprintf('  latest_comments: %s', $this->buildLatestCommentsText($toast));
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function buildWeeklySummaryLanguageInstruction(User $user): string
+    {
+        $preferredLanguage = $user->getInboundRewordLanguage();
+        if (null === $preferredLanguage || '' === trim($preferredLanguage)) {
+            return 'Auto-detect language from task content and keep a single language across the whole summary.';
+        }
+
+        return sprintf('Force output language to: %s.', User::getInboundRewordLanguageLabel($preferredLanguage));
+    }
+
+    private function buildFollowUpItemsText(Toast $toast): string
+    {
+        $items = $toast->getFollowUpItems();
+        if ([] === $items) {
+            return 'none';
+        }
+
+        $lines = array_map(static function (array $item): string {
+            return sprintf(
+                '%s (owner_id: %s, due_on: %s)',
+                trim((string) ($item['title'] ?? 'untitled')),
+                null !== ($item['ownerId'] ?? null) ? (string) $item['ownerId'] : 'none',
+                trim((string) ($item['dueOn'] ?? '')) ?: 'none',
+            );
+        }, $items);
+
+        return implode(' | ', $lines);
+    }
+
+    private function buildLatestCommentsText(Toast $toast): string
+    {
+        $comments = $toast->getComments()->toArray();
+        if ([] === $comments) {
+            return 'none';
+        }
+
+        $latestComments = array_slice($comments, -3);
+        $formatted = array_map(static function (mixed $comment): string {
+            if (!$comment instanceof \App\Entity\ToastComment) {
+                return '';
+            }
+
+            return sprintf(
+                '%s: %s',
+                $comment->getAuthor()->getDisplayName(),
+                trim($comment->getContent()),
+            );
+        }, $latestComments);
+
+        $formatted = array_values(array_filter($formatted, static fn (string $value): bool => '' !== $value));
+
+        return [] === $formatted ? 'none' : implode(' | ', $formatted);
     }
 }

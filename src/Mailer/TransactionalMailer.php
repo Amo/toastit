@@ -112,6 +112,40 @@ final class TransactionalMailer
         $this->mailer->send($email);
     }
 
+    public function sendWeeklySummary(
+        User $user,
+        string $summary,
+        ?string $originalSubject = null,
+        ?string $messageId = null,
+        ?string $references = null,
+        ?string $replyToAddress = null,
+    ): void {
+        $summary = trim($summary);
+        if ('' === $summary) {
+            return;
+        }
+
+        $context = [
+            'user' => $user,
+            'summary_html' => $this->markdownConverter->convert($summary)->getContent(),
+            'summary_text' => $summary,
+        ];
+
+        $email = (new Email())
+            ->from(new Address($this->defaultFrom, 'Toastit'))
+            ->to($user->getEmail())
+            ->subject('' !== trim((string) $originalSubject) ? $this->buildReplySubject($originalSubject) : 'Toastit weekly operational summary')
+            ->html($this->twig->render('emails/weekly_summary.html.twig', $context))
+            ->text($this->twig->render('emails/weekly_summary.txt.twig', $context));
+
+        if (null !== $replyToAddress && '' !== trim($replyToAddress)) {
+            $email->replyTo($replyToAddress);
+        }
+
+        $this->applyReplyHeaders($email, $messageId, $references);
+        $this->mailer->send($email);
+    }
+
     /**
      * @param array{id: int, name: string, reason: string}|null $workspaceSuggestion
      */

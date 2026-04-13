@@ -79,6 +79,18 @@ final class InboundEmailService
             return null;
         }
 
+        if ($this->isWeeklySummarySubject($subject)) {
+            $this->todoDigest->sendWeeklySummaryReply(
+                $user,
+                $subject,
+                $messageId ?? $inReplyTo,
+                $references,
+                $this->inboundEmailAddress->buildAddressForUser($user),
+            );
+
+            return InboundEmailResult::weeklySummarySent();
+        }
+
         if ($this->isTodoDigestSubject($subject)) {
             $replyBody = $this->extractBodyText($textBody, $htmlBody);
 
@@ -498,6 +510,13 @@ final class InboundEmailService
         }
 
         return str_contains($normalized, 'todo digest');
+    }
+
+    private function isWeeklySummarySubject(?string $subject): bool
+    {
+        $normalized = mb_strtolower(trim((string) $subject));
+
+        return in_array($normalized, ['summary', 're: summary'], true);
     }
 
     private function containsReplyCommandIntent(string $body): bool

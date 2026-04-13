@@ -128,4 +128,89 @@ final class TodoDigestServiceTest extends TestCase
 
         (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService(), $promptTemplate))->sendTodoDigest($user);
     }
+
+    public function testSendWeeklySummaryUsesXaiWhenTasksExist(): void
+    {
+        $user = (new User())->setEmail('owner@example.com')->setFirstName('Owner');
+        $workspace = (new Workspace())->setName('Operations')->setOrganizer($user);
+
+        $createdToast = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor($user)
+            ->setTitle('Prepare monthly report')
+            ->setDescription('Gather KPI updates.')
+            ->setOwner($user)
+            ->setStatus(Toast::STATUS_PENDING);
+
+        $completedToast = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor($user)
+            ->setTitle('Close hiring loop')
+            ->setDescription('Finalize decision.')
+            ->setOwner($user)
+            ->setStatus(Toast::STATUS_TOASTED)
+            ->setStatusChangedAt(new \DateTimeImmutable('2026-04-10 10:00'));
+
+        $toastRepository = $this->createMock(ToastRepository::class);
+        $toastRepository
+            ->expects(self::once())
+            ->method('findCreatedByUserSince')
+            ->with($user, self::isInstanceOf(\DateTimeImmutable::class))
+            ->willReturn([$createdToast]);
+        $toastRepository
+            ->expects(self::once())
+            ->method('findCreatedByUserAndCompletedSince')
+            ->with($user, self::isInstanceOf(\DateTimeImmutable::class))
+            ->willReturn([$completedToast]);
+        $toastRepository
+            ->expects(self::once())
+            ->method('findAssignedToUserAndCompletedSince')
+            ->with($user, self::isInstanceOf(\DateTimeImmutable::class))
+            ->willReturn([$completedToast]);
+
+        $xaiText = $this->createMock(XaiTextService::class);
+        $xaiText
+            ->expects(self::once())
+            ->method('generateText')
+            ->with(self::anything(), self::stringContains('Prepare monthly report'))
+            ->willReturn("## Bilan de la semaine\n\n- Rapport pret.");
+
+        $promptTemplate = $this->createMock(AiPromptTemplateService::class);
+        $promptTemplate
+            ->method('resolveSystemPrompt')
+            ->willReturn('Produce a weekly operational summary in markdown.');
+        $promptTemplate
+            ->method('resolveUserPromptTemplate')
+            ->willReturnCallback(static function (string $code, string $fallback, array $variables = []): string {
+                return implode("\n", [
+                    sprintf('User: %s', (string) ($variables['user_display_name'] ?? '')),
+                    sprintf('Email: %s', (string) ($variables['user_email'] ?? '')),
+                    sprintf('Window start: %s', (string) ($variables['window_start'] ?? '')),
+                    sprintf('Window end: %s', (string) ($variables['window_end'] ?? '')),
+                    (string) ($variables['created_by_user'] ?? ''),
+                    (string) ($variables['created_and_completed'] ?? ''),
+                    (string) ($variables['assigned_and_completed'] ?? ''),
+                ]);
+            });
+
+        $mailerTransport = $this->createMock(MailerInterface::class);
+        $mailerTransport
+            ->expects(self::once())
+            ->method('send')
+            ->with(self::callback(function (Email $email): bool {
+                self::assertSame('Toastit weekly operational summary', $email->getSubject());
+                self::assertStringContainsString('Bilan de la semaine', $email->getTextBody() ?? '');
+
+                return true;
+            }));
+
+        $mailer = new TransactionalMailer(
+            $mailerTransport,
+            new Environment(new FilesystemLoader(dirname(__DIR__, 2).'/templates')),
+            new CommonMarkConverter(),
+            'no-reply@toastit.local',
+        );
+
+        (new TodoDigestService($toastRepository, $xaiText, $mailer, new AssignedToastPriorityService(), $promptTemplate))->sendWeeklySummary($user);
+    }
 }

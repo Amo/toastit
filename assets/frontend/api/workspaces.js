@@ -7,6 +7,10 @@ export class WorkspacesApi {
     return this.client.getJson(url);
   }
 
+  sendWeeklySummary() {
+    return this.client.postJson('/api/dashboard/weekly-summary', {});
+  }
+
   createWorkspace(name) {
     return this.client.postJson('/api/workspaces', { name });
   }

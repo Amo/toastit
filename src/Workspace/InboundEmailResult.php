@@ -22,6 +22,11 @@ final class InboundEmailResult
         return new self('todo_digest_sent');
     }
 
+    public static function weeklySummarySent(): self
+    {
+        return new self('weekly_summary_sent');
+    }
+
     public function getKind(): string
     {
         return $this->kind;

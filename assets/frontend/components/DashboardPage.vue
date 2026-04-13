@@ -18,6 +18,8 @@ const props = defineProps({
 const payload = ref({ workspaces: [] });
 const isLoading = ref(true);
 const isUpdatingActionId = ref(null);
+const isSendingWeeklySummary = ref(false);
+const summaryFeedback = ref('');
 const creatingWorkspace = ref(false);
 const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
@@ -122,12 +124,45 @@ const dashboardHeaderStats = computed(() => [{
   className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold',
 }]);
 
-const dashboardHeaderActions = [{
-  id: 'create-workspace',
-  label: 'New workspace',
-  icon: 'fa-solid fa-plus',
-  theme: 'primary',
-}];
+const dashboardHeaderActions = computed(() => {
+  return [{
+    id: 'send-weekly-summary',
+    label: isSendingWeeklySummary.value ? 'Sending...' : 'Send 7-day summary',
+    icon: 'fa-solid fa-envelope-open-text',
+    theme: 'secondary',
+    disabled: isSendingWeeklySummary.value,
+  }, {
+    id: 'create-workspace',
+    label: 'New workspace',
+    icon: 'fa-solid fa-plus',
+    theme: 'primary',
+  }];
+});
+
+const sendWeeklySummary = async () => {
+  isSendingWeeklySummary.value = true;
+  summaryFeedback.value = '';
+  const { ok, data } = await workspacesApi.sendWeeklySummary();
+  isSendingWeeklySummary.value = false;
+
+  if (!ok || !data?.ok) {
+    summaryFeedback.value = data?.message ?? 'Unable to send the weekly summary.';
+    return;
+  }
+
+  summaryFeedback.value = 'Weekly summary sent by email.';
+};
+
+const handleDashboardHeaderAction = (actionId) => {
+  if ('send-weekly-summary' === actionId) {
+    sendWeeklySummary();
+    return;
+  }
+
+  if ('create-workspace' === actionId) {
+    openCreateWorkspaceModal();
+  }
+};
 
 const openWorkspace = (workspaceId) => {
   window.location.href = `/app/workspaces/${workspaceId}`;
@@ -209,8 +244,11 @@ onUnmounted(() => {
       title="Your work."
       :stats="dashboardHeaderStats"
       :actions="dashboardHeaderActions"
-      @action="openCreateWorkspaceModal"
+      @action="handleDashboardHeaderAction"
     />
+    <p v-if="summaryFeedback" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+      {{ summaryFeedback }}
+    </p>
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div class="tw-toastit-card overflow-hidden p-6">

@@ -59,6 +59,49 @@ class ToastRepository extends ServiceEntityRepository
     }
 
     /**
+     * @return list<Toast>
+     */
+    public function findCreatedByUserSince(User $user, \DateTimeImmutable $since): array
+    {
+        return $this->createRecentUserScopeQueryBuilder($user, $since)
+            ->andWhere('toast.author = :user')
+            ->andWhere('toast.createdAt >= :since')
+            ->orderBy('toast.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return list<Toast>
+     */
+    public function findCreatedByUserAndCompletedSince(User $user, \DateTimeImmutable $since): array
+    {
+        return $this->createRecentUserScopeQueryBuilder($user, $since)
+            ->andWhere('toast.author = :user')
+            ->andWhere('toast.status = :toastedStatus')
+            ->andWhere('toast.statusChangedAt >= :since')
+            ->setParameter('toastedStatus', Toast::STATUS_TOASTED)
+            ->orderBy('toast.statusChangedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return list<Toast>
+     */
+    public function findAssignedToUserAndCompletedSince(User $user, \DateTimeImmutable $since): array
+    {
+        return $this->createRecentUserScopeQueryBuilder($user, $since)
+            ->andWhere('toast.owner = :user')
+            ->andWhere('toast.status = :toastedStatus')
+            ->andWhere('toast.statusChangedAt >= :since')
+            ->setParameter('toastedStatus', Toast::STATUS_TOASTED)
+            ->orderBy('toast.statusChangedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return array{toasts: list<Toast>, total: int}
      */
     public function findPaginatedForWorkspace(Workspace $workspace, string $status, int $page, int $perPage): array
@@ -126,5 +169,20 @@ class ToastRepository extends ServiceEntityRepository
                 ->andWhere('toast.status = :statusVetoed')
                 ->setParameter('statusVetoed', Toast::STATUS_DISCARDED);
         }
+    }
+
+    private function createRecentUserScopeQueryBuilder(User $user, \DateTimeImmutable $since): QueryBuilder
+    {
+        return $this->createQueryBuilder('toast')
+            ->distinct()
+            ->leftJoin('toast.workspace', 'workspace')
+            ->addSelect('workspace')
+            ->leftJoin('toast.author', 'author')
+            ->addSelect('author')
+            ->leftJoin('toast.owner', 'owner')
+            ->addSelect('owner')
+            ->where('workspace.deletedAt IS NULL')
+            ->setParameter('user', $user)
+            ->setParameter('since', $since);
     }
 }
