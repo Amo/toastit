@@ -369,7 +369,7 @@ watch(
         description="Choose where to go."
         @close="profileMenuOpen = false"
       />
-      <div class="max-h-[calc(100dvh-13rem)] space-y-6 overflow-y-auto px-6 py-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div class="max-h-[calc(100dvh-9rem)] space-y-6 overflow-y-auto px-6 py-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <section class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">My profile</p>
           <div class="overflow-hidden border-y border-stone-200 bg-white">
