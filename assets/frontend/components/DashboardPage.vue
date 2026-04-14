@@ -382,7 +382,7 @@ onUnmounted(() => {
                 v-for="(badge, badgeIndex) in workspacePriorityBadges(workspace.id)"
                 :key="`${workspace.id}-${badge.key}`"
                 :class="[
-                  'inline-flex min-w-9 items-center justify-center px-3 py-1 text-[11px] font-semibold leading-none text-white',
+                  'inline-grid h-7 w-8 place-items-center text-[12px] font-semibold leading-none tabular-nums text-white',
                   badge.className,
                   badgeIndex > 0 ? 'border-l border-white/50' : '',
                 ]"
