@@ -1,11 +1,9 @@
-const CACHE_NAME = 'toastit-shell-v1';
+const CACHE_NAME = 'toastit-shell-v2';
 const SHELL_ASSETS = [
   '/',
   '/manifest.webmanifest',
   '/favicon.png',
   '/assets/logo.png',
-  '/build/app.css',
-  '/build/app.js',
 ];
 
 self.addEventListener('install', (event) => {
@@ -58,10 +56,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.pathname.startsWith('/build/') || url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          return response;
+        })
+        .catch(async () => {
+          const cachedResponse = await caches.match(request);
+          return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
+        }),
+    );
+    return;
+  }
+
   if (
-    url.pathname.startsWith('/build/')
-    || url.pathname.startsWith('/assets/')
-    || url.pathname === '/manifest.webmanifest'
+    url.pathname === '/manifest.webmanifest'
     || url.pathname === '/favicon.png'
   ) {
     event.respondWith(
