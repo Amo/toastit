@@ -327,29 +327,18 @@ const handleTouchEnd = (event) => {
       <ModalHeader
         eyebrow="New toast"
         title="Choose workspace"
-        description="Select a workspace before creating your toast."
         @close="workspacePickerOpen = false"
       />
       <div class="space-y-4 overflow-y-auto px-6 py-6">
-        <div class="space-y-2">
+        <div class="overflow-hidden border-y border-stone-200 bg-white">
           <button
             v-for="workspace in workspaceOptions"
             :key="workspace.id"
             type="button"
-            class="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-800 transition hover:border-amber-300 hover:bg-amber-50/40"
+            class="flex w-full items-center justify-between border-b border-stone-200 px-1 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
             @click="pickWorkspace(workspace.id)"
           >
-            <span class="min-w-0 truncate">{{ workspace.name }}</span>
-            <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
-          </button>
-        </div>
-        <div class="flex justify-end">
-          <button
-            type="button"
-            class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
-            @click="workspacePickerOpen = false"
-          >
-            Cancel
+            <span class="min-w-0 truncate px-3">{{ workspace.name }}</span>
           </button>
         </div>
       </div>
