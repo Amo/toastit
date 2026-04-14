@@ -383,6 +383,7 @@ onUnmounted(() => {
                 :key="`${workspace.id}-${badge.key}`"
                 :class="[
                   'inline-flex min-w-6 items-center justify-center px-2 py-1 text-[11px] font-semibold text-white',
+                  'min-w-7',
                   badge.className,
                   badgeIndex > 0 ? 'border-l border-white/50' : '',
                 ]"
