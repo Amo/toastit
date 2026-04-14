@@ -1,3 +1,29 @@
+## 1.2.0 (April 14, 2026)
+- UX: major polish release for mobile and desktop consistency
+  - Mobile profile is now a full page flow (not modal-like), with clearer section navigation and more consistent spacing.
+  - Profile/Admin entries are easier to scan and navigate on mobile, with improved scroll behavior and touch targets.
+  - Mobile filters and creation flows are more robust: better readability, fewer action conflicts, and cleaner picker interactions.
+- UX: clearer and more stable toast/workspace lists
+  - Workspace counters are now more stable and readable (better segment sizing, spacing, and alignment).
+  - Toast list readability was improved across breakpoints (title visibility, due-date visibility, sticky headers on mobile).
+  - Toasted/ready visual states are clearer and more consistent.
+- UX: improved toast detail actions (mobile + desktop)
+  - Action bars were reorganized to follow a clearer priority order and better grouping.
+  - Desktop toast action layout now matches the cleaner interaction logic introduced on mobile.
+  - Better continuity after actions (for example, improved return behavior after solo-workspace toasting).
+- AI-assisted drafting and form behavior improvements
+  - Reword/refine now reliably uses the current form content during edit flows.
+  - The AI refinement state is now clearer to users, with explicit locking feedback and timeout guidance.
+  - Draft/title editing behavior was refined (auto-grow, autofocus, and safer interaction during refinement).
+- Visual language and design consistency updates
+  - CTA palette and primary action styling were standardized for a more consistent interface.
+  - Legacy color accents were cleaned up in key app surfaces.
+  - Date picker and several form controls were reworked for cleaner, more predictable behavior.
+- Product quality and operations
+  - Login challenge email now includes a complete support/legal footer.
+  - Inbox now has clearer attention counters in web/desktop navigation.
+  - Admin user cleanup surfaces are safer and clearer for stale/inactive accounts.
+
 ## 1.1.0 (April 14, 2026)
 - NEW: redesigned mobile experience to feel like a real app
   - Simplified mobile navigation with a fixed bottom bar (Toasts, Workspaces, Profile)
