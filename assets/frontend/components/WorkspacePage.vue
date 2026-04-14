@@ -1883,15 +1883,6 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
         </div>
 
         <div class="tw-toastit-card p-6 space-y-4">
-            <button
-              type="button"
-              class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 lg:hidden"
-              @click="openCreateToastModal"
-            >
-              <i class="fa-solid fa-plus" aria-hidden="true"></i>
-              <span>New toast</span>
-            </button>
-
             <div class="hidden gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] lg:grid">
               <input v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast" @keydown.enter.prevent="createItem">
               <button type="button" class="inline-grid h-[3.125rem] place-items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="openCreateToastModal">
