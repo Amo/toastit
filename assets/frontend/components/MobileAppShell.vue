@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -209,6 +209,12 @@ const openProfileMenuItem = (target) => {
   router.push(target);
 };
 
+const shouldOpenProfileMenuFromRoute = () => {
+  const routeName = String(route.name ?? '');
+  const menuQuery = typeof route.query.menu === 'string' ? route.query.menu.toLowerCase() : '';
+  return routeName === 'profile' && ['1', 'true', 'on'].includes(menuQuery);
+};
+
 const shouldIgnoreSwipe = (event) => {
   if (!(event.target instanceof HTMLElement)) {
     return false;
@@ -264,6 +270,18 @@ const handleTouchEnd = (event) => {
 
   navigateToTab(targetKey);
 };
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (!shouldOpenProfileMenuFromRoute()) {
+      return;
+    }
+
+    profileMenuOpen.value = true;
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

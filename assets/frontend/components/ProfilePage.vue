@@ -99,12 +99,7 @@ const syncViewport = () => {
 };
 
 const goBackFromProfileSection = () => {
-  if (window.history.length > 1) {
-    router.back();
-    return;
-  }
-
-  router.push('/app');
+  router.push({ path: '/app/profile', query: { menu: '1' } });
 };
 
 const currentProfileSectionDescription = computed(() => {
