@@ -39,7 +39,7 @@ const isSaving = ref(false);
 const errorMessage = ref('');
 const inviteEmail = ref('');
 const itemForm = ref({ title: '', description: '', ownerId: '', dueOn: '' });
-const currentToastFilter = ref('active');
+const currentToastFilter = ref('pending');
 const currentAssigneeFilter = ref('');
 const isApplyingFiltersFromRoute = ref(false);
 const isSyncingFiltersToRoute = ref(false);
@@ -147,7 +147,8 @@ const assigneeFilterOptions = computed(() => {
 });
 
 const statusFilterOptions = computed(() => [
-  { value: 'active', label: `New (${displayedAgendaItems.value.length})` },
+  { value: 'pending', label: `New (${displayedPendingAgendaItems.value.length})` },
+  { value: 'ready', label: `Ready (${displayedReadyAgendaItems.value.length})` },
   { value: 'discarded', label: `Declined (${displayedVetoedItems.value.length})` },
   { value: 'resolved', label: `Toasted (${displayedResolvedItems.value.length})` },
 ]);
@@ -162,8 +163,11 @@ const selectedAssigneeFilterLabel = computed(() => (
 
 const resolveToastFilter = (value) => {
   const normalizedValue = typeof value === 'string' ? value : '';
+  if (normalizedValue === 'active') {
+    return 'pending';
+  }
 
-  return statusFilterOptions.value.some((option) => option.value === normalizedValue) ? normalizedValue : 'active';
+  return statusFilterOptions.value.some((option) => option.value === normalizedValue) ? normalizedValue : 'pending';
 };
 
 const resolveAssigneeFilter = (value) => {
@@ -228,7 +232,7 @@ const syncFiltersToRoute = async () => {
   const currentFilter = typeof route.query.filter === 'string' ? route.query.filter : undefined;
   const currentAssignee = typeof route.query.assignee === 'string' ? route.query.assignee : undefined;
 
-  if (resolvedToastFilter === 'active') {
+  if (resolvedToastFilter === 'pending') {
     delete nextQuery.filter;
   } else {
     nextQuery.filter = resolvedToastFilter;
@@ -299,7 +303,15 @@ const matchesAssignmentFilter = (item) => {
 
   return String(item.owner?.id ?? '') === currentAssigneeFilter.value;
 };
-const displayedAgendaItems = computed(() => agendaItems.value.filter(matchesAssignmentFilter));
+const displayedPendingAgendaItems = computed(() => (
+  agendaItems.value.filter((item) => item.status !== 'ready').filter(matchesAssignmentFilter)
+));
+const displayedReadyAgendaItems = computed(() => (
+  agendaItems.value.filter((item) => item.status === 'ready').filter(matchesAssignmentFilter)
+));
+const displayedAgendaItems = computed(() => (
+  currentToastFilter.value === 'ready' ? displayedReadyAgendaItems.value : displayedPendingAgendaItems.value
+));
 const displayedVetoedItems = computed(() => vetoedItems.value.filter(matchesAssignmentFilter));
 const displayedResolvedItems = computed(() => resolvedItems.value.filter(matchesAssignmentFilter));
 const visibleVetoedItems = computed(() => displayedVetoedItems.value.slice(0, vetoedVisibleCount.value));
@@ -2105,8 +2117,11 @@ watch(isMobileViewport, (isMobile) => {
               </template>
             </div>
 
-            <EmptyState v-if="currentToastFilter === 'active' && !displayedAgendaItems.length" message="No new toasts." />
-            <div v-else-if="currentToastFilter === 'active'" class="overflow-hidden -mx-6 lg:mx-0">
+            <EmptyState
+              v-if="(currentToastFilter === 'pending' || currentToastFilter === 'ready') && !displayedAgendaItems.length"
+              :message="currentToastFilter === 'ready' ? 'No ready toasts.' : 'No new toasts.'"
+            />
+            <div v-else-if="currentToastFilter === 'pending' || currentToastFilter === 'ready'" class="overflow-hidden -mx-6 lg:mx-0">
               <div class="space-y-3 bg-white py-4 lg:hidden">
                 <div
                   v-for="item in displayedAgendaItems"
