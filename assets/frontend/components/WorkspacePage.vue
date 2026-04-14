@@ -549,7 +549,9 @@ const workspaceMobileItemBorderStyle = (item) => {
   const dateStatus = workspaceMobileItemDateStatus(item);
   let borderLeftColor = 'transparent';
 
-  if (item?.isBoosted) {
+  if (item?.status === 'ready') {
+    borderLeftColor = 'rgb(16 185 129)';
+  } else if (item?.isBoosted) {
     borderLeftColor = 'rgb(148 163 184)';
   } else if (dateStatus === 'late') {
     borderLeftColor = 'rgb(239 68 68)';
