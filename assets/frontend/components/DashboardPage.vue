@@ -321,7 +321,7 @@ onUnmounted(() => {
             <thead class="bg-stone-50 text-left text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
               <tr>
                 <th class="px-4 py-3">Toast</th>
-                <th class="px-4 py-3">Due</th>
+                <th class="hidden px-4 py-3 xl:table-cell">Due</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-stone-100">
@@ -338,9 +338,10 @@ onUnmounted(() => {
                   <p class="mt-1 truncate text-xs text-stone-600">
                     <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
                     {{ action.workspace.name }}
+                    <span class="xl:hidden"> • {{ action.dueOnDisplay || 'No due date' }}</span>
                   </p>
                 </td>
-                <td class="px-4 py-3 text-stone-700">{{ action.dueOnDisplay || 'No due date' }}</td>
+                <td class="hidden px-4 py-3 text-stone-700 xl:table-cell">{{ action.dueOnDisplay || 'No due date' }}</td>
               </tr>
             </tbody>
           </table>
