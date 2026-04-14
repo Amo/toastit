@@ -631,7 +631,7 @@ onUnmounted(() => {
               <p v-if="avatarErrorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ avatarErrorMessage }}</p>
             </div>
 
-            <div class="space-y-4">
+            <div :class="isMobileViewport ? 'space-y-4 px-5' : 'space-y-4'">
               <TextInputField v-model="profile.firstName" label="First name" />
               <TextInputField v-model="profile.lastName" label="Last name" />
               <PrimaryActionButton :disabled="isSaving" @click="saveProfile">
