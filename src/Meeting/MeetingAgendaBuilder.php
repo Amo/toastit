@@ -40,17 +40,18 @@ final class MeetingAgendaBuilder
             return $left->isBoosted() ? -1 : 1;
         }
 
-        $voteComparison = $right->getVoteCount() <=> $left->getVoteCount();
-        if (0 !== $voteComparison) {
-            return $voteComparison;
-        }
-
         $dueDateComparison = $this->compareDueDate($left, $right);
         if (0 !== $dueDateComparison) {
             return $dueDateComparison;
         }
 
-        return $this->compareId($left, $right);
+        $voteComparison = $right->getVoteCount() <=> $left->getVoteCount();
+        if (0 !== $voteComparison) {
+            return $voteComparison;
+        }
+
+        return $this->compareCreatedAt($left, $right)
+            ?: $this->compareId($left, $right);
     }
 
     private function compareVetoedItems(Toast $left, Toast $right): int

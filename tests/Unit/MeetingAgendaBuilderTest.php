@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 final class MeetingAgendaBuilderTest extends TestCase
 {
-    public function testBuildOrdersBoostedItemsThenVotesThenNearestDueDateAndSeparatesOtherStates(): void
+    public function testBuildOrdersBoostedItemsThenDueDateThenVotesAndSeparatesOtherStates(): void
     {
         $workspace = (new Workspace())
             ->setOrganizer((new User())->setEmail('owner@example.com'))
@@ -90,7 +90,7 @@ final class MeetingAgendaBuilderTest extends TestCase
 
         $agenda = (new MeetingAgendaBuilder())->build($workspace);
 
-        self::assertSame(['Boosted', 'Boosted older', 'Later due', 'Normal', 'Older less voted', 'Nearest due'], array_map(
+        self::assertSame(['Boosted older', 'Boosted', 'Nearest due', 'Later due', 'Normal', 'Older less voted'], array_map(
             static fn (Toast $item): string => $item->getTitle(),
             $agenda->activeItems
         ));
