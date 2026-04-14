@@ -41,6 +41,8 @@ const inviteEmail = ref('');
 const itemForm = ref({ title: '', description: '', ownerId: '', dueOn: '' });
 const currentToastFilter = ref('active');
 const currentAssigneeFilter = ref('');
+const isMobileStatusFilterModalOpen = ref(false);
+const isMobileAssigneeFilterModalOpen = ref(false);
 const vetoedVisibleCount = ref(20);
 const resolvedVisibleCount = ref(20);
 const isManageModalOpen = ref(false);
@@ -148,6 +150,14 @@ const statusFilterOptions = computed(() => [
   { value: 'resolved', label: `Toasted (${displayedResolvedItems.value.length})` },
 ]);
 
+const selectedStatusFilterLabel = computed(() => (
+  statusFilterOptions.value.find((option) => option.value === currentToastFilter.value)?.label ?? 'Status'
+));
+
+const selectedAssigneeFilterLabel = computed(() => (
+  assigneeFilterOptions.value.find((option) => option.value === currentAssigneeFilter.value)?.label ?? 'Assignee'
+));
+
 const resolveToastFilter = (value) => {
   const normalizedValue = typeof value === 'string' ? value : '';
 
@@ -167,6 +177,28 @@ const resolveAssigneeFilter = (value) => {
 const applyFiltersFromRoute = () => {
   currentToastFilter.value = resolveToastFilter(route.query.filter);
   currentAssigneeFilter.value = resolveAssigneeFilter(route.query.assignee);
+};
+
+const openMobileStatusFilterModal = () => {
+  isMobileStatusFilterModalOpen.value = true;
+};
+
+const openMobileAssigneeFilterModal = () => {
+  if (isSoloWorkspace.value) {
+    return;
+  }
+
+  isMobileAssigneeFilterModalOpen.value = true;
+};
+
+const selectMobileStatusFilter = (value) => {
+  currentToastFilter.value = resolveToastFilter(value);
+  isMobileStatusFilterModalOpen.value = false;
+};
+
+const selectMobileAssigneeFilter = (value) => {
+  currentAssigneeFilter.value = resolveAssigneeFilter(value);
+  isMobileAssigneeFilterModalOpen.value = false;
 };
 
 const syncFiltersToRoute = async () => {
@@ -1919,6 +1951,14 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
   await nextTick();
   syncMobileActionBarDockState();
 });
+watch(isMobileViewport, (isMobile) => {
+  if (isMobile) {
+    return;
+  }
+
+  isMobileStatusFilterModalOpen.value = false;
+  isMobileAssigneeFilterModalOpen.value = false;
+});
 </script>
 
 <template>
@@ -2005,24 +2045,23 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
 
             <div class="flex flex-nowrap items-start gap-2 pt-4">
               <template v-if="isMobileViewport">
-                <label class="relative min-w-0 flex-1">
-                  <span class="sr-only">Status filter</span>
-                  <select v-model="currentToastFilter" class="h-11 w-full appearance-none rounded-2xl border border-stone-200 bg-white px-4 pr-9 text-sm font-medium text-stone-700">
-                    <option v-for="option in statusFilterOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-                  <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400" aria-hidden="true"></i>
-                </label>
-                <label v-if="!isSoloWorkspace" class="relative min-w-0 flex-1">
-                  <span class="sr-only">Assignee filter</span>
-                  <select v-model="currentAssigneeFilter" class="h-11 w-full appearance-none rounded-2xl border border-stone-200 bg-white px-4 pr-9 text-sm font-medium text-stone-700">
-                    <option v-for="option in assigneeFilterOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-                  <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400" aria-hidden="true"></i>
-                </label>
+                <button
+                  type="button"
+                  class="inline-flex h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700"
+                  @click="openMobileStatusFilterModal"
+                >
+                  <span class="truncate">{{ selectedStatusFilterLabel }}</span>
+                  <i class="fa-solid fa-chevron-down text-xs text-stone-400" aria-hidden="true"></i>
+                </button>
+                <button
+                  v-if="!isSoloWorkspace"
+                  type="button"
+                  class="inline-flex h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700"
+                  @click="openMobileAssigneeFilterModal"
+                >
+                  <span class="truncate">{{ selectedAssigneeFilterLabel }}</span>
+                  <i class="fa-solid fa-chevron-down text-xs text-stone-400" aria-hidden="true"></i>
+                </button>
               </template>
               <template v-else>
                 <CompactDropdown v-model="currentToastFilter" class="min-w-0 flex-1" icon="fa-solid fa-filter" :options="statusFilterOptions" />
@@ -2040,11 +2079,11 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                   :style="workspaceMobileItemBorderStyle(item)"
                   @click="openToastPermalink(item.id)"
                 >
-                  <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
+                  <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
                     {{ item.title }}
                   </p>
                   <div class="flex items-center justify-between gap-3">
-                    <p class="min-w-0 truncate text-xs text-stone-600">
+                    <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
                       <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
                       {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
                     </p>
@@ -2168,10 +2207,10 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                     class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
                     @click="openToastPermalink(item.id)"
                   >
-                    <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
+                    <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
                       {{ item.title }}
                     </p>
-                    <p class="min-w-0 truncate text-xs text-stone-600">
+                    <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
                       {{ item.owner?.displayName ?? 'Unassigned' }} • {{ item.statusChangedAtDisplay }}
                     </p>
                   </div>
@@ -2237,11 +2276,11 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                     class="tw-toasted-item-highlight cursor-pointer space-y-2 bg-amber-200/90 px-4 py-3 text-amber-950 transition hover:bg-amber-200"
                     @click="openToastPermalink(item.id)"
                   >
-                    <p class="flex items-center gap-2 text-left text-sm font-semibold">
+                    <p class="flex items-center gap-2 text-left text-sm font-semibold leading-5">
                       <i class="fa-solid fa-check text-amber-700" aria-hidden="true"></i>
-                      <span class="block min-w-0 flex-1 truncate">{{ item.title }}</span>
+                      <span class="block min-w-0 flex-1 line-clamp-2">{{ item.title }}</span>
                     </p>
-                    <p class="min-w-0 truncate text-xs text-amber-900/80">
+                    <p class="min-w-0 truncate text-xs leading-5 text-amber-900/80">
                       {{ item.owner?.displayName ?? 'Unassigned' }} • {{ item.statusChangedAtDisplay }}
                     </p>
                   </div>
@@ -2862,6 +2901,48 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
               />
             </div>
           </div>
+      </ModalDialog>
+
+      <ModalDialog v-if="isMobileViewport && isMobileStatusFilterModalOpen" max-width-class="max-w-4xl" @close="isMobileStatusFilterModalOpen = false">
+        <ModalHeader
+          title="Status filter"
+          @close="isMobileStatusFilterModalOpen = false"
+        />
+        <div class="space-y-4 px-6 py-6">
+          <div class="overflow-hidden border-y border-stone-200 bg-white">
+            <button
+              v-for="option in statusFilterOptions"
+              :key="option.value"
+              type="button"
+              class="flex w-full items-center justify-between border-b border-stone-200 px-4 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
+              @click="selectMobileStatusFilter(option.value)"
+            >
+              <span>{{ option.label }}</span>
+              <i v-if="currentToastFilter === option.value" class="fa-solid fa-check text-amber-700" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      </ModalDialog>
+
+      <ModalDialog v-if="isMobileViewport && !isSoloWorkspace && isMobileAssigneeFilterModalOpen" max-width-class="max-w-4xl" @close="isMobileAssigneeFilterModalOpen = false">
+        <ModalHeader
+          title="Assignee filter"
+          @close="isMobileAssigneeFilterModalOpen = false"
+        />
+        <div class="space-y-4 px-6 py-6">
+          <div class="overflow-hidden border-y border-stone-200 bg-white">
+            <button
+              v-for="option in assigneeFilterOptions"
+              :key="option.value"
+              type="button"
+              class="flex w-full items-center justify-between border-b border-stone-200 px-4 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
+              @click="selectMobileAssigneeFilter(option.value)"
+            >
+              <span>{{ option.label }}</span>
+              <i v-if="currentAssigneeFilter === option.value" class="fa-solid fa-check text-amber-700" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
       </ModalDialog>
 
       <ModalDialog v-if="useDedicatedMobileToastView && selectedToastModal && isMobileCommentModalOpen" max-width-class="max-w-4xl" @close="closeMobileCommentModal">

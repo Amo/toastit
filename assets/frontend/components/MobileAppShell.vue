@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -18,6 +18,7 @@ const route = useRoute();
 const router = useRouter();
 const touchStart = ref(null);
 const workspacePickerOpen = ref(false);
+const workspaceCreateFlowActive = ref(false);
 
 const tabs = computed(() => [
   {
@@ -36,7 +37,7 @@ const tabs = computed(() => [
   },
   {
     key: 'profile',
-    label: 'Profil',
+    label: 'Profile',
     icon: 'fa-user',
     to: props.profileUrl,
   },
@@ -113,7 +114,7 @@ const showFloatingCreateButton = computed(() => {
 
 const showFloatingCreateWorkspaceButton = computed(() => {
   const routeName = String(route.name ?? '');
-  return routeName === 'dashboard' && activeTabKey.value === 'workspaces';
+  return routeName === 'dashboard' && activeTabKey.value === 'workspaces' && !workspaceCreateFlowActive.value;
 });
 
 const workspaceOptions = computed(() => (props.navigationWorkspaces ?? [])
@@ -173,6 +174,11 @@ const openCreateToast = () => {
 
 const openCreateWorkspace = () => {
   window.dispatchEvent(new CustomEvent('toastit:create-workspace'));
+};
+
+const syncWorkspaceCreateFlowState = (event) => {
+  const nextState = event instanceof CustomEvent && event.detail?.active === true;
+  workspaceCreateFlowActive.value = nextState;
 };
 
 const navigateToTab = (tabKey) => {
@@ -245,6 +251,14 @@ const handleTouchEnd = (event) => {
   navigateToTab(targetKey);
 };
 
+onMounted(() => {
+  window.addEventListener('toastit:create-workspace-flow-state', syncWorkspaceCreateFlowState);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('toastit:create-workspace-flow-state', syncWorkspaceCreateFlowState);
+});
+
 </script>
 
 <template>
@@ -263,7 +277,7 @@ const handleTouchEnd = (event) => {
           @click="openCreateToast"
         >
           <i class="fa-solid fa-plus" aria-hidden="true"></i>
-          <span class="sr-only">Créer un toast</span>
+          <span class="sr-only">Create toast</span>
         </button>
 
         <button
@@ -273,7 +287,7 @@ const handleTouchEnd = (event) => {
           @click="openCreateWorkspace"
         >
           <i class="fa-solid fa-plus" aria-hidden="true"></i>
-          <span class="sr-only">Créer un workspace</span>
+          <span class="sr-only">Create workspace</span>
         </button>
 
         <slot v-if="$slots.default" />

@@ -62,10 +62,12 @@ const createWorkspace = async () => {
 
 const openCreateWorkspaceModal = () => {
   isCreateWorkspaceModalOpen.value = true;
+  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: true } }));
 };
 
 const closeCreateWorkspaceModal = () => {
   isCreateWorkspaceModalOpen.value = false;
+  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: false } }));
 };
 
 const handleExternalCreateWorkspaceRequest = () => {
@@ -285,6 +287,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleDashboardKeydown);
   window.removeEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
   window.removeEventListener('resize', syncViewport);
+  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: false } }));
 });
 </script>
 
@@ -308,10 +311,10 @@ onUnmounted(() => {
               :style="actionBorderStyle(action)"
               @click="openToast(action.id)"
             >
-              <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
+              <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
                 {{ action.title }}
               </p>
-              <p class="min-w-0 truncate text-xs text-stone-600">
+              <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
                 <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
                 {{ action.workspace.name }} • {{ action.dueOnDisplay || 'No due date' }}
               </p>
@@ -367,10 +370,10 @@ onUnmounted(() => {
         >
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-stone-950">
+              <p class="text-sm font-semibold leading-5 text-stone-950 line-clamp-2">
                 {{ workspace.name }}
               </p>
-              <p class="mt-1 truncate text-xs text-stone-500">
+              <p class="mt-1 text-xs leading-5 text-stone-500 line-clamp-2">
                 {{ workspaceSecondaryMeta(workspace) }}
               </p>
             </div>
