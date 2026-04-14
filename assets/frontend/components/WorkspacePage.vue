@@ -745,13 +745,23 @@ const createItem = async () => {
   await fetchWorkspace();
 };
 
-const refineToastDraft = async () => {
+const refineToastDraft = async (draftSnapshot = null) => {
   if (!workspace.value || isToastDraftRefining.value) {
     return false;
   }
 
   isToastDraftRefining.value = true;
   errorMessage.value = '';
+
+  if (draftSnapshot && typeof draftSnapshot === 'object') {
+    itemForm.value = {
+      ...itemForm.value,
+      title: typeof draftSnapshot.title === 'string' ? draftSnapshot.title : itemForm.value.title,
+      description: typeof draftSnapshot.description === 'string' ? draftSnapshot.description : itemForm.value.description,
+      ownerId: typeof draftSnapshot.ownerId === 'string' ? draftSnapshot.ownerId : itemForm.value.ownerId,
+      dueOn: typeof draftSnapshot.dueOn === 'string' ? draftSnapshot.dueOn : itemForm.value.dueOn,
+    };
+  }
 
   const previousDraft = {
     title: itemForm.value.title ?? '',

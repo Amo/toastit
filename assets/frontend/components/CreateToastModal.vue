@@ -18,6 +18,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
 
 const titleInput = ref(null);
+const descriptionInput = ref(null);
 const isMobileViewport = ref(false);
 
 const syncViewport = () => {
@@ -42,6 +43,18 @@ const focusTitle = async () => {
   await nextTick();
   resizeTitleField();
   titleInput.value?.focus();
+};
+
+const emitRefineRequest = () => {
+  const currentTitle = titleInput.value?.value ?? props.itemForm?.title ?? '';
+  const currentDescription = descriptionInput.value?.value ?? props.itemForm?.description ?? '';
+
+  emit('refine', {
+    title: currentTitle,
+    description: currentDescription,
+    ownerId: props.itemForm?.ownerId ?? '',
+    dueOn: props.itemForm?.dueOn ?? '',
+  });
 };
 
 watch(() => props.open, async (isOpen) => {
@@ -76,7 +89,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <ModalDialog v-if="open" max-width-class="max-w-4xl" z-index-class="z-[110]" @close="$emit('close')">
+  <ModalDialog v-if="open" max-width-class="max-w-4xl" z-index-class="z-[110]" @close="() => { if (!isRefining) $emit('close'); }">
     <ModalHeader eyebrow="New toast" :title="title" @close="$emit('close')" />
 
     <div class="relative space-y-4 overflow-y-auto px-6 py-6" @keydown="$emit('title-keydown', $event)">
@@ -92,7 +105,7 @@ onUnmounted(() => {
         <label class="grid gap-2 text-sm font-medium text-stone-700">
           <span>Toast</span>
           <textarea
-            ref="titleInput"
+            ref="descriptionInput"
             class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
             :value="itemForm.description"
             :disabled="isRefining"
@@ -136,7 +149,7 @@ onUnmounted(() => {
 
         <label class="grid gap-2 text-sm font-medium text-stone-700">
           <span>Details</span>
-          <textarea class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" :disabled="isRefining" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
+          <textarea ref="descriptionInput" class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" :disabled="isRefining" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
         </label>
       </template>
 
@@ -149,7 +162,7 @@ onUnmounted(() => {
               :class="['inline-grid h-12 w-12 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60', isRefining ? 'tw-ai-pending' : '']"
               :disabled="isRefining"
               title="Improve draft with xAI"
-              @click="$emit('refine')"
+              @click="emitRefineRequest"
             >
               <i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i>
               <span class="sr-only">Improve draft with xAI</span>
