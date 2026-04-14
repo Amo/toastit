@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Toastit backup every day
+
+[Timer]
+OnCalendar=*-*-* 03:10:00
+Persistent=true
+RandomizedDelaySec=180
+Unit=toastit-backup.service
+
+[Install]
+WantedBy=timers.target

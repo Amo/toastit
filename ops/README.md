@@ -74,3 +74,27 @@ Toastit will be proxied to `127.0.0.1:8084` by default.
 - Outbound mail must use a real SMTP provider in production.
 - Inbound SMTP is exposed on `${INBOUND_SMTP_BIND_PORT}`. Point MX or mail forwarding there only if you actually want the VPS to receive mail directly.
 - If direct MX delivery is not desired, keep the inbound app flow and use an external mail provider to forward mail to the VPS or to the HTTP endpoint.
+
+## Scheduled jobs (backup + daily digest)
+
+This repository includes host-level scheduler assets under `ops/scheduler/`:
+
+- `backup-to-gcs.sh`: MariaDB dump + gzip + upload to GCS
+- `send-daily-digest.sh`: runs `app:digest:daily` inside the app container
+- `systemd/*.service` and `systemd/*.timer`: ready-to-install units
+- `scheduler.env.example`: environment file template for host configuration
+
+Recommended installation on the VPS:
+
+1. Copy env template to `/etc/toastit/scheduler.env` and fill values.
+2. Copy unit files into `/etc/systemd/system/`.
+3. Ensure scripts are executable:
+   - `chmod +x /home/debian/toastit/ops/scheduler/backup-to-gcs.sh`
+   - `chmod +x /home/debian/toastit/ops/scheduler/send-daily-digest.sh`
+4. Reload and enable timers:
+   - `sudo systemctl daemon-reload`
+   - `sudo systemctl enable --now toastit-backup.timer toastit-digest.timer`
+5. Validate:
+   - `systemctl list-timers | grep toastit-`
+   - `journalctl -u toastit-backup.service -n 100 --no-pager`
+   - `journalctl -u toastit-digest.service -n 100 --no-pager`

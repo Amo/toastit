@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Toast;
 use App\Entity\ToastComment;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -46,5 +47,35 @@ class ToastCommentRepository extends ServiceEntityRepository
             'comments' => $comments,
             'total' => $total,
         ];
+    }
+
+    /**
+     * @param list<int> $toastIds
+     *
+     * @return list<ToastComment>
+     */
+    public function findForToastIdsBetween(array $toastIds, \DateTimeImmutable $from, \DateTimeImmutable $to, int $limit = 300): array
+    {
+        if ([] === $toastIds) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('comment')
+            ->leftJoin('comment.author', 'author')
+            ->addSelect('author')
+            ->leftJoin('comment.toast', 'toast')
+            ->addSelect('toast')
+            ->leftJoin('toast.workspace', 'workspace', Join::WITH, 'workspace.deletedAt IS NULL')
+            ->addSelect('workspace')
+            ->where('toast.id IN (:ids)')
+            ->andWhere('comment.createdAt >= :from')
+            ->andWhere('comment.createdAt <= :to')
+            ->setParameter('ids', $toastIds)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->orderBy('comment.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 }

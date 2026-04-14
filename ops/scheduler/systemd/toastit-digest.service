@@ -1,0 +1,12 @@
+[Unit]
+Description=Toastit daily collaboration digest
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/toastit/scheduler.env
+WorkingDirectory=/home/debian/toastit
+ExecStart=/home/debian/toastit/ops/scheduler/send-daily-digest.sh
+User=debian
+Group=debian

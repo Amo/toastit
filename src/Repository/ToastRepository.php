@@ -102,6 +102,59 @@ class ToastRepository extends ServiceEntityRepository
     }
 
     /**
+     * @return list<int>
+     */
+    public function findInvolvedToastIdsForUser(User $user, int $limit = 500): array
+    {
+        $rows = $this->createQueryBuilder('toast')
+            ->select('DISTINCT toast.id AS id')
+            ->leftJoin('toast.workspace', 'workspace')
+            ->leftJoin('toast.comments', 'comment')
+            ->where('workspace.deletedAt IS NULL')
+            ->andWhere('toast.author = :user OR toast.owner = :user OR comment.author = :user')
+            ->setParameter('user', $user)
+            ->orderBy('toast.id', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_values(array_filter(array_map(
+            static fn (array $row): int => (int) ($row['id'] ?? 0),
+            $rows,
+        )));
+    }
+
+    /**
+     * @param list<int> $toastIds
+     *
+     * @return list<Toast>
+     */
+    public function findStatusChangedForToastIdsBetween(array $toastIds, \DateTimeImmutable $from, \DateTimeImmutable $to): array
+    {
+        if ([] === $toastIds) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('toast')
+            ->leftJoin('toast.workspace', 'workspace')
+            ->addSelect('workspace')
+            ->leftJoin('toast.author', 'author')
+            ->addSelect('author')
+            ->leftJoin('toast.owner', 'owner')
+            ->addSelect('owner')
+            ->where('toast.id IN (:ids)')
+            ->andWhere('toast.statusChangedAt IS NOT NULL')
+            ->andWhere('toast.statusChangedAt >= :from')
+            ->andWhere('toast.statusChangedAt <= :to')
+            ->setParameter('ids', $toastIds)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->orderBy('toast.statusChangedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return array{toasts: list<Toast>, total: int}
      */
     public function findPaginatedForWorkspace(Workspace $workspace, string $status, int $page, int $perPage): array

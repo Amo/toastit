@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Toastit daily collaboration digest every morning
+
+[Timer]
+OnCalendar=*-*-* 07:15:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=toastit-digest.service
+
+[Install]
+WantedBy=timers.target

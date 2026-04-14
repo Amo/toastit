@@ -25,4 +25,20 @@ class UserRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['inboundEmailAlias' => mb_strtolower(trim($inboundEmailAlias))]);
     }
+
+    /**
+     * @return list<User>
+     */
+    public function findDigestRecipients(): array
+    {
+        $users = $this->createQueryBuilder('user')
+            ->orderBy('user.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter(
+            $users,
+            static fn (User $user): bool => null !== $user->getPublicEmail(),
+        ));
+    }
 }

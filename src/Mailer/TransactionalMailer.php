@@ -148,6 +148,29 @@ final class TransactionalMailer
         $this->mailer->send($email);
     }
 
+    public function sendDailyRecap(User $user, string $summary): void
+    {
+        $summary = trim($summary);
+        if ('' === $summary) {
+            return;
+        }
+
+        $context = [
+            'user' => $user,
+            'summary_html' => $this->markdownConverter->convert($summary)->getContent(),
+            'summary_text' => $summary,
+        ];
+
+        $email = (new Email())
+            ->from(new Address($this->defaultFrom, 'Toastit'))
+            ->to($user->getEmail())
+            ->subject('Toastit daily collaboration recap')
+            ->html($this->twig->render('emails/daily_recap.html.twig', $context))
+            ->text($this->twig->render('emails/daily_recap.txt.twig', $context));
+
+        $this->mailer->send($email);
+    }
+
     /**
      * @param array{id: int, name: string, reason: string}|null $workspaceSuggestion
      */

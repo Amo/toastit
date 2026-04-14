@@ -4,9 +4,11 @@ namespace App\Workspace;
 
 use App\Ai\AiPromptTemplateService;
 use App\Entity\Toast;
+use App\Entity\ToastComment;
 use App\Entity\User;
 use App\Mailer\TransactionalMailer;
 use App\Meeting\XaiTextService;
+use App\Repository\ToastCommentRepository;
 use App\Repository\ToastRepository;
 
 final class TodoDigestService
@@ -15,6 +17,7 @@ final class TodoDigestService
 
     public function __construct(
         private readonly ToastRepository $toastRepository,
+        private readonly ToastCommentRepository $toastCommentRepository,
         private readonly XaiTextService $xaiText,
         private readonly TransactionalMailer $transactionalMailer,
         private readonly AssignedToastPriorityService $assignedToastPriority,
@@ -90,6 +93,83 @@ final class TodoDigestService
     public function sendWeeklySummary(User $user): void
     {
         $this->sendWeeklySummaryReply($user, null, null, null);
+    }
+
+    public function sendDailyCollaborationRecap(User $user, ?\DateTimeImmutable $forDate = null): void
+    {
+        $targetDate = $forDate ? \DateTimeImmutable::createFromInterface($forDate) : new \DateTimeImmutable('yesterday');
+        $windowStart = $targetDate->setTime(0, 0, 0);
+        $windowEnd = $targetDate->setTime(23, 59, 59);
+
+        $involvedToastIds = $this->toastRepository->findInvolvedToastIdsForUser($user, 800);
+        $statusUpdates = $this->toastRepository->findStatusChangedForToastIdsBetween($involvedToastIds, $windowStart, $windowEnd);
+        $recentComments = $this->toastCommentRepository->findForToastIdsBetween($involvedToastIds, $windowStart, $windowEnd, 500);
+        $collaborativeComments = array_values(array_filter(
+            $recentComments,
+            static fn (ToastComment $comment): bool => $comment->getAuthor()->getId() !== $user->getId(),
+        ));
+        $assignedActionsToday = $this->toastRepository->findAssignedActiveForUser($user, 20);
+
+        if ([] === $statusUpdates && [] === $collaborativeComments) {
+            $this->transactionalMailer->sendDailyRecap(
+                $user,
+                sprintf(
+                    "## Daily collaboration recap (%s)\n\nNo collaborative updates were detected on your active toasts yesterday.\n\nOpen Toastit to see today's priorities.",
+                    $windowStart->format('Y-m-d')
+                )
+            );
+
+            return;
+        }
+
+        $systemPrompt = $this->promptTemplate->resolveSystemPrompt('daily_collaboration_recap_system', '');
+        if ('' === trim($systemPrompt)) {
+            $systemPrompt = implode("\n", [
+                'Return markdown only.',
+                'Write a concise daily collaboration recap for one user.',
+                'Focus on work completed yesterday and collaborative signals.',
+                'Required sections: Yesterday completed, Collaborative signals, Attention points for today.',
+                'Do not invent events. Only use provided data.',
+            ]);
+        }
+
+        $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
+            'daily_collaboration_recap_system',
+            implode("\n", [
+                'User: {{ user_display_name }}',
+                'Email: {{ user_email }}',
+                'Day covered: {{ day_covered }}',
+                '',
+                "Status changes yesterday on toasts where the user is involved (author/assignee/commenter):",
+                '{{ status_updates }}',
+                '',
+                'New comments yesterday from collaborators on involved toasts:',
+                '{{ collaborative_comments }}',
+                '',
+                "Today's currently assigned active actions:",
+                '{{ assigned_today }}',
+            ]),
+            [
+                'user_display_name' => $user->getDisplayName(),
+                'user_email' => $user->getEmail(),
+                'day_covered' => $windowStart->format('Y-m-d'),
+                'status_updates' => $this->buildStatusUpdatesText($statusUpdates),
+                'collaborative_comments' => $this->buildCollaborativeCommentsText($collaborativeComments),
+                'assigned_today' => $this->buildAssignedActionsText($user, $assignedActionsToday),
+            ],
+        );
+
+        $rawSummary = $this->xaiText->generateText(
+            $systemPrompt,
+            $userPrompt,
+            [
+                'source' => 'daily_collaboration_recap',
+                'userId' => $user->getId(),
+            ],
+        );
+
+        $summary = $this->extractMarkdownResult($rawSummary);
+        $this->transactionalMailer->sendDailyRecap($user, $summary);
     }
 
     public function sendWeeklySummaryReply(
@@ -307,5 +387,50 @@ final class TodoDigestService
         $formatted = array_values(array_filter($formatted, static fn (string $value): bool => '' !== $value));
 
         return [] === $formatted ? 'none' : implode(' | ', $formatted);
+    }
+
+    /**
+     * @param list<Toast> $toasts
+     */
+    private function buildStatusUpdatesText(array $toasts): string
+    {
+        if ([] === $toasts) {
+            return 'none';
+        }
+
+        $lines = [];
+        foreach ($toasts as $toast) {
+            $lines[] = sprintf('  id: %d', $toast->getId() ?? 0);
+            $lines[] = sprintf('- title: %s', $toast->getTitle());
+            $lines[] = sprintf('  workspace: %s', $toast->getWorkspace()->getName());
+            $lines[] = sprintf('  new_status: %s', $toast->getStatus());
+            $lines[] = sprintf('  changed_at: %s', $toast->getStatusChangedAt()?->format('Y-m-d H:i') ?? 'none');
+            $lines[] = sprintf('  assignee: %s', $toast->getOwner()?->getDisplayName() ?? 'none');
+            $lines[] = sprintf('  author: %s', $toast->getAuthor()->getDisplayName());
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param list<ToastComment> $comments
+     */
+    private function buildCollaborativeCommentsText(array $comments): string
+    {
+        if ([] === $comments) {
+            return 'none';
+        }
+
+        $lines = [];
+        foreach ($comments as $comment) {
+            $lines[] = sprintf('  toast_id: %d', $comment->getToast()->getId() ?? 0);
+            $lines[] = sprintf('- toast_title: %s', $comment->getToast()->getTitle());
+            $lines[] = sprintf('  workspace: %s', $comment->getToast()->getWorkspace()->getName());
+            $lines[] = sprintf('  author: %s', $comment->getAuthor()->getDisplayName());
+            $lines[] = sprintf('  created_at: %s', $comment->getCreatedAt()->format('Y-m-d H:i'));
+            $lines[] = sprintf('  content: %s', trim($comment->getContent()));
+        }
+
+        return implode("\n", $lines);
     }
 }
