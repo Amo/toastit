@@ -575,7 +575,7 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <label class="inline-flex cursor-pointer items-center justify-center rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400">
+                <label class="inline-flex cursor-pointer items-center justify-center rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300">
                   {{ isUploadingAvatar ? 'Uploading...' : 'Upload avatar' }}
                   <input
                     class="sr-only"

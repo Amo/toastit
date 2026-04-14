@@ -89,7 +89,7 @@ defineExpose({
             Undo AI change
           </button>
           <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="$emit('close')">Cancel</button>
-          <button type="button" class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400" @click="$emit('create')">{{ actionLabel }}</button>
+          <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300" @click="$emit('create')">{{ actionLabel }}</button>
         </div>
       </div>
     </div>

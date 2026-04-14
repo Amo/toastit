@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useSlots, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authState, authStore } from '../authStore';
+import MobileAppShell from './MobileAppShell.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 
@@ -22,8 +23,10 @@ const userMenuOpen = ref(false);
 const keyboardShortcutsOpen = ref(false);
 const mobileNavOpen = ref(false);
 const contentRef = ref(null);
+const isMobilePlatform = ref(false);
 const slots = useSlots();
 const navigationWorkspaces = ref([]);
+const MOBILE_SHELL_OVERRIDE_KEY = 'toastit.mobileShellOverride';
 const profileSections = [
   { key: 'infos', label: 'Infos' },
   { key: 'preferences', label: 'Preferences' },
@@ -53,9 +56,44 @@ const navigationOpenCount = computed(() => navigationWorkspaces.value
   .reduce((total, workspace) => total + Number(workspace?.openItemCount ?? 0), 0));
 const navigationAssignedCount = computed(() => navigationWorkspaces.value
   .reduce((total, workspace) => total + Number(workspace?.assignedOpenItemCount ?? 0), 0));
+const mobileAppModeActive = computed(() => props.showAppNavigation && isMobilePlatform.value);
 const profileSectionHref = (sectionKey) => (
   sectionKey === 'infos' ? '/app/profile' : `/app/profile?section=${sectionKey}`
 );
+const workspaceHref = (workspace) => (
+  workspace?.isInboxWorkspace ? '/app/inbox' : `/app/workspaces/${workspace.id}`
+);
+const isWorkspaceActive = (workspace) => {
+  if (workspace?.isInboxWorkspace) {
+    return route.name === 'inbox';
+  }
+
+  return currentWorkspaceId.value === workspace?.id;
+};
+
+const syncMobilePlatform = () => {
+  const mobileQuery = typeof route.query.mobile === 'string' ? route.query.mobile.toLowerCase() : '';
+  if (['1', 'true', 'on'].includes(mobileQuery)) {
+    localStorage.setItem(MOBILE_SHELL_OVERRIDE_KEY, '1');
+  } else if (['0', 'false', 'off'].includes(mobileQuery)) {
+    localStorage.removeItem(MOBILE_SHELL_OVERRIDE_KEY);
+  }
+
+  const forcedMobileShell = localStorage.getItem(MOBILE_SHELL_OVERRIDE_KEY) === '1';
+  if (forcedMobileShell) {
+    isMobilePlatform.value = true;
+    return;
+  }
+
+  const ua = window.navigator.userAgent || '';
+  const userAgentDataMobile = window.navigator.userAgentData?.mobile === true;
+  const touchDevice = window.navigator.maxTouchPoints > 1;
+  const mobileUa = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+  const ipadOs = /iPad/i.test(ua)
+    || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+
+  isMobilePlatform.value = userAgentDataMobile || mobileUa || ipadOs || (touchDevice && window.innerWidth <= 1024);
+};
 
 const isTypingTarget = (target) => {
   if (!(target instanceof HTMLElement)) {
@@ -129,17 +167,23 @@ onMounted(async () => {
   }
 
   window.addEventListener('keydown', handleGlobalAppKeydown);
+  syncMobilePlatform();
+  window.addEventListener('resize', syncMobilePlatform);
+  window.addEventListener('orientationchange', syncMobilePlatform);
   await loadNavigationWorkspaces();
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalAppKeydown);
+  window.removeEventListener('resize', syncMobilePlatform);
+  window.removeEventListener('orientationchange', syncMobilePlatform);
 });
 
 watch(() => authState.accessToken, loadNavigationWorkspaces);
 watch(() => props.showAppNavigation, loadNavigationWorkspaces);
 watch(() => route.fullPath, () => {
   mobileNavOpen.value = false;
+  syncMobilePlatform();
 });
 </script>
 
@@ -310,8 +354,8 @@ watch(() => route.fullPath, () => {
       </div>
     </ModalDialog>
 
-    <main :class="showAppNavigation ? 'py-0 lg:py-6' : 'py-0'">
-      <template v-if="showAppNavigation">
+    <main :class="showAppNavigation && !mobileAppModeActive ? 'py-0 lg:py-6' : 'py-0'">
+      <template v-if="showAppNavigation && !mobileAppModeActive">
         <div class="px-0 lg:px-6">
           <div class="mb-0 flex items-center justify-between rounded-none border border-stone-200 bg-white px-4 py-3 lg:hidden">
             <a :href="dashboardUrl" class="inline-flex items-center text-stone-950">
@@ -356,9 +400,9 @@ watch(() => route.fullPath, () => {
                   <a
                     v-for="workspace in navigationWorkspaces"
                     :key="workspace.id"
-                    :href="`/app/workspaces/${workspace.id}`"
+                    :href="workspaceHref(workspace)"
                     class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
-                    :class="currentWorkspaceId === workspace.id ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                    :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
                   >
                     <span class="truncate">{{ workspace.name }}</span>
                     <span class="inline-flex items-center gap-1">
@@ -494,9 +538,9 @@ watch(() => route.fullPath, () => {
                   <a
                     v-for="workspace in navigationWorkspaces"
                     :key="workspace.id"
-                    :href="`/app/workspaces/${workspace.id}`"
+                    :href="workspaceHref(workspace)"
                     class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
-                    :class="currentWorkspaceId === workspace.id ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                    :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
                   >
                     <span class="truncate">{{ workspace.name }}</span>
                     <span class="inline-flex items-center gap-1">
@@ -578,6 +622,19 @@ watch(() => route.fullPath, () => {
             </aside>
           </div>
         </div>
+      </template>
+      <template v-else-if="showAppNavigation && mobileAppModeActive">
+        <MobileAppShell
+          :dashboard-url="dashboardUrl"
+          :profile-url="profileUrl"
+          :user="user"
+          :content-html="contentHtml"
+          :navigation-open-count="navigationOpenCount"
+          :navigation-assigned-count="navigationAssignedCount"
+          :navigation-workspaces="navigationWorkspaces"
+        >
+          <slot v-if="slots.default" />
+        </MobileAppShell>
       </template>
       <template v-else>
         <div v-if="slots.default" class="tw-toastit-shell px-4 sm:px-6 lg:px-8">

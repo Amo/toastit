@@ -1,12 +1,12 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { WorkspacesApi } from '../api/workspaces';
 import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
-import PageHeader from './PageHeader.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -15,18 +15,22 @@ const props = defineProps({
 
 const payload = ref({ workspaces: [] });
 const isLoading = ref(true);
-const isSendingWeeklySummary = ref(false);
-const summaryFeedback = ref('');
 const creatingWorkspace = ref(false);
 const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
+const isMobileViewport = ref(false);
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
   },
 });
 const router = useRouter();
+const route = useRoute();
 const workspacesApi = new WorkspacesApi(apiClient);
+const mobileSection = computed(() => {
+  const section = typeof route.query.mobileSection === 'string' ? route.query.mobileSection : 'toasts';
+  return section === 'workspaces' ? 'workspaces' : 'toasts';
+});
 
 const fetchDashboard = async () => {
   isLoading.value = true;
@@ -64,66 +68,92 @@ const closeCreateWorkspaceModal = () => {
   isCreateWorkspaceModalOpen.value = false;
 };
 
-const dashboardHeaderStats = computed(() => [{
-  label: `${payload.value.myActions?.summary?.assignedCount ?? 0} assigned`,
-  icon: 'fa-solid fa-list-check',
-  className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold',
-}, {
-  label: `${payload.value.workspaces.length} workspace${payload.value.workspaces.length > 1 ? 's' : ''}`,
-  icon: 'fa-solid fa-layer-group',
-  className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold',
-}]);
-
-const dashboardHeaderActions = computed(() => {
-  return [{
-    id: 'send-weekly-summary',
-    label: isSendingWeeklySummary.value ? 'Sending...' : 'Send 7-day summary',
-    icon: 'fa-solid fa-envelope-open-text',
-    theme: 'secondary',
-    disabled: isSendingWeeklySummary.value,
-  }, {
-    id: 'create-workspace',
-    label: 'New workspace',
-    icon: 'fa-solid fa-plus',
-    theme: 'primary',
-  }];
-});
-
-const sendWeeklySummary = async () => {
-  isSendingWeeklySummary.value = true;
-  summaryFeedback.value = '';
-  const { ok, data } = await workspacesApi.sendWeeklySummary();
-  isSendingWeeklySummary.value = false;
-
-  if (!ok || !data?.ok) {
-    summaryFeedback.value = data?.message ?? 'Unable to send the weekly summary.';
-    return;
-  }
-
-  summaryFeedback.value = 'Weekly summary sent by email.';
-};
-
-const handleDashboardHeaderAction = (actionId) => {
-  if ('send-weekly-summary' === actionId) {
-    sendWeeklySummary();
-    return;
-  }
-
-  if ('create-workspace' === actionId) {
-    openCreateWorkspaceModal();
-  }
+const handleExternalCreateWorkspaceRequest = () => {
+  openCreateWorkspaceModal();
 };
 
 const openWorkspace = (workspaceId) => {
   window.location.href = `/app/workspaces/${workspaceId}`;
 };
 
+const openWorkspaceFromSummary = (workspace) => {
+  if (workspace?.isInboxWorkspace) {
+    window.location.href = '/app/inbox';
+    return;
+  }
+
+  if (workspace?.id) {
+    openWorkspace(workspace.id);
+  }
+};
+
 const openToast = (toastId) => {
-  router.push(`/app/toasts/${toastId}`);
+  const returnTo = route.fullPath.startsWith('/app') ? route.fullPath : '/app';
+
+  try {
+    window.sessionStorage.setItem('toastit:toast-return-to', returnTo);
+  } catch {
+    // Ignore session storage failures.
+  }
+
+  router.push({
+    path: `/app/toasts/${toastId}`,
+    query: { returnTo },
+  });
+};
+
+const actionDateStatus = (action) => {
+  const dueOn = typeof action?.dueOn === 'string' ? action.dueOn : '';
+  if (!dueOn) {
+    return 'on-track';
+  }
+
+  const dueAt = new Date(`${dueOn}T00:00:00`);
+  if (Number.isNaN(dueAt.getTime())) {
+    return action?.isLate ? 'late' : (action?.isDueSoon ? 'due-soon' : 'on-track');
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysFromNow = new Date(today);
+  sevenDaysFromNow.setDate(today.getDate() + 7);
+
+  if (dueAt < today) {
+    return 'late';
+  }
+
+  if (dueAt <= sevenDaysFromNow) {
+    return 'due-soon';
+  }
+
+  return 'on-track';
+};
+
+const actionBorderStyle = (action) => {
+  const status = actionDateStatus(action);
+  let borderLeftColor = 'transparent';
+
+  if (action?.isBoosted) {
+    borderLeftColor = 'rgb(148 163 184)';
+  } else if (status === 'late') {
+    borderLeftColor = 'rgb(239 68 68)';
+  } else if (status === 'due-soon') {
+    borderLeftColor = 'rgb(250 204 21)';
+  }
+
+  return {
+    borderLeftWidth: '5px',
+    borderLeftStyle: 'solid',
+    borderLeftColor,
+  };
 };
 
 const openHome = () => {
   window.location.href = '/app';
+};
+
+const syncViewport = () => {
+  isMobileViewport.value = window.innerWidth < 1024;
 };
 
 const isTypingTarget = (target) => {
@@ -162,70 +192,51 @@ const handleDashboardKeydown = (event) => {
   }
 
   event.preventDefault();
-  openWorkspace(workspace.id);
+  openWorkspaceFromSummary(workspace);
 };
 
 onMounted(() => {
+  syncViewport();
   fetchDashboard();
   window.addEventListener('keydown', handleDashboardKeydown);
+  window.addEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
+  window.addEventListener('resize', syncViewport);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleDashboardKeydown);
+  window.removeEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
+  window.removeEventListener('resize', syncViewport);
 });
 </script>
 
 <template>
   <section class="space-y-6">
-    <div class="px-4 lg:px-6">
-      <PageHeader
-        eyebrow="Home"
-        title="Your work."
-        :stats="dashboardHeaderStats"
-        :actions="dashboardHeaderActions"
-        @action="handleDashboardHeaderAction"
-      />
-      <p v-if="summaryFeedback" class="mt-4 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
-        {{ summaryFeedback }}
-      </p>
-    </div>
-
-    <div class="tw-toastit-card overflow-hidden p-6">
+    <div v-if="!isMobileViewport || mobileSection === 'toasts'" class="tw-toastit-card overflow-hidden p-6">
         <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">My actions</p>
             <h2 class="mt-2 text-2xl font-semibold tracking-tight text-stone-950">Focus now.</h2>
           </div>
-          <div class="flex flex-wrap gap-2 text-sm">
-            <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-              <i class="fa-solid fa-list-check" aria-hidden="true"></i>
-              <span>{{ payload.myActions?.summary?.assignedCount ?? 0 }} assigned</span>
-            </span>
-            <span
-              class="inline-flex items-center gap-2 rounded-full px-3 py-1 font-medium"
-              :class="(payload.myActions?.summary?.lateCount ?? 0) > 0 ? 'bg-red-600 text-white' : 'bg-stone-100 text-stone-700'"
-            >
-              <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-              <span>{{ payload.myActions?.summary?.lateCount ?? 0 }} late</span>
-            </span>
-          </div>
         </div>
 
         <EmptyState v-if="isLoading" message="Loading..." />
         <EmptyState v-else-if="!(payload.myActions?.actions?.length ?? 0)" message="No assigned actions right now." />
-        <div v-else class="overflow-hidden rounded-2xl border border-stone-200">
-          <div class="divide-y divide-stone-100 bg-white lg:hidden">
+        <div v-else class="overflow-hidden -mx-6 lg:mx-0">
+          <div class="space-y-3 bg-white py-4 lg:hidden">
             <div
               v-for="action in payload.myActions.actions"
               :key="action.id"
-              class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
+              class="cursor-pointer space-y-2 px-4 py-1 transition hover:bg-stone-50"
+              :style="actionBorderStyle(action)"
               @click="openToast(action.id)"
             >
               <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
                 {{ action.title }}
               </p>
               <p class="min-w-0 truncate text-xs text-stone-600">
-                {{ action.workspace.name }} • {{ action.owner?.displayName || 'Unassigned' }} • {{ action.dueOnDisplay || 'No due date' }} • {{ action.isLate ? 'Late' : (action.isDueSoon ? 'Due soon' : 'On track') }}
+                <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
+                {{ action.workspace.name }} • {{ action.dueOnDisplay || 'No due date' }}
               </p>
             </div>
           </div>
@@ -234,7 +245,6 @@ onUnmounted(() => {
               <tr>
                 <th class="px-4 py-3">Toast</th>
                 <th class="px-4 py-3">Due</th>
-                <th class="px-4 py-3">State</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-stone-100">
@@ -244,33 +254,62 @@ onUnmounted(() => {
                 class="cursor-pointer transition hover:bg-stone-50"
                 @click="openToast(action.id)"
               >
-                <td class="px-4 py-3">
+                <td class="px-4 py-3" :style="actionBorderStyle(action)">
                   <p class="block w-full truncate text-left font-medium text-stone-900">
                     {{ action.title }}
                   </p>
                   <p class="mt-1 truncate text-xs text-stone-600">
-                    {{ action.workspace.name }} • {{ action.owner?.displayName || 'Unassigned' }}
+                    <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
+                    {{ action.workspace.name }}
                   </p>
                 </td>
                 <td class="px-4 py-3 text-stone-700">{{ action.dueOnDisplay || 'No due date' }}</td>
-                <td class="px-4 py-3">
-                  <span
-                    v-if="action.isLate"
-                    class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700"
-                  >Late</span>
-                  <span
-                    v-else-if="action.isDueSoon"
-                    class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
-                  >Due soon</span>
-                  <span
-                    v-else
-                    class="inline-flex rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-700"
-                  >On track</span>
-                </td>
               </tr>
             </tbody>
           </table>
         </div>
+    </div>
+
+    <div v-if="!isMobileViewport || mobileSection === 'workspaces'" class="tw-toastit-card overflow-hidden p-6">
+      <div class="mb-5 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Workspace</p>
+          <h2 class="mt-2 text-2xl font-semibold tracking-tight text-stone-950">All workspaces.</h2>
+        </div>
+      </div>
+
+      <EmptyState v-if="isLoading" message="Loading..." />
+      <EmptyState v-else-if="!(payload.workspaces?.length ?? 0)" message="No workspace yet." />
+      <div v-else class="grid gap-3">
+        <button
+          v-for="workspace in payload.workspaces"
+          :key="workspace.id"
+          type="button"
+          class="group rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left transition hover:border-amber-200 hover:bg-amber-50/30"
+          @click="openWorkspaceFromSummary(workspace)"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold text-stone-950">
+                {{ workspace.name }}
+              </p>
+              <p class="mt-1 truncate text-xs text-stone-500">
+                <span v-if="workspace.isInboxWorkspace">Inbox workspace</span>
+                <span v-else-if="workspace.isSoloWorkspace">Solo workspace</span>
+                <span v-else>{{ workspace.memberCount }} members</span>
+              </p>
+            </div>
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-700">
+                {{ workspace.openItemCount ?? 0 }}
+              </span>
+              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-2 py-1 text-[11px] font-semibold text-sky-700">
+                {{ workspace.assignedOpenItemCount ?? 0 }}
+              </span>
+            </span>
+          </div>
+        </button>
+      </div>
     </div>
 
     <ModalDialog v-if="isCreateWorkspaceModalOpen" max-width-class="max-w-4xl" @close="closeCreateWorkspaceModal">
@@ -288,7 +327,7 @@ onUnmounted(() => {
           </label>
           <div class="flex justify-end gap-3">
             <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="closeCreateWorkspaceModal">Cancel</button>
-            <button class="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-400 disabled:opacity-60" :disabled="creatingWorkspace" @click="createWorkspace">
+            <button class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="creatingWorkspace" @click="createWorkspace">
               {{ creatingWorkspace ? 'Creating...' : 'Create workspace' }}
             </button>
           </div>

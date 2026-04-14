@@ -5,13 +5,14 @@ defineProps({
   currentUser: { type: Object, default: null },
   value: { type: String, default: '' },
   blocked: { type: Boolean, default: false },
+  mobile: { type: Boolean, default: false },
 });
 
 defineEmits(['input', 'keydown', 'submit']);
 </script>
 
 <template>
-  <div class="mt-4 flex items-end gap-3 border-t border-stone-100 pt-4">
+  <div :class="mobile ? 'mt-3 flex items-end gap-2 rounded-2xl border border-stone-200 bg-white p-2 shadow-sm' : 'mt-4 flex items-end gap-3 border-t border-stone-100 pt-4'">
     <AvatarBadge
       :seed="currentUser?.id"
       :initials="currentUser?.initials"
@@ -19,16 +20,25 @@ defineEmits(['input', 'keydown', 'submit']);
       :alt="currentUser?.displayName"
     />
     <textarea
-      class="min-h-[2.75rem] min-w-0 flex-1 resize-none overflow-hidden rounded-[1.4rem] border bg-white px-4 py-3 text-sm leading-6 transition"
-      :class="blocked ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'"
+      class="min-h-[2.75rem] min-w-0 flex-1 resize-none overflow-hidden text-sm leading-6 transition"
+      :class="[
+        mobile ? 'rounded-xl border bg-stone-50 px-3 py-2.5' : 'rounded-[1.4rem] border bg-white px-4 py-3',
+        blocked ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'
+      ]"
       :value="value"
       rows="1"
       placeholder="Write a comment"
       @input="$emit('input', $event)"
       @keydown="$emit('keydown', $event)"
     ></textarea>
-    <button type="button" class="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" @click="$emit('submit')">
-      Send
+    <button
+      type="button"
+      :class="mobile ? 'inline-grid h-10 w-10 place-items-center rounded-xl bg-amber-200 text-amber-900 transition hover:bg-amber-300' : 'rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-300'"
+      @click="$emit('submit')"
+    >
+      <i v-if="mobile" class="fa-solid fa-paper-plane text-sm" aria-hidden="true"></i>
+      <span v-else>Send</span>
+      <span v-if="mobile" class="sr-only">Send</span>
     </button>
   </div>
 </template>

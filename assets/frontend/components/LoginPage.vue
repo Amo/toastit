@@ -139,7 +139,7 @@ const logout = () => {
 
               <button
                 type="submit"
-                class="absolute right-2 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-amber-500 text-stone-950 shadow-sm transition hover:bg-amber-400"
+                class="absolute right-2 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-amber-200 text-amber-900 shadow-sm transition hover:bg-amber-300"
                 aria-label="Continue"
               >
                 <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>

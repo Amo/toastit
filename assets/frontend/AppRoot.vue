@@ -36,7 +36,7 @@ const authRefreshPending = ref(false);
 const loginModalOpen = ref(false);
 const authApi = new AuthApi(new ToastitApiClient(''));
 
-const protectedRouteNames = ['dashboard', 'inbox', 'workspace', 'toast', 'profile', 'admin-dashboard', 'admin-users', 'admin-prompts'];
+const protectedRouteNames = ['dashboard', 'inbox', 'inbox-create-toast', 'workspace', 'workspace-create-toast', 'toast', 'profile', 'admin-dashboard', 'admin-users', 'admin-prompts'];
 const rootRouteNames = ['admin-dashboard', 'admin-users', 'admin-prompts'];
 const authEntryRouteNames = ['home', 'auth-verify', 'auth-magic', 'pin-setup', 'pin-unlock'];
 const accessTokenExpired = computed(() => {
@@ -388,6 +388,22 @@ watch(() => authState.accessToken, syncAccessRefresh);
   </AppShell>
 
   <AppShell
+    v-else-if="routeName === 'inbox-create-toast'"
+    current-section="inbox"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="authState.user"
+    content-html=""
+  >
+    <WorkspacePage
+      api-url="/api/inbox/workspace"
+      :dashboard-url="spa.urls.dashboardUrl"
+      :access-token="authState.accessToken"
+      :create-only-mode="true"
+    />
+  </AppShell>
+
+  <AppShell
     v-else-if="routeName === 'workspace'"
     current-section="workspace"
     :dashboard-url="spa.urls.dashboardUrl"
@@ -396,6 +412,22 @@ watch(() => authState.accessToken, syncAccessRefresh);
     content-html=""
   >
     <WorkspacePage :api-url="`/api/workspaces/${route.params.id}`" :dashboard-url="spa.urls.dashboardUrl" :access-token="authState.accessToken" />
+  </AppShell>
+
+  <AppShell
+    v-else-if="routeName === 'workspace-create-toast'"
+    current-section="workspace"
+    :dashboard-url="spa.urls.dashboardUrl"
+    :profile-url="spa.urls.profileUrl"
+    :user="authState.user"
+    content-html=""
+  >
+    <WorkspacePage
+      :api-url="`/api/workspaces/${route.params.id}`"
+      :dashboard-url="spa.urls.dashboardUrl"
+      :access-token="authState.accessToken"
+      :create-only-mode="true"
+    />
   </AppShell>
 
   <AppShell

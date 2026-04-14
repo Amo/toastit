@@ -161,7 +161,7 @@ onUnmounted(() => {
         <div class="mt-6 flex justify-center">
           <button
             type="button"
-            class="inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-3 font-semibold text-stone-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex items-center justify-center rounded-full bg-amber-200 px-5 py-3 font-semibold text-amber-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
             :disabled="true"
           >
             <i class="fa-solid fa-spinner mr-2 animate-spin" aria-hidden="true"></i>

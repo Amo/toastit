@@ -19,13 +19,19 @@ final class DashboardPayloadBuilder
     public function build(User $user): array
     {
         $myActions = $this->myActionsPayloadBuilder->build($user);
+        $inboxWorkspace = $this->workspaceRepository->findInboxWorkspaceForUser($user);
+        $workspaces = $this->workspaceRepository->findForUser($user);
+
+        if ($inboxWorkspace instanceof Workspace) {
+            array_unshift($workspaces, $inboxWorkspace);
+        }
 
         return [
             'myActions' => [
                 'summary' => $myActions['summary'],
                 'actions' => $myActions['actions'],
             ],
-            'workspaces' => array_map(fn (Workspace $workspace): array => $this->buildWorkspaceSummary($workspace, $user), $this->workspaceRepository->findForUser($user)),
+            'workspaces' => array_map(fn (Workspace $workspace): array => $this->buildWorkspaceSummary($workspace, $user), $workspaces),
         ];
     }
 
@@ -68,6 +74,7 @@ final class DashboardPayloadBuilder
         return [
             'id' => $workspace->getId(),
             'name' => $workspace->getName(),
+            'isInboxWorkspace' => $workspace->isInboxWorkspace(),
             'isDefault' => $workspace->isDefault(),
             'isSoloWorkspace' => $workspace->isSoloWorkspace(),
             'currentUserIsOwner' => $workspace->isOwnedBy($currentUser),

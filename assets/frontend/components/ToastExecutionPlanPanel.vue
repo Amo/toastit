@@ -79,7 +79,7 @@ const actions = computed(() => props.draft?.actions ?? []);
                 </span>
                 <button
                   type="button"
-                  class="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-stone-950 transition hover:bg-amber-400 disabled:opacity-60"
+                  class="rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-300 disabled:opacity-60"
                   :disabled="applyingIndex === index || actionStatuses[index] === 'applied'"
                   @click="$emit('apply-item', { action, index })"
                 >

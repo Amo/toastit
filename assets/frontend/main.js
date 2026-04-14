@@ -5,6 +5,12 @@ import 'flowbite';
 import './styles/app.css';
 import AppRoot from './AppRoot.vue';
 
+if ('serviceWorker' in window.navigator) {
+  window.addEventListener('load', () => {
+    window.navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 document.querySelectorAll('[data-vue-root]').forEach((root) => {
   const bootstrap = root.dataset.props ? JSON.parse(root.dataset.props) : {};
   const router = createSpaRouter();
