@@ -41,6 +41,8 @@ const inviteEmail = ref('');
 const itemForm = ref({ title: '', description: '', ownerId: '', dueOn: '' });
 const currentToastFilter = ref('active');
 const currentAssigneeFilter = ref('');
+const isApplyingFiltersFromRoute = ref(false);
+const isSyncingFiltersToRoute = ref(false);
 const isMobileStatusFilterModalOpen = ref(false);
 const isMobileAssigneeFilterModalOpen = ref(false);
 const vetoedVisibleCount = ref(20);
@@ -175,8 +177,19 @@ const resolveAssigneeFilter = (value) => {
 };
 
 const applyFiltersFromRoute = () => {
-  currentToastFilter.value = resolveToastFilter(route.query.filter);
-  currentAssigneeFilter.value = resolveAssigneeFilter(route.query.assignee);
+  const resolvedToastFilter = resolveToastFilter(route.query.filter);
+  const resolvedAssigneeFilter = resolveAssigneeFilter(route.query.assignee);
+
+  if (resolvedToastFilter === currentToastFilter.value && resolvedAssigneeFilter === currentAssigneeFilter.value) {
+    return;
+  }
+
+  isApplyingFiltersFromRoute.value = true;
+  currentToastFilter.value = resolvedToastFilter;
+  currentAssigneeFilter.value = resolvedAssigneeFilter;
+  nextTick(() => {
+    isApplyingFiltersFromRoute.value = false;
+  });
 };
 
 const openMobileStatusFilterModal = () => {
@@ -202,6 +215,13 @@ const selectMobileAssigneeFilter = (value) => {
 };
 
 const syncFiltersToRoute = async () => {
+  if (isApplyingFiltersFromRoute.value || isSyncingFiltersToRoute.value) {
+    return;
+  }
+
+  isSyncingFiltersToRoute.value = true;
+
+  try {
   const nextQuery = { ...route.query };
   const resolvedToastFilter = resolveToastFilter(currentToastFilter.value);
   const resolvedAssigneeFilter = resolveAssigneeFilter(currentAssigneeFilter.value);
@@ -225,6 +245,9 @@ const syncFiltersToRoute = async () => {
   }
 
   await router.replace({ query: nextQuery });
+  } finally {
+    isSyncingFiltersToRoute.value = false;
+  }
 };
 
 const resetArchivedToastPagination = () => {
@@ -1923,8 +1946,7 @@ watch(() => route.query.create, consumeCreateToastRouteIntent);
 watch(() => workspace.value?.id, consumeCreateToastRouteIntent);
 watch(() => props.createOnlyMode, syncCreateOnlyMode);
 watch(() => workspace.value?.id, syncCreateOnlyMode);
-watch(() => route.query.filter, applyFiltersFromRoute);
-watch(() => route.query.assignee, applyFiltersFromRoute);
+watch(() => [route.query.filter, route.query.assignee], applyFiltersFromRoute);
 watch(currentToastFilter, syncFiltersToRoute);
 watch(currentAssigneeFilter, syncFiltersToRoute);
 watch(currentToastFilter, () => {
@@ -1936,11 +1958,19 @@ watch(currentAssigneeFilter, () => {
   syncArchivedToastObserver();
 });
 watch(isSoloWorkspace, () => {
-  currentAssigneeFilter.value = resolveAssigneeFilter(currentAssigneeFilter.value);
+  const normalizedAssigneeFilter = resolveAssigneeFilter(currentAssigneeFilter.value);
+  if (normalizedAssigneeFilter !== currentAssigneeFilter.value) {
+    currentAssigneeFilter.value = normalizedAssigneeFilter;
+    return;
+  }
   syncFiltersToRoute();
 });
 watch(assigneeFilterOptions, () => {
-  currentAssigneeFilter.value = resolveAssigneeFilter(currentAssigneeFilter.value);
+  const normalizedAssigneeFilter = resolveAssigneeFilter(currentAssigneeFilter.value);
+  if (normalizedAssigneeFilter !== currentAssigneeFilter.value) {
+    currentAssigneeFilter.value = normalizedAssigneeFilter;
+    return;
+  }
   syncFiltersToRoute();
 });
 watch(displayedVetoedItems, () => {
