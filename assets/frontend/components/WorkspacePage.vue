@@ -516,6 +516,52 @@ const toastStatusTone = (item) => {
   return 'text-amber-600';
 };
 
+const workspaceMobileItemDateStatus = (item) => {
+  const dueOn = typeof item?.dueOn === 'string' ? item.dueOn : '';
+  if (!dueOn) {
+    return 'on-track';
+  }
+
+  const dueAt = new Date(`${dueOn}T00:00:00`);
+  if (Number.isNaN(dueAt.getTime())) {
+    return 'on-track';
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysFromNow = new Date(today);
+  sevenDaysFromNow.setDate(today.getDate() + 7);
+
+  if (dueAt < today) {
+    return 'late';
+  }
+
+  if (dueAt <= sevenDaysFromNow) {
+    return 'due-soon';
+  }
+
+  return 'on-track';
+};
+
+const workspaceMobileItemBorderStyle = (item) => {
+  const dateStatus = workspaceMobileItemDateStatus(item);
+  let borderLeftColor = 'transparent';
+
+  if (item?.isBoosted) {
+    borderLeftColor = 'rgb(148 163 184)';
+  } else if (dateStatus === 'late') {
+    borderLeftColor = 'rgb(239 68 68)';
+  } else if (dateStatus === 'due-soon') {
+    borderLeftColor = 'rgb(250 204 21)';
+  }
+
+  return {
+    borderLeftWidth: '5px',
+    borderLeftStyle: 'solid',
+    borderLeftColor,
+  };
+};
+
 
 const resetItemForm = () => {
   itemForm.value = {
@@ -1901,12 +1947,13 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
             </div>
 
             <EmptyState v-if="currentToastFilter === 'active' && !displayedAgendaItems.length" message="No new toasts." />
-            <div v-else-if="currentToastFilter === 'active'" class="overflow-hidden rounded-2xl border border-stone-200">
-              <div class="divide-y divide-stone-100 bg-white lg:hidden">
+            <div v-else-if="currentToastFilter === 'active'" class="overflow-hidden -mx-6 lg:mx-0">
+              <div class="space-y-3 bg-white py-4 lg:hidden">
                 <div
                   v-for="item in displayedAgendaItems"
                   :key="item.id"
-                  class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
+                  class="cursor-pointer space-y-2 px-4 py-1 transition hover:bg-stone-50"
+                  :style="workspaceMobileItemBorderStyle(item)"
                   @click="openToastPermalink(item.id)"
                 >
                   <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
@@ -1914,7 +1961,8 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                   </p>
                   <div class="flex items-center justify-between gap-3">
                     <p class="min-w-0 truncate text-xs text-stone-600">
-                      {{ item.owner?.displayName ?? 'Unassigned' }} • {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.status === 'ready' ? 'Ready' : 'In progress' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
+                      <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
+                      {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
                     </p>
                     <button
                       v-if="!isSoloWorkspace"
