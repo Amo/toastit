@@ -29,7 +29,7 @@ const pastelPalette = [
   { background: 'bg-emerald-100', text: 'text-emerald-800' },
   { background: 'bg-teal-100', text: 'text-teal-800' },
   { background: 'bg-cyan-100', text: 'text-cyan-800' },
-  { background: 'bg-sky-100', text: 'text-sky-800' },
+  { background: 'bg-amber-100', text: 'text-amber-800' },
   { background: 'bg-indigo-100', text: 'text-indigo-800' },
   { background: 'bg-fuchsia-100', text: 'text-fuchsia-800' },
 ];

@@ -67,7 +67,7 @@ const currentYear = new Date().getFullYear();
             </p>
             <button
               type="button"
-              class="mt-5 inline-flex items-center justify-center rounded-full bg-amber-400 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-300"
+              class="mt-5 inline-flex items-center justify-center rounded-full bg-amber-200 px-5 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-300"
               @click="$emit('open-login')"
             >
               Login

@@ -732,18 +732,18 @@ onUnmounted(() => {
               </PrimaryActionButton>
             </div>
 
-            <div v-if="profile.inboxEmailAddress" :class="isMobileViewport ? 'border-y border-sky-200 bg-sky-50/70 px-4 py-4' : 'rounded-[1.5rem] border border-sky-200 bg-sky-50/70 p-5'">
+            <div v-if="profile.inboxEmailAddress" :class="isMobileViewport ? 'border-y border-amber-200 bg-amber-50/70 px-4 py-4' : 'rounded-[1.5rem] border border-amber-200 bg-amber-50/70 p-5'">
               <div class="space-y-3">
                 <div>
-                  <h3 class="text-base font-semibold text-sky-950">Inbound email</h3>
-                  <p class="mt-1 text-sm text-sky-900">
+                  <h3 class="text-base font-semibold text-amber-950">Inbound email</h3>
+                  <p class="mt-1 text-sm text-amber-900">
                     Send an email to this address to create a new toast automatically in your hidden Inbox workspace.
                   </p>
                 </div>
 
-                <div class="rounded-2xl border border-sky-200 bg-white px-4 py-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Your Toastit inbox address</p>
-                  <p class="mt-2 break-all font-mono text-sm text-sky-950">{{ profile.inboxEmailAddress }}</p>
+                <div class="rounded-2xl border border-amber-200 bg-white px-4 py-3">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Your Toastit inbox address</p>
+                  <p class="mt-2 break-all font-mono text-sm text-amber-950">{{ profile.inboxEmailAddress }}</p>
                 </div>
               </div>
             </div>
@@ -755,7 +755,7 @@ onUnmounted(() => {
               <p class="mt-1 text-sm text-stone-600">
                 Choose which xAI suggestions are automatically applied when a new toast is created from inbound email.
               </p>
-              <div class="mt-3 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800">
+              <div class="mt-3 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
                 Reword language: {{ inboundRewordLanguageBadgeLabel }}
               </div>
               <p v-if="preferencesErrorMessage" class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ preferencesErrorMessage }}</p>

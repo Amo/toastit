@@ -50,7 +50,7 @@ defineEmits(['open-manage', 'start-meeting', 'stop-meeting']);
             class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
             :class="workspace.meetingMode === 'live'
               ? (backgroundVisible ? 'bg-white text-stone-950 hover:bg-white/90' : 'bg-stone-900 text-white hover:bg-stone-800')
-              : (backgroundVisible ? 'bg-amber-400 text-stone-950 hover:bg-amber-300' : 'bg-amber-500 text-stone-950 hover:bg-amber-400')"
+              : (backgroundVisible ? 'bg-amber-200 text-amber-900 hover:bg-amber-300' : 'bg-amber-200 text-amber-900 hover:bg-amber-300')"
             @click="workspace.meetingMode === 'live' ? $emit('stop-meeting') : $emit('start-meeting')"
           >
             <i v-if="workspace.meetingMode !== 'live'" class="fa-solid fa-bolt" aria-hidden="true"></i>

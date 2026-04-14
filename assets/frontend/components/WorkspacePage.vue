@@ -434,10 +434,6 @@ const workspaceHeaderStats = computed(() => [
     icon: isSoloWorkspace.value ? 'fa-regular fa-user' : 'fa-solid fa-users',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
   },
-  ...(!isMobileViewport.value && workspace.value?.isInboxWorkspace ? [{
-    label: 'Hidden workspace',
-    className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white uppercase tracking-[0.18em] text-xs font-semibold' : 'bg-sky-100 text-sky-700 uppercase tracking-[0.18em] text-xs font-semibold',
-  }] : []),
   ...(!isMobileViewport.value && workspace.value?.isDefault ? [{
     label: 'Default workspace',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white uppercase tracking-[0.18em] text-xs font-semibold' : 'bg-amber-100 text-amber-700 uppercase tracking-[0.18em] text-xs font-semibold',
@@ -1997,44 +1993,44 @@ watch(isMobileViewport, (isMobile) => {
       </div>
 
       <div class="mt-0 space-y-0 lg:mt-4">
-        <div v-if="isInboxWorkspace" class="mb-4 tw-toastit-card border border-sky-100 bg-sky-50/80 p-5 text-sm text-sky-900">
+        <div v-if="isInboxWorkspace" class="mb-4 tw-toastit-card border border-amber-200 bg-amber-50/80 p-5 text-sm text-amber-900">
           <p class="font-semibold">Email-to-toast inbox</p>
-          <p class="mt-2 text-sky-800">
+          <p class="mt-2 text-amber-800">
             Forward email to
           </p>
-          <div class="mt-2 inline-flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-sky-200 bg-white px-3 py-2">
+          <div class="mt-2 inline-flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-amber-200 bg-white px-3 py-2">
             <input
               ref="inboxAddressInput"
               :value="currentUser?.inboxEmailAddress ?? ''"
               type="text"
               readonly
-              class="w-full border-0 bg-transparent p-0 font-mono text-sm text-sky-950 outline-none ring-0 focus:ring-0"
+              class="w-full border-0 bg-transparent p-0 font-mono text-sm text-amber-950 outline-none ring-0 focus:ring-0"
               @click="selectInboxAddress"
               @focus="selectInboxAddress"
             >
             <button
               type="button"
               class="inline-grid h-7 w-7 place-items-center rounded-full border transition"
-              :class="inboxAddressCopied ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-sky-200 bg-white text-sky-800 hover:border-sky-300 hover:text-sky-950'"
+              :class="inboxAddressCopied ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-amber-200 bg-white text-amber-800 hover:border-amber-300 hover:text-amber-950'"
               @click="copyInboxAddress"
             >
               <i :class="inboxAddressCopied ? 'fa-solid fa-check text-xs' : 'fa-regular fa-copy text-xs'" aria-hidden="true"></i>
               <span class="sr-only">{{ inboxAddressCopied ? 'Copied' : 'Copy inbox address' }}</span>
             </button>
           </div>
-          <p class="mt-2 text-sky-800">to use inbound email features:</p>
-          <ul class="mt-2 list-disc space-y-1 pl-5 text-sky-800">
+          <p class="mt-2 text-amber-800">to use inbound email features:</p>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-amber-800">
             <li><span class="font-semibold">toast creation</span>: send any email to create a new toast automatically.</li>
             <li>
               <span class="font-semibold">todo list</span>:
               send an email with title
-              <span class="inline-flex rounded-full bg-sky-200 px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-sky-900">todo</span>
+              <span class="inline-flex rounded-full bg-amber-200 px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-amber-900">todo</span>
               to receive your current todo digest.
             </li>
             <li>
               <span class="font-semibold">summary</span>:
               send an email with title
-              <span class="inline-flex rounded-full bg-sky-200 px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-sky-900">summary</span>
+              <span class="inline-flex rounded-full bg-amber-200 px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-amber-900">summary</span>
               to receive your 7-day operational recap.
             </li>
           </ul>

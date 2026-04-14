@@ -20,7 +20,7 @@ const actionClass = (action, inverted) => {
   if (action.theme === 'primary') {
     return inverted
       ? `${base} bg-white text-stone-950 hover:bg-white/90`
-      : `${base} bg-amber-500 text-stone-950 hover:bg-amber-400`;
+      : `${base} bg-amber-200 text-amber-900 hover:bg-amber-300`;
   }
 
   return inverted

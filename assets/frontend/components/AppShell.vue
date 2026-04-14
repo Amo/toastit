@@ -56,6 +56,8 @@ const navigationOpenCount = computed(() => navigationWorkspaces.value
   .reduce((total, workspace) => total + Number(workspace?.openItemCount ?? 0), 0));
 const navigationAssignedCount = computed(() => navigationWorkspaces.value
   .reduce((total, workspace) => total + Number(workspace?.assignedOpenItemCount ?? 0), 0));
+const listedNavigationWorkspaces = computed(() => navigationWorkspaces.value
+  .filter((workspace) => workspace?.isInboxWorkspace !== true));
 const inboxWorkspace = computed(() => navigationWorkspaces.value
   .find((workspace) => workspace?.isInboxWorkspace === true) ?? null);
 const inboxOpenCount = computed(() => {
@@ -207,14 +209,14 @@ watch(() => route.fullPath, () => {
             <a
               v-if="!showAppNavigation && publicCtaHref && publicCtaLabel"
               :href="publicCtaHref"
-              class="inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-400"
+              class="inline-flex items-center justify-center rounded-full bg-amber-200 px-5 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-300"
             >
               {{ publicCtaLabel }}
             </a>
             <button
               v-else-if="!showAppNavigation && publicCtaLabel"
               type="button"
-              class="inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-400"
+              class="inline-flex items-center justify-center rounded-full bg-amber-200 px-5 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-300"
               @click="emit('public-cta-click')"
             >
               {{ publicCtaLabel }}
@@ -237,7 +239,7 @@ watch(() => route.fullPath, () => {
                 type="button"
                 class="relative inline-flex h-11 w-11 items-center justify-center rounded-full border transition"
                 :class="currentSection === 'inbox'
-                  ? 'border-sky-300 bg-sky-100 text-sky-700'
+                  ? 'border-amber-300 bg-amber-100 text-amber-700'
                   : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:text-stone-950'"
                 @click="openInbox"
                 title="Inbox"
@@ -292,7 +294,7 @@ watch(() => route.fullPath, () => {
                 <div class="space-y-2">
                   <a v-if="user?.isRoot" href="/admin" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Admin</a>
                   <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
-                  <button class="flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400" type="button" @click="logout">
+                  <button class="flex w-full items-center justify-center rounded-2xl bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-300" type="button" @click="logout">
                     Sign out
                   </button>
                 </div>
@@ -306,7 +308,7 @@ watch(() => route.fullPath, () => {
               </div>
               <a v-if="user?.isRoot" href="/admin" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Admin</a>
               <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
-              <button class="w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-stone-950" type="button" @click="logout">Sign out</button>
+              <button class="w-full rounded-2xl bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-900" type="button" @click="logout">Sign out</button>
             </div>
           </div>
         </div>
@@ -403,14 +405,14 @@ watch(() => route.fullPath, () => {
                     <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
                       {{ navigationOpenCount }}
                     </span>
-                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                       {{ navigationAssignedCount }}
                     </span>
                   </span>
                 </a>
                 <div class="space-y-1 pl-5">
                   <a
-                    v-for="workspace in navigationWorkspaces"
+                    v-for="workspace in listedNavigationWorkspaces"
                     :key="workspace.id"
                     :href="workspaceHref(workspace)"
                     class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
@@ -421,7 +423,7 @@ watch(() => route.fullPath, () => {
                       <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
                         {{ workspace.openItemCount ?? 0 }}
                       </span>
-                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                         {{ workspace.assignedOpenItemCount ?? 0 }}
                       </span>
                     </span>
@@ -430,7 +432,7 @@ watch(() => route.fullPath, () => {
                 <a
                   href="/app/inbox"
                   class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
-                  :class="currentSection === 'inbox' ? 'bg-sky-100 text-sky-900' : 'text-stone-700 hover:bg-stone-100'"
+                  :class="currentSection === 'inbox' ? 'bg-amber-100 text-amber-900' : 'text-stone-700 hover:bg-stone-100'"
                 >
                   <span class="inline-flex items-center gap-3">
                     <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
@@ -492,7 +494,7 @@ watch(() => route.fullPath, () => {
                   </button>
                   <button
                     type="button"
-                    class="inline-grid h-9 w-9 place-items-center rounded-full bg-amber-500 text-stone-950 transition hover:bg-amber-400"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full bg-amber-200 text-amber-900 transition hover:bg-amber-300"
                     title="Sign out"
                     @click="logout"
                   >
@@ -549,14 +551,14 @@ watch(() => route.fullPath, () => {
                     <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
                       {{ navigationOpenCount }}
                     </span>
-                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                       {{ navigationAssignedCount }}
                     </span>
                   </span>
                 </a>
                 <div class="space-y-1 pl-5">
                   <a
-                    v-for="workspace in navigationWorkspaces"
+                    v-for="workspace in listedNavigationWorkspaces"
                     :key="workspace.id"
                     :href="workspaceHref(workspace)"
                     class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
@@ -567,7 +569,7 @@ watch(() => route.fullPath, () => {
                       <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
                         {{ workspace.openItemCount ?? 0 }}
                       </span>
-                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                         {{ workspace.assignedOpenItemCount ?? 0 }}
                       </span>
                     </span>
@@ -576,7 +578,7 @@ watch(() => route.fullPath, () => {
                 <a
                   href="/app/inbox"
                   class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
-                  :class="currentSection === 'inbox' ? 'bg-sky-100 text-sky-900' : 'text-stone-700 hover:bg-stone-100'"
+                  :class="currentSection === 'inbox' ? 'bg-amber-100 text-amber-900' : 'text-stone-700 hover:bg-stone-100'"
                 >
                   <span class="inline-flex items-center gap-3">
                     <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
@@ -638,7 +640,7 @@ watch(() => route.fullPath, () => {
                   </button>
                   <button
                     type="button"
-                    class="inline-grid h-9 w-9 place-items-center rounded-full bg-amber-500 text-stone-950 transition hover:bg-amber-400"
+                    class="inline-grid h-9 w-9 place-items-center rounded-full bg-amber-200 text-amber-900 transition hover:bg-amber-300"
                     title="Sign out"
                     @click="logout"
                   >
