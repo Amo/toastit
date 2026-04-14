@@ -711,8 +711,11 @@ onUnmounted(() => {
                 </label>
 
                 <label
-                  class="flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition"
-                  :class="preferenceRowClass('language')"
+                  :class="[
+                    'rounded-2xl border px-4 py-3 transition',
+                    isMobileViewport ? 'flex flex-col items-start gap-2' : 'flex items-center justify-between gap-4',
+                    preferenceRowClass('language'),
+                  ]"
                 >
                   <span class="flex items-center gap-2 text-sm font-medium text-stone-900">
                     <span>Reword language</span>
@@ -720,7 +723,8 @@ onUnmounted(() => {
                   </span>
                   <select
                     v-model="profile.inboundRewordLanguage"
-                    class="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    class="max-w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    :class="isMobileViewport ? 'w-full' : ''"
                     @change="onPreferenceToggle('language')"
                   >
                     <option
