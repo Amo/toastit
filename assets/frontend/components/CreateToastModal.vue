@@ -89,19 +89,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <ModalDialog v-if="open" max-width-class="max-w-4xl" z-index-class="z-[110]" @close="() => { if (!isRefining) $emit('close'); }">
+  <ModalDialog v-if="open" max-width-class="max-w-4xl" z-index-class="z-[110]" @close="$emit('close')">
     <ModalHeader eyebrow="New toast" :title="title" @close="$emit('close')" />
 
     <div class="relative space-y-4 overflow-y-auto px-6 py-6" @keydown="$emit('title-keydown', $event)">
-      <div
-        v-if="isRefining"
-        class="absolute inset-0 z-10 flex cursor-wait flex-col items-center justify-center gap-2 rounded-2xl bg-white/80 text-center text-stone-700 backdrop-blur-[1px]"
-      >
-        <i class="fa-solid fa-wand-sparkles tw-ai-pending text-xl" aria-hidden="true"></i>
-        <p class="text-sm font-medium">Improving your draft with AI…</p>
-        <p class="text-xs text-stone-500">Please wait. This can take up to 30 seconds.</p>
-      </div>
-
       <template v-if="isMobileViewport">
         <label class="grid gap-2 text-sm font-medium text-stone-700">
           <span>Toast</span>
@@ -109,7 +100,6 @@ onUnmounted(() => {
             ref="descriptionInput"
             class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
             :value="itemForm.description"
-            :disabled="isRefining"
             autofocus
             placeholder="Describe what needs to be done..."
             @input="$emit('update:description', $event.target.value)"
@@ -124,7 +114,6 @@ onUnmounted(() => {
             ref="titleInput"
             class="min-h-12 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
             :value="itemForm.title"
-            :disabled="isRefining"
             rows="1"
             autofocus
             placeholder="New toast"
@@ -136,7 +125,7 @@ onUnmounted(() => {
         <div class="grid gap-4 md:grid-cols-2">
           <label class="grid gap-2 text-sm font-medium text-stone-700">
             <span>Assignee</span>
-            <select class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.ownerId" :disabled="isRefining" @change="$emit('update:ownerId', $event.target.value)">
+            <select class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.ownerId" @change="$emit('update:ownerId', $event.target.value)">
               <option value="">Unassigned</option>
               <option v-for="invitee in participants" :key="invitee.id" :value="String(invitee.id)">{{ invitee.displayName }}</option>
             </select>
@@ -150,7 +139,7 @@ onUnmounted(() => {
 
         <label class="grid gap-2 text-sm font-medium text-stone-700">
           <span>Details</span>
-          <textarea ref="descriptionInput" class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" :disabled="isRefining" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
+          <textarea ref="descriptionInput" class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
         </label>
       </template>
 
@@ -178,9 +167,13 @@ onUnmounted(() => {
               Undo AI change
             </button>
           </template>
-          <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60" :disabled="isRefining" @click="$emit('close')">Cancel</button>
-          <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isRefining" @click="$emit('create')">{{ actionLabel }}</button>
+          <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="$emit('close')">Cancel</button>
+          <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300" @click="$emit('create')">{{ actionLabel }}</button>
         </div>
+      </div>
+      <div v-if="isRefining" class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
+        <i class="fa-solid fa-wand-sparkles tw-ai-pending" aria-hidden="true"></i>
+        <span>AI is improving your draft in background…</span>
       </div>
     </div>
   </ModalDialog>

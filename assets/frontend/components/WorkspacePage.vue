@@ -78,6 +78,7 @@ const toastCurationActionStatuses = ref({});
 const isToastDraftRefining = ref(false);
 const TOAST_DRAFT_REFINE_TIMEOUT_MS = 30_000;
 const toastDraftRefinementBackup = ref(null);
+let toastDraftRefinementRequestId = 0;
 const isSessionArchiveOpen = ref(false);
 const selectedSessionArchiveId = ref(null);
 const sessionArchiveError = ref('');
@@ -737,12 +738,11 @@ const removeMember = async (memberId) => {
 };
 
 const createItem = async () => {
-  if (isToastDraftRefining.value) return;
   if (!workspace.value) return;
 
   const isEditingToast = !!editingToastId.value;
   if (!isEditingToast && isMobileViewport.value && !itemForm.value.title.trim() && itemForm.value.description.trim()) {
-    const refined = await refineToastDraft();
+    const refined = await refineToastDraft(null, { forceApply: true });
     if (!refined) {
       return;
     }
@@ -776,11 +776,13 @@ const createItem = async () => {
   await fetchWorkspace();
 };
 
-const refineToastDraft = async (draftSnapshot = null) => {
+const refineToastDraft = async (draftSnapshot = null, options = {}) => {
   if (!workspace.value || isToastDraftRefining.value) {
     return false;
   }
 
+  const forceApply = options?.forceApply === true;
+  const requestId = ++toastDraftRefinementRequestId;
   isToastDraftRefining.value = true;
   errorMessage.value = '';
 
@@ -823,10 +825,26 @@ const refineToastDraft = async (draftSnapshot = null) => {
     window.clearTimeout(timeoutHandle);
   }
 
+  if (requestId !== toastDraftRefinementRequestId) {
+    isToastDraftRefining.value = false;
+    return false;
+  }
+
   if (!ok || !data?.ok || !data.draft) {
     errorMessage.value = data?.message ?? 'Unable to improve this toast draft.';
     isToastDraftRefining.value = false;
     return false;
+  }
+
+  const draftWasEditedSinceRequest = (
+    (itemForm.value.title ?? '') !== previousDraft.title
+    || (itemForm.value.description ?? '') !== previousDraft.description
+    || (itemForm.value.ownerId ?? '') !== previousDraft.ownerId
+    || (itemForm.value.dueOn ?? '') !== previousDraft.dueOn
+  );
+  if (draftWasEditedSinceRequest && !forceApply) {
+    isToastDraftRefining.value = false;
+    return true;
   }
 
   toastDraftRefinementBackup.value = previousDraft;
@@ -857,10 +875,6 @@ const undoToastDraftRefinement = () => {
 };
 
 const handleCreateToastModalKeydown = (event) => {
-  if (isToastDraftRefining.value) {
-    return;
-  }
-
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
     event.preventDefault();
     createItem();
@@ -1162,10 +1176,7 @@ const openCreateToastModal = async () => {
 };
 
 const closeCreateToastModal = () => {
-  if (isToastDraftRefining.value) {
-    return;
-  }
-
+  toastDraftRefinementRequestId += 1;
   isCreateToastModalOpen.value = false;
   editingToastId.value = null;
   isToastDraftRefining.value = false;
