@@ -95,10 +95,11 @@ onUnmounted(() => {
     <div class="relative space-y-4 overflow-y-auto px-6 py-6" @keydown="$emit('title-keydown', $event)">
       <div
         v-if="isRefining"
-        class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/75 text-center text-stone-700 backdrop-blur-[1px]"
+        class="absolute inset-0 z-10 flex cursor-wait flex-col items-center justify-center gap-2 rounded-2xl bg-white/80 text-center text-stone-700 backdrop-blur-[1px]"
       >
         <i class="fa-solid fa-wand-sparkles tw-ai-pending text-xl" aria-hidden="true"></i>
         <p class="text-sm font-medium">Improving your draft with AI…</p>
+        <p class="text-xs text-stone-500">Please wait. This can take up to 30 seconds.</p>
       </div>
 
       <template v-if="isMobileViewport">
