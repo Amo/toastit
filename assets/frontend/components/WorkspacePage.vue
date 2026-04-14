@@ -1456,6 +1456,27 @@ const toggleVeto = async (itemId) => {
   await fetchWorkspace();
 };
 
+const requestMobileToastVeto = async (itemId) => {
+  const target = [
+    ...agendaItems.value,
+    ...vetoedItems.value,
+    ...resolvedItems.value,
+  ].find((candidate) => candidate.id === itemId);
+
+  if (!target) {
+    return;
+  }
+
+  if (target.status !== 'discarded') {
+    const confirmed = window.confirm('Decline this toast?');
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  await toggleVeto(itemId);
+};
+
 const toastItem = async (itemId) => {
   if (!isSoloWorkspace.value) return;
 
@@ -2253,7 +2274,7 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                 v-if="workspace.currentUserIsOwner && !isToastingMode && isActiveToast(selectedToastModal)"
                 type="button"
                 class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center bg-transparent px-3.5 py-2.5 text-stone-600 transition hover:text-red-700"
-                @click="toggleVeto(selectedToastModal.id)"
+                @click="requestMobileToastVeto(selectedToastModal.id)"
               >
                 <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
                 <span class="sr-only">{{ selectedToastModal.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
