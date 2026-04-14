@@ -7,6 +7,7 @@ import ModalHeader from './ModalHeader.vue';
 const props = defineProps({
   dashboardUrl: { type: String, required: true },
   profileUrl: { type: String, required: true },
+  user: { type: Object, default: null },
   contentHtml: { type: String, required: true },
   navigationOpenCount: { type: Number, default: 0 },
   navigationAssignedCount: { type: Number, default: 0 },
@@ -17,6 +18,7 @@ const route = useRoute();
 const router = useRouter();
 const touchStart = ref(null);
 const workspacePickerOpen = ref(false);
+const profileMenuOpen = ref(false);
 
 const tabs = computed(() => [
   {
@@ -123,6 +125,20 @@ const workspaceOptions = computed(() => (props.navigationWorkspaces ?? [])
     isInboxWorkspace: workspace.isInboxWorkspace === true,
   })));
 
+const profileMenuItems = [
+  { label: 'Infos', to: '/app/profile' },
+  { label: 'Preferences', to: '/app/profile?section=preferences' },
+  { label: 'API tokens', to: '/app/profile?section=api' },
+  { label: 'Trash', to: '/app/profile?section=trash' },
+  { label: 'Account', to: '/app/profile?section=account' },
+];
+
+const adminMenuItems = [
+  { label: 'Statistics', to: '/admin' },
+  { label: 'Users', to: '/admin/users' },
+  { label: 'Prompts', to: '/admin/prompts' },
+];
+
 const requestCreateToastInCurrentWorkspace = () => {
   window.dispatchEvent(new CustomEvent('toastit:create-toast'));
 };
@@ -175,12 +191,22 @@ const openCreateWorkspace = () => {
 };
 
 const navigateToTab = (tabKey) => {
+  if (tabKey === 'profile') {
+    profileMenuOpen.value = true;
+    return;
+  }
+
   const tab = tabs.value.find((item) => item.key === tabKey);
   if (!tab) {
     return;
   }
 
   router.push(tab.to);
+};
+
+const openProfileMenuItem = (target) => {
+  profileMenuOpen.value = false;
+  router.push(target);
 };
 
 const shouldIgnoreSwipe = (event) => {
@@ -326,6 +352,44 @@ const handleTouchEnd = (event) => {
             Cancel
           </button>
         </div>
+      </div>
+    </ModalDialog>
+
+    <ModalDialog v-if="profileMenuOpen" max-width-class="max-w-2xl" @close="profileMenuOpen = false">
+      <ModalHeader
+        eyebrow="Profile"
+        title="My profile"
+        description="Choose where to go."
+        @close="profileMenuOpen = false"
+      />
+      <div class="space-y-6 overflow-y-auto px-6 py-6">
+        <section class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">My profile</p>
+          <button
+            v-for="item in profileMenuItems"
+            :key="item.to"
+            type="button"
+            class="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-800 transition hover:border-amber-300 hover:bg-amber-50/40"
+            @click="openProfileMenuItem(item.to)"
+          >
+            <span>{{ item.label }}</span>
+            <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
+          </button>
+        </section>
+
+        <section v-if="props.user?.isRoot" class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Administration</p>
+          <button
+            v-for="item in adminMenuItems"
+            :key="item.to"
+            type="button"
+            class="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-800 transition hover:border-amber-300 hover:bg-amber-50/40"
+            @click="openProfileMenuItem(item.to)"
+          >
+            <span>{{ item.label }}</span>
+            <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
+          </button>
+        </section>
       </div>
     </ModalDialog>
   </div>
