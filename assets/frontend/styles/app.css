@@ -222,7 +222,7 @@
   }
 
   .tw-mobile-create-fab {
-    @apply fixed right-4 z-[95] inline-grid h-12 w-12 place-items-center rounded-full bg-amber-500 text-stone-950 shadow-lg shadow-amber-500/30 transition;
+    @apply fixed right-4 z-[95] inline-grid h-12 w-12 place-items-center rounded-full bg-amber-200 text-amber-900 shadow-lg shadow-amber-200/40 transition hover:bg-amber-300;
     top: calc(0.75rem + env(safe-area-inset-top));
   }
 
