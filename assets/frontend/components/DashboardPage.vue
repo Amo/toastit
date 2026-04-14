@@ -148,6 +148,48 @@ const actionBorderStyle = (action) => {
   };
 };
 
+const workspaceAssignedPriorityCounts = computed(() => {
+  const countersByWorkspace = {};
+  const actions = Array.isArray(payload.value?.myActions?.actions) ? payload.value.myActions.actions : [];
+
+  for (const action of actions) {
+    const workspaceId = Number(action?.workspace?.id ?? 0);
+    if (!Number.isFinite(workspaceId) || workspaceId <= 0) {
+      continue;
+    }
+
+    if (!countersByWorkspace[workspaceId]) {
+      countersByWorkspace[workspaceId] = { late: 0, dueSoon: 0, boosted: 0 };
+    }
+
+    if (action?.isBoosted) {
+      countersByWorkspace[workspaceId].boosted += 1;
+      continue;
+    }
+
+    const dateStatus = actionDateStatus(action);
+    if (dateStatus === 'late') {
+      countersByWorkspace[workspaceId].late += 1;
+      continue;
+    }
+
+    if (dateStatus === 'due-soon') {
+      countersByWorkspace[workspaceId].dueSoon += 1;
+    }
+  }
+
+  return countersByWorkspace;
+});
+
+const workspacePriorityCounts = (workspaceId) => {
+  const normalizedWorkspaceId = Number(workspaceId ?? 0);
+  if (!Number.isFinite(normalizedWorkspaceId) || normalizedWorkspaceId <= 0) {
+    return { late: 0, dueSoon: 0, boosted: 0 };
+  }
+
+  return workspaceAssignedPriorityCounts.value[normalizedWorkspaceId] ?? { late: 0, dueSoon: 0, boosted: 0 };
+};
+
 const openHome = () => {
   window.location.href = '/app';
 };
@@ -299,12 +341,15 @@ onUnmounted(() => {
                 <span v-else>{{ workspace.memberCount }} members</span>
               </p>
             </div>
-            <span class="inline-flex items-center gap-1">
-              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-700">
-                {{ workspace.openItemCount ?? 0 }}
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-red-100 px-2 py-1 text-[11px] font-semibold text-red-700" title="Late assigned toasts">
+                {{ workspacePriorityCounts(workspace.id).late }}
               </span>
-              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-2 py-1 text-[11px] font-semibold text-sky-700">
-                {{ workspace.assignedOpenItemCount ?? 0 }}
+              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-yellow-100 px-2 py-1 text-[11px] font-semibold text-yellow-700" title="Due soon assigned toasts">
+                {{ workspacePriorityCounts(workspace.id).dueSoon }}
+              </span>
+              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700" title="Boosted assigned toasts">
+                {{ workspacePriorityCounts(workspace.id).boosted }}
               </span>
             </span>
           </div>
