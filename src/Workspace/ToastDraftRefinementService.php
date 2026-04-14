@@ -105,7 +105,7 @@ final class ToastDraftRefinementService
           $owner = $this->workspaceWorkflow->findWorkspaceInviteeByDisplayName($workspace, $assignee);
         }
 
-        $resolvedDueOn = null;
+        $resolvedDueOn = $this->resolveWorkspaceDefaultDueOn($workspace);
         if ('' !== $dueOn && 'NONE' !== strtoupper($dueOn)) {
             try {
                 $resolvedDueOn = (new \DateTimeImmutable($dueOn))->format('Y-m-d');
@@ -162,5 +162,21 @@ final class ToastDraftRefinementService
             Workspace::DEFAULT_DUE_FIRST_MONDAY_NEXT_MONTH => 'First Monday next month',
             default => 'Next week',
         };
+    }
+
+    private function resolveWorkspaceDefaultDueOn(Workspace $workspace): string
+    {
+        $today = new \DateTimeImmutable('today');
+
+        $dueAt = match ($workspace->getDefaultDuePreset()) {
+            Workspace::DEFAULT_DUE_TOMORROW => $today->modify('+1 day'),
+            Workspace::DEFAULT_DUE_NEXT_WEEK => $today->modify('+7 days'),
+            Workspace::DEFAULT_DUE_IN_2_WEEKS => $today->modify('+14 days'),
+            Workspace::DEFAULT_DUE_NEXT_MONDAY => $today->modify('next monday'),
+            Workspace::DEFAULT_DUE_FIRST_MONDAY_NEXT_MONTH => (new \DateTimeImmutable('first day of next month'))->modify('next monday'),
+            default => $today->modify('+7 days'),
+        };
+
+        return $dueAt->format('Y-m-d');
     }
 }
