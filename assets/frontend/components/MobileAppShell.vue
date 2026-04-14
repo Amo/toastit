@@ -17,7 +17,6 @@ const route = useRoute();
 const router = useRouter();
 const touchStart = ref(null);
 const workspacePickerOpen = ref(false);
-const selectedWorkspaceId = ref('');
 
 const tabs = computed(() => [
   {
@@ -134,7 +133,6 @@ const openWorkspacePicker = () => {
     return;
   }
 
-  selectedWorkspaceId.value = String(workspaceOptions.value[0].id);
   workspacePickerOpen.value = true;
 };
 
@@ -149,8 +147,7 @@ const goToWorkspaceCreate = (workspaceId) => {
   router.push(`/app/workspaces/${workspaceId}/new-toast`);
 };
 
-const confirmWorkspacePicker = () => {
-  const workspaceId = Number(selectedWorkspaceId.value);
+const pickWorkspace = (workspaceId) => {
   if (!Number.isFinite(workspaceId)) {
     return;
   }
@@ -308,35 +305,25 @@ const handleTouchEnd = (event) => {
         @close="workspacePickerOpen = false"
       />
       <div class="space-y-4 overflow-y-auto px-6 py-6">
-        <label class="grid gap-2 text-sm font-medium text-stone-700">
-          <span>Workspace</span>
-          <select
-            v-model="selectedWorkspaceId"
-            class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm"
+        <div class="space-y-2">
+          <button
+            v-for="workspace in workspaceOptions"
+            :key="workspace.id"
+            type="button"
+            class="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-800 transition hover:border-amber-300 hover:bg-amber-50/40"
+            @click="pickWorkspace(workspace.id)"
           >
-            <option
-              v-for="workspace in workspaceOptions"
-              :key="workspace.id"
-              :value="String(workspace.id)"
-            >
-              {{ workspace.name }}
-            </option>
-          </select>
-        </label>
-        <div class="flex justify-end gap-3">
+            <span class="min-w-0 truncate">{{ workspace.name }}</span>
+            <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="flex justify-end">
           <button
             type="button"
             class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
             @click="workspacePickerOpen = false"
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
-            @click="confirmWorkspacePicker"
-          >
-            Continue
           </button>
         </div>
       </div>
