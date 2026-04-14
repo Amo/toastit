@@ -2648,7 +2648,8 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
               </span>
             </div>
           </ModalHeader>
-          <div class="absolute right-4 top-4 flex items-center gap-2 md:right-20 md:top-5">
+          <div class="mt-4 border-t border-stone-100 px-6 pb-4 pt-4">
+            <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-stone-200/80 bg-white/90 p-2">
               <button
                 v-if="selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted'"
                 type="button"
@@ -2729,6 +2730,7 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                   <span class="sr-only">{{ selectedToastModal.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
                 </button>
               </template>
+            </div>
           </div>
         </div>
 
