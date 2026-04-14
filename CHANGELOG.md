@@ -1,3 +1,18 @@
+## 1.3.0 (April 14, 2026)
+- NEW: smoother workspace and toast creation flow
+  - Split workspace status filtering into two dedicated views: `New` and `Ready` (#181)
+  - Assignee filtering now applies reliably without duplicate page refresh behavior (#183)
+  - AI draft improvement is now non-blocking in the toast modal, so editing can continue while suggestions are generated (#182)
+- NEW: timezone preference across app and emails
+  - Added a user timezone picker in profile preferences (#23)
+  - Applied the selected timezone to date rendering in app payloads and session recap emails (#23)
+- NEW: better text input ergonomics
+  - Text form fields now auto-expand to keep full content visible while typing (#145)
+- FIX: safer frontend asset refresh after deployment
+  - Updated caching strategy to fetch fresh frontend assets after redeploy, especially on mobile where force-refresh is limited (#180)
+- FIX: English-only copy consistency
+  - Authentication emails and remaining mixed-language UI labels are now aligned in English (#184)
+
 ## 1.2.0 (April 14, 2026)
 - UX: major polish release for mobile and desktop consistency
   - Mobile profile is now a full page flow (not modal-like), with clearer section navigation and more consistent spacing.
