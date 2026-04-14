@@ -376,14 +376,13 @@ onUnmounted(() => {
             </div>
             <span
               v-if="workspacePriorityBadges(workspace.id).length > 0"
-              class="ml-auto inline-flex items-center overflow-hidden rounded-full border border-stone-200/70 shadow-sm"
+              class="ml-auto inline-flex items-center overflow-hidden rounded-full border border-stone-200/70 pr-0.5 shadow-sm"
             >
               <span
                 v-for="(badge, badgeIndex) in workspacePriorityBadges(workspace.id)"
                 :key="`${workspace.id}-${badge.key}`"
                 :class="[
-                  'inline-flex min-w-6 items-center justify-center px-2 py-1 text-[11px] font-semibold text-white',
-                  'min-w-7',
+                  'inline-flex min-w-8 items-center justify-center px-2.5 py-1 text-[11px] font-semibold leading-none text-white',
                   badge.className,
                   badgeIndex > 0 ? 'border-l border-white/50' : '',
                 ]"
