@@ -39,6 +39,18 @@ const focusTitle = async () => {
   titleInput.value?.focus();
 };
 
+watch(() => props.open, async (isOpen) => {
+  if (!isOpen) {
+    return;
+  }
+
+  await nextTick();
+  window.setTimeout(() => {
+    resizeTitleField();
+    titleInput.value?.focus();
+  }, 50);
+});
+
 watch(() => props.itemForm?.title, async () => {
   await nextTick();
   resizeTitleField();
@@ -70,6 +82,7 @@ defineExpose({
           :value="itemForm.title"
           :disabled="isRefining"
           rows="1"
+          autofocus
           placeholder="New toast"
           @input="handleTitleInput"
           @keydown="$emit('title-input', $event)"
