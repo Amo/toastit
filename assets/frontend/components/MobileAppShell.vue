@@ -372,30 +372,34 @@ watch(
       <div class="max-h-[calc(100dvh-13rem)] space-y-6 overflow-y-auto px-6 py-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <section class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">My profile</p>
-          <button
-            v-for="item in profileMenuItems"
-            :key="item.to"
-            type="button"
-            class="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-800 transition hover:border-amber-300 hover:bg-amber-50/40"
-            @click="openProfileMenuItem(item.to)"
-          >
-            <span>{{ item.label }}</span>
-            <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
-          </button>
+          <div class="overflow-hidden border-y border-stone-200 bg-white">
+            <button
+              v-for="item in profileMenuItems"
+              :key="item.to"
+              type="button"
+              class="flex w-full items-center justify-between border-b border-stone-200 px-4 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
+              @click="openProfileMenuItem(item.to)"
+            >
+              <span>{{ item.label }}</span>
+              <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
+            </button>
+          </div>
         </section>
 
         <section v-if="props.user?.isRoot" class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Administration</p>
-          <button
-            v-for="item in adminMenuItems"
-            :key="item.to"
-            type="button"
-            class="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-800 transition hover:border-amber-300 hover:bg-amber-50/40"
-            @click="openProfileMenuItem(item.to)"
-          >
-            <span>{{ item.label }}</span>
-            <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
-          </button>
+          <div class="overflow-hidden border-y border-stone-200 bg-white">
+            <button
+              v-for="item in adminMenuItems"
+              :key="item.to"
+              type="button"
+              class="flex w-full items-center justify-between border-b border-stone-200 px-4 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
+              @click="openProfileMenuItem(item.to)"
+            >
+              <span>{{ item.label }}</span>
+              <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
+            </button>
+          </div>
         </section>
       </div>
     </ModalDialog>
