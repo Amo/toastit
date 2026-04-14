@@ -3,6 +3,7 @@
 namespace App\Controller\Api\Item;
 
 use App\Workspace\WorkspaceAccessService;
+use App\Workspace\ToastTitleNormalizationService;
 use App\Workspace\WorkspaceWorkflowService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,6 +16,7 @@ final class UpdateController extends AbstractController
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
+        private readonly ToastTitleNormalizationService $toastTitleNormalization,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -53,9 +55,14 @@ final class UpdateController extends AbstractController
             }
         }
 
+        $normalizedTitle = $this->toastTitleNormalization->normalize(
+            $title,
+            trim((string) ($payload['description'] ?? '')) ?: null
+        );
+
         $item
-            ->setTitle($title)
-            ->setDescription(trim((string) ($payload['description'] ?? '')) ?: null)
+            ->setTitle($normalizedTitle['title'])
+            ->setDescription($normalizedTitle['description'])
             ->setOwner($owner)
             ->setDueAt($dueAt);
 

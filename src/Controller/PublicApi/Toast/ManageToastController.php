@@ -4,6 +4,7 @@ namespace App\Controller\PublicApi\Toast;
 
 use App\Entity\Toast;
 use App\Repository\ToastRepository;
+use App\Workspace\ToastTitleNormalizationService;
 use App\Workspace\ToastTransferService;
 use App\Workspace\WorkspaceAccessService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,6 +18,7 @@ final class ManageToastController extends AbstractController
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly ToastTransferService $toastTransfer,
+        private readonly ToastTitleNormalizationService $toastTitleNormalization,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -54,7 +56,11 @@ final class ManageToastController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'missing_title'], 400);
         }
 
-        $toast->setTitle($title);
+        $normalizedTitle = $this->toastTitleNormalization->normalize($title, $toast->getDescription());
+
+        $toast
+            ->setTitle($normalizedTitle['title'])
+            ->setDescription($normalizedTitle['description']);
         $this->entityManager->flush();
 
         return $this->json([

@@ -11,6 +11,7 @@ final class ToastCreationService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly ToastTitleNormalizationService $toastTitleNormalization,
     ) {
     }
 
@@ -23,11 +24,13 @@ final class ToastCreationService
         ?\DateTimeImmutable $dueAt = null,
         ?Toast $previousItem = null,
     ): Toast {
+        $normalizedTitle = $this->toastTitleNormalization->normalize($title, $description);
+
         $toast = (new Toast())
             ->setWorkspace($workspace)
             ->setAuthor($author)
-            ->setTitle(trim($title))
-            ->setDescription($this->normalizeNullableText($description))
+            ->setTitle($normalizedTitle['title'])
+            ->setDescription($normalizedTitle['description'])
             ->setOwner($owner)
             ->setDueAt($dueAt)
             ->setPreviousItem($previousItem);
@@ -35,12 +38,5 @@ final class ToastCreationService
         $this->entityManager->persist($toast);
 
         return $toast;
-    }
-
-    private function normalizeNullableText(?string $value): ?string
-    {
-        $value = null !== $value ? trim($value) : null;
-
-        return '' === $value ? null : $value;
     }
 }

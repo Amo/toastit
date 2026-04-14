@@ -11,6 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'toast')]
 class Toast
 {
+    public const TITLE_MAX_LENGTH = 180;
     public const STATUS_PENDING = 'pending';
     public const STATUS_READY = 'ready';
     public const STATUS_TOASTED = 'toasted';
