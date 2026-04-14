@@ -2521,7 +2521,7 @@ watch(isMobileViewport, (isMobile) => {
                 @click="openMobileCommentModal"
               >
                 <i class="fa-regular fa-message text-sm" aria-hidden="true"></i>
-                <span>Ajouter un commentaire</span>
+                <span>Add a comment</span>
               </button>
             </div>
           </div>

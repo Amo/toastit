@@ -36,7 +36,7 @@ final class TransactionalMailer
         $email = (new Email())
             ->from(new Address($this->defaultFrom, 'Toastit'))
             ->to($user->getEmail())
-            ->subject('Votre code de connexion Toastit')
+            ->subject('Your Toastit sign-in code')
             ->html($this->twig->render('emails/auth/login_challenge.html.twig', $context))
             ->text($this->twig->render('emails/auth/login_challenge.txt.twig', $context));
 
@@ -53,7 +53,7 @@ final class TransactionalMailer
         $email = (new Email())
             ->from(new Address($this->defaultFrom, 'Toastit'))
             ->to($user->getEmail())
-            ->subject('Votre code de suppression de compte Toastit')
+            ->subject('Your Toastit account deletion code')
             ->html($this->twig->render('emails/auth/delete_account_challenge.html.twig', $context))
             ->text($this->twig->render('emails/auth/delete_account_challenge.txt.twig', $context));
 

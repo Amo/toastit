@@ -1,30 +1,30 @@
 {% extends 'emails/base.html.twig' %}
 
 {% block email_body %}
-    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Connexion a Toastit</h1>
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.1;">Sign in to Toastit</h1>
     <p style="margin:0 0 24px;font-size:16px;line-height:1.6;">
-        Utilisez le bouton ci-dessous pour vous connecter directement. Si le bouton ne fonctionne pas, saisissez le code dans l'application.
+        Use the button below to sign in instantly. If it does not work, enter the code in the app.
     </p>
     <p style="margin:0 0 24px;">
         <a href="{{ magic_link }}" style="display:inline-block;padding:14px 22px;background:#f4c542;border-radius:999px;color:#1f1209;font-weight:700;text-decoration:none;">
-            Se connecter
+            Sign in
         </a>
     </p>
-    <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">Code de connection</p>
+    <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">Sign-in code</p>
     <p style="margin:0 0 24px;font-size:32px;font-weight:700;letter-spacing:0.12em;">{{ challenge.code|slice(0, 3) }} {{ challenge.code|slice(3, 3) }}</p>
-    <p style="margin:0;font-size:14px;color:#6b7280;">Ce code expire dans 10 minutes et ne peut être utilise qu'une seule fois.</p>
+    <p style="margin:0;font-size:14px;color:#6b7280;">This code expires in 10 minutes and can only be used once.</p>
 
     <hr style="margin:28px 0 16px;border:0;border-top:1px solid #e7e5e4;">
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#78716c;">
-        Cet email est envoyé automatiquement depuis <strong>no-reply@toastit.cc</strong>. Merci de ne pas y répondre.
+        This email was sent automatically from <strong>no-reply@toastit.cc</strong>. Please do not reply.
     </p>
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#78716c;">
-        Besoin d'aide ou envie de partager un retour ? Contactez-nous: <a href="mailto:hello@toastit.cc" style="color:#b45309;text-decoration:underline;">hello@toastit.cc</a>
+        Need help or want to share feedback? Contact us: <a href="mailto:hello@toastit.cc" style="color:#b45309;text-decoration:underline;">hello@toastit.cc</a>
     </p>
     <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#78716c;">
-        Mentions légales &amp; RGPD: <a href="https://toastit.cc/gdpr" style="color:#b45309;text-decoration:underline;">toastit.cc/gdpr</a>
+        Legal notice &amp; GDPR: <a href="https://toastit.cc/gdpr" style="color:#b45309;text-decoration:underline;">toastit.cc/gdpr</a>
     </p>
     <p style="margin:0;font-size:12px;line-height:1.6;color:#78716c;">
-        Toastit est en beta active. Merci pour votre confiance.
+        Toastit is in active beta. Thank you for your trust.
     </p>
 {% endblock %}
