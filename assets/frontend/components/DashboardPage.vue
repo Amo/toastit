@@ -190,6 +190,13 @@ const workspacePriorityCounts = (workspaceId) => {
   return workspaceAssignedPriorityCounts.value[normalizedWorkspaceId] ?? { late: 0, dueSoon: 0, boosted: 0 };
 };
 
+const workspaceOpenToastLabel = (workspace) => {
+  const total = Number(workspace?.openItemCount ?? 0);
+  const normalizedTotal = Number.isFinite(total) && total > 0 ? total : 0;
+
+  return `${normalizedTotal} toast${normalizedTotal > 1 ? 's' : ''}`;
+};
+
 const openHome = () => {
   window.location.href = '/app';
 };
@@ -336,9 +343,15 @@ onUnmounted(() => {
                 {{ workspace.name }}
               </p>
               <p class="mt-1 truncate text-xs text-stone-500">
-                <span v-if="workspace.isInboxWorkspace">Inbox workspace</span>
-                <span v-else-if="workspace.isSoloWorkspace">Solo workspace</span>
-                <span v-else>{{ workspace.memberCount }} members</span>
+                <span v-if="workspace.isInboxWorkspace">
+                  Inbox workspace - {{ workspaceOpenToastLabel(workspace) }}
+                </span>
+                <span v-else-if="workspace.isSoloWorkspace">
+                  Solo workspace - {{ workspaceOpenToastLabel(workspace) }}
+                </span>
+                <span v-else>
+                  {{ workspace.memberCount }} members - {{ workspaceOpenToastLabel(workspace) }}
+                </span>
               </p>
             </div>
             <span class="inline-flex items-center gap-1.5">
