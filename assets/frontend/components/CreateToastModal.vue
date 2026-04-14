@@ -1,11 +1,11 @@
 <script setup>
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import DatePickerField from './DatePickerField.vue';
 import KeyboardHint from './KeyboardHint.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, required: true },
   itemForm: { type: Object, required: true },
   participants: { type: Array, default: () => [] },
@@ -15,14 +15,34 @@ defineProps({
   canUndoRefinement: { type: Boolean, default: false },
 });
 
-defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
+const emit = defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
 
 const titleInput = ref(null);
 
+const resizeTitleField = (target = titleInput.value) => {
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  target.style.height = 'auto';
+  target.style.height = `${Math.max(target.scrollHeight, 48)}px`;
+};
+
+const handleTitleInput = (event) => {
+  emit('update:title', event.target.value);
+  resizeTitleField(event.target);
+};
+
 const focusTitle = async () => {
   await nextTick();
+  resizeTitleField();
   titleInput.value?.focus();
 };
+
+watch(() => props.itemForm?.title, async () => {
+  await nextTick();
+  resizeTitleField();
+});
 
 defineExpose({
   focusTitle,
@@ -44,16 +64,16 @@ defineExpose({
 
       <label class="grid gap-2 text-sm font-medium text-stone-700">
         <span>Title</span>
-        <input
+        <textarea
           ref="titleInput"
-          class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base"
-          type="text"
+          class="min-h-12 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
           :value="itemForm.title"
           :disabled="isRefining"
+          rows="1"
           placeholder="New toast"
-          @input="$emit('update:title', $event.target.value)"
+          @input="handleTitleInput"
           @keydown="$emit('title-input', $event)"
-        >
+        />
       </label>
 
       <div class="grid gap-4 md:grid-cols-2">
