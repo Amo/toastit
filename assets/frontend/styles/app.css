@@ -332,16 +332,18 @@
   padding: 0 0.75rem 0.75rem;
 }
 
-.datepicker-view .days {
+.datepicker-view .days .datepicker-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.2rem;
 }
 
 .datepicker-grid .dow {
-  display: grid;
-  place-items: center;
+  display: block;
   min-height: 2rem;
+  line-height: 2rem;
+  text-align: center;
+  white-space: nowrap;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;

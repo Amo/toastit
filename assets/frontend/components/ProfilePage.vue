@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
-import { authStore } from '../authStore';
+import { authState, authStore } from '../authStore';
 import { ProfileApi } from '../api/profile';
 import AvatarBadge from './AvatarBadge.vue';
 import EmptyState from './EmptyState.vue';
@@ -84,12 +84,36 @@ const normalizeProfileSection = (value) => (
   profileSections.some((section) => section.key === value) ? value : 'infos'
 );
 
-const currentProfileSection = computed(() => normalizeProfileSection(
-  typeof route.query.section === 'string' ? route.query.section : 'infos',
-));
+const profileMenuItems = [
+  { label: 'Infos', to: '/app/profile?section=infos' },
+  { label: 'Preferences', to: '/app/profile?section=preferences' },
+  { label: 'API tokens', to: '/app/profile?section=api' },
+  { label: 'Trash', to: '/app/profile?section=trash' },
+  { label: 'Account', to: '/app/profile?section=account' },
+];
+
+const adminMenuItems = [
+  { label: 'Statistics', to: '/admin' },
+  { label: 'Users', to: '/admin/users' },
+  { label: 'Prompts', to: '/admin/prompts' },
+];
+
+const shouldForceProfileMenuFromQuery = computed(() => {
+  const menuQuery = typeof route.query.menu === 'string' ? route.query.menu.toLowerCase() : '';
+  return ['1', 'true', 'on'].includes(menuQuery);
+});
+
+const currentProfileSection = computed(() => {
+  const sectionQuery = typeof route.query.section === 'string' ? route.query.section : '';
+  if (isMobileViewport.value && !sectionQuery) {
+    return 'menu';
+  }
+
+  return normalizeProfileSection(sectionQuery || 'infos');
+});
 
 const currentProfileSectionLabel = computed(() => (
-  profileSections.find((section) => section.key === currentProfileSection.value)?.label ?? 'Infos'
+  profileSections.find((section) => section.key === currentProfileSection.value)?.label ?? 'My profile'
 ));
 
 const isMobileViewport = ref(false);
@@ -98,8 +122,36 @@ const syncViewport = () => {
   isMobileViewport.value = window.innerWidth < 1024;
 };
 
+const isMobileProfileMenu = computed(() => {
+  if (!isMobileViewport.value) {
+    return false;
+  }
+
+  if (String(route.name ?? '') !== 'profile') {
+    return false;
+  }
+
+  if (shouldForceProfileMenuFromQuery.value) {
+    return true;
+  }
+
+  return currentProfileSection.value === 'menu';
+});
+
+const canAccessAdminSection = computed(() => {
+  if (profile.value?.isRoot === true) {
+    return true;
+  }
+
+  return authState.user?.isRoot === true;
+});
+
 const goBackFromProfileSection = () => {
-  router.push({ path: '/app/profile', query: { menu: '1' } });
+  router.push('/app/profile');
+};
+
+const openProfileMenuItem = (target) => {
+  router.push(target);
 };
 
 const currentProfileSectionDescription = computed(() => {
@@ -567,9 +619,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="space-y-6">
+  <section :class="isMobileViewport && !isMobileProfileMenu ? 'space-y-0' : 'space-y-6'">
     <div
-      v-if="isMobileViewport"
+      v-if="isMobileViewport && !isMobileProfileMenu"
       class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/95 px-3 pb-3 backdrop-blur"
       :style="{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))' }"
     >
@@ -595,11 +647,52 @@ onUnmounted(() => {
       :description="currentProfileSectionDescription"
     />
 
-    <div :class="isMobileViewport ? '' : 'tw-toastit-card p-6'">
+    <div :class="isMobileViewport && isMobileProfileMenu ? 'tw-toastit-card p-6' : (isMobileViewport ? '' : 'tw-toastit-card p-6')">
       <EmptyState v-if="isLoading" message="Loading..." />
       <div v-else :class="isMobileViewport ? 'space-y-6' : 'space-y-8'">
+          <template v-if="isMobileProfileMenu">
+            <div class="space-y-5">
+              <div class="sticky top-0 z-20 -mx-6 -mt-1 mb-2 bg-white/95 px-6 py-2 backdrop-blur">
+                <h2 class="text-2xl font-semibold tracking-tight text-stone-950">My profile.</h2>
+              </div>
+
+              <section class="space-y-2">
+                <p class="px-4 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">My profile</p>
+                <div class="-mx-6 overflow-hidden border-y border-stone-200 bg-white">
+                  <button
+                    v-for="item in profileMenuItems"
+                    :key="item.to"
+                    type="button"
+                    class="flex w-full items-center justify-between border-b border-stone-200 px-6 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
+                    @click="openProfileMenuItem(item.to)"
+                  >
+                    <span>{{ item.label }}</span>
+                    <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </section>
+
+              <section v-if="canAccessAdminSection" class="space-y-2">
+                <p class="px-4 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Administration</p>
+                <div class="-mx-6 overflow-hidden border-y border-stone-200 bg-white">
+                  <button
+                    v-for="item in adminMenuItems"
+                    :key="item.to"
+                    type="button"
+                    class="flex w-full items-center justify-between border-b border-stone-200 px-6 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
+                    @click="openProfileMenuItem(item.to)"
+                  >
+                    <span>{{ item.label }}</span>
+                    <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </template>
+
+          <template v-else>
           <template v-if="currentProfileSection === 'infos'">
-            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-5 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
+            <div :class="isMobileViewport ? 'space-y-4 border-b border-stone-200 bg-white px-5 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                   <AvatarBadge
@@ -657,7 +750,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'preferences'">
-            <div :class="isMobileViewport ? 'border-y border-stone-200 bg-white px-4 py-4' : 'rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
+            <div :class="isMobileViewport ? 'border-b border-stone-200 bg-white px-4 py-4' : 'rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
               <h3 class="text-base font-semibold text-stone-950">Inbound xAI auto-apply</h3>
               <p class="mt-1 text-sm text-stone-600">
                 Choose which xAI suggestions are automatically applied when a new toast is created from inbound email.
@@ -741,7 +834,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'api'">
-            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
+            <div :class="isMobileViewport ? 'space-y-4 border-b border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
               <div>
                 <h3 class="text-base font-semibold text-stone-950">Personal access tokens</h3>
                 <p class="mt-1 text-sm text-stone-600">
@@ -838,7 +931,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'trash'">
-            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5'">
+            <div :class="isMobileViewport ? 'space-y-4 border-b border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5'">
               <div>
                 <h3 class="text-base font-semibold text-stone-950">Deleted workspaces</h3>
                 <p class="mt-1 text-sm text-stone-600">Only owners can see and restore deleted workspaces.</p>
@@ -867,7 +960,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'account'">
-            <div :class="isMobileViewport ? 'border-y border-rose-200 bg-rose-50/60 px-4 py-4' : 'rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5'">
+            <div :class="isMobileViewport ? 'border-b border-rose-200 bg-rose-50/60 px-4 py-4' : 'rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5'">
               <div class="space-y-3">
                 <div>
                   <h3 class="text-base font-semibold text-rose-900">Delete my account</h3>
@@ -878,6 +971,7 @@ onUnmounted(() => {
                 <SecondaryActionButton @click="openDeleteModal">Delete my account</SecondaryActionButton>
               </div>
             </div>
+          </template>
           </template>
       </div>
     </div>

@@ -2345,15 +2345,6 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
           >
             <div class="flex items-stretch divide-x divide-stone-200/80">
               <button
-                v-if="selectedToastModal.currentUserCanEdit && isActiveToast(selectedToastModal) && !isToastingMode"
-                type="button"
-                class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center px-3.5 py-2.5 text-stone-700 transition hover:text-stone-950"
-                @click="openEditToastModal(selectedToastModal)"
-              >
-                <i class="fa-solid fa-pen text-sm" aria-hidden="true"></i>
-                <span class="sr-only">Edit toast</span>
-              </button>
-              <button
                 v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
                 type="button"
                 class="inline-flex min-h-12 min-w-[3.75rem] flex-1 items-center justify-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold transition"
@@ -2363,6 +2354,16 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
               >
                 <span>{{ selectedToastModal.voteCount }}</span>
                 <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
+              </button>
+              <button
+                v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace && isActiveToast(selectedToastModal)"
+                type="button"
+                class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center px-3.5 py-2.5 transition"
+                :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-transparent text-slate-600'"
+                @click="toggleBoost(selectedToastModal.id)"
+              >
+                <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
+                <span class="sr-only">{{ selectedToastModal.isBoosted ? 'Remove boost' : 'Boost' }}</span>
               </button>
               <button
                 v-if="selectedToastModal.currentUserCanMarkReady"
@@ -2376,14 +2377,13 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                 <span class="sr-only">{{ selectedToastModal.status === 'ready' ? 'In progress' : 'Ready' }}</span>
               </button>
               <button
-                v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace && isActiveToast(selectedToastModal)"
+                v-if="selectedToastModal.currentUserCanEdit && isActiveToast(selectedToastModal) && !isToastingMode"
                 type="button"
-                class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center px-3.5 py-2.5 transition"
-                :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-transparent text-slate-600'"
-                @click="toggleBoost(selectedToastModal.id)"
+                class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center px-3.5 py-2.5 text-stone-700 transition hover:text-stone-950"
+                @click="openEditToastModal(selectedToastModal)"
               >
-                <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
-                <span class="sr-only">{{ selectedToastModal.isBoosted ? 'Remove boost' : 'Boost' }}</span>
+                <i class="fa-solid fa-pen text-sm" aria-hidden="true"></i>
+                <span class="sr-only">Edit toast</span>
               </button>
               <button
                 v-if="workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(selectedToastModal)"
@@ -2649,87 +2649,94 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
             </div>
           </ModalHeader>
           <div class="mt-4 border-t border-stone-100 px-6 pb-4 pt-4">
-            <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-stone-200/80 bg-white/90 p-2">
-              <button
-                v-if="selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted'"
-                type="button"
-                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
-                title="Copy as new"
-                @click="copyToast()"
-              >
-                <i class="fa-regular fa-copy text-sm" aria-hidden="true"></i>
-                <span class="sr-only">Copy as new</span>
-              </button>
-              <button
-                v-if="selectedToastModal.currentUserCanEdit && isActiveToast(selectedToastModal) && !isToastingMode"
-                type="button"
-                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
-                @click="openEditToastModal(selectedToastModal)"
-              >
-                <i class="fa-solid fa-pen text-sm" aria-hidden="true"></i>
-                <span class="sr-only">Edit toast</span>
-              </button>
-              <button
-                v-if="isActiveToast(selectedToastModal) && otherWorkspaces.length && !isToastingMode"
-                type="button"
-                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
-                @click="openMoveCopyToastModal"
-              >
-                <i class="fa-solid fa-right-left text-sm" aria-hidden="true"></i>
-                <span class="sr-only">Move or copy toast</span>
-              </button>
-              <button
-                v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
-                :class="selectedToastModal.currentUserHasVoted ? 'bg-amber-200 text-amber-900' : 'bg-stone-100 text-stone-700'"
-                :disabled="isToastingMode"
-                @click="toggleVote(selectedToastModal.id)"
-              >
-                <span>{{ selectedToastModal.voteCount }}</span>
-                <i class="fa-solid fa-thumbs-up text-[0.7rem]" aria-hidden="true"></i>
-              </button>
-              <button
-                v-if="selectedToastModal.currentUserCanMarkReady"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition"
-                :class="selectedToastModal.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
-                :disabled="isToastingMode"
-                @click="setReady(selectedToastModal.id, selectedToastModal.status !== 'ready')"
-              >
-                <i :class="selectedToastModal.status === 'ready' ? 'fa-solid fa-rotate-left text-[0.7rem]' : 'fa-solid fa-check text-[0.7rem]'" aria-hidden="true"></i>
-                <span>{{ selectedToastModal.status === 'ready' ? 'Mark in progress' : 'Mark ready' }}</span>
-              </button>
-              <button
-                v-if="workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(selectedToastModal)"
-                type="button"
-                class="inline-grid h-10 w-10 place-items-center rounded-full border border-amber-200 bg-white text-amber-700 transition hover:border-amber-300 hover:bg-amber-50"
-                @click="toastItem(selectedToastModal.id)"
-              >
-                  <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
-                <span class="sr-only">Mark as toasted</span>
-              </button>
-              <template v-if="workspace.currentUserIsOwner && isActiveToast(selectedToastModal) && !isToastingMode">
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200">
                 <button
-                  v-if="!isSoloWorkspace"
+                  v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
                   type="button"
-                  class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
-                  :class="selectedToastModal.isBoosted ? 'border-slate-400 bg-slate-400 text-white' : 'border-stone-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-700'"
+                  class="inline-flex min-h-11 items-center justify-center gap-2 border-r border-stone-200 px-4 text-sm font-semibold transition last:border-r-0"
+                  :class="selectedToastModal.currentUserHasVoted ? 'bg-amber-200 text-amber-900' : 'bg-white text-stone-700 hover:bg-stone-50'"
+                  :disabled="isToastingMode"
+                  @click="toggleVote(selectedToastModal.id)"
+                >
+                  <span>{{ selectedToastModal.voteCount }}</span>
+                  <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
+                </button>
+                <button
+                  v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace && isActiveToast(selectedToastModal)"
+                  type="button"
+                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 px-4 transition"
+                  :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-white text-slate-600 hover:bg-stone-50'"
                   @click="toggleBoost(selectedToastModal.id)"
                 >
                   <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
                   <span class="sr-only">{{ selectedToastModal.isBoosted ? 'Remove boost' : 'Boost' }}</span>
                 </button>
                 <button
+                  v-if="selectedToastModal.currentUserCanMarkReady"
                   type="button"
-                  class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
-                  :class="selectedToastModal.status === 'discarded' ? 'border-red-300 bg-red-100 text-red-700' : 'border-stone-200 bg-white text-stone-600 hover:border-red-200 hover:text-red-700'"
+                  class="inline-flex min-h-11 items-center justify-center gap-2 border-r border-stone-200 px-4 text-sm font-semibold transition"
+                  :class="selectedToastModal.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
+                  :disabled="isToastingMode"
+                  @click="setReady(selectedToastModal.id, selectedToastModal.status !== 'ready')"
+                >
+                  <i :class="selectedToastModal.status === 'ready' ? 'fa-solid fa-rotate-left text-sm' : 'fa-solid fa-check text-sm'" aria-hidden="true"></i>
+                  <span>{{ selectedToastModal.status === 'ready' ? 'Mark in progress' : 'Mark ready' }}</span>
+                </button>
+                <button
+                  v-if="selectedToastModal.currentUserCanEdit && isActiveToast(selectedToastModal) && !isToastingMode"
+                  type="button"
+                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
+                  @click="openEditToastModal(selectedToastModal)"
+                >
+                  <i class="fa-solid fa-pen text-sm" aria-hidden="true"></i>
+                  <span class="sr-only">Edit toast</span>
+                </button>
+                <button
+                  v-if="workspace.currentUserIsOwner && isActiveToast(selectedToastModal) && !isToastingMode"
+                  type="button"
+                  class="inline-grid min-h-11 min-w-12 place-items-center bg-white px-4 transition hover:bg-stone-50"
+                  :class="selectedToastModal.status === 'discarded' ? 'text-red-700' : 'text-stone-600 hover:text-red-700'"
                   @click="toggleVeto(selectedToastModal.id)"
                 >
                   <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
                   <span class="sr-only">{{ selectedToastModal.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
                 </button>
-              </template>
+              </div>
+
+              <div
+                v-if="(selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted') || (isActiveToast(selectedToastModal) && otherWorkspaces.length && !isToastingMode) || (workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(selectedToastModal))"
+                class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200"
+              >
+                <button
+                  v-if="isActiveToast(selectedToastModal) && otherWorkspaces.length && !isToastingMode"
+                  type="button"
+                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
+                  @click="openMoveCopyToastModal"
+                >
+                  <i class="fa-solid fa-right-left text-sm" aria-hidden="true"></i>
+                  <span class="sr-only">Move or copy toast</span>
+                </button>
+                <button
+                  v-if="selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted'"
+                  type="button"
+                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
+                  title="Copy as new"
+                  @click="copyToast()"
+                >
+                  <i class="fa-regular fa-copy text-sm" aria-hidden="true"></i>
+                  <span class="sr-only">Copy as new</span>
+                </button>
+                <button
+                  v-if="workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(selectedToastModal)"
+                  type="button"
+                  class="inline-grid min-h-11 min-w-12 place-items-center bg-white px-4 text-amber-700 transition hover:bg-amber-50"
+                  @click="toastItem(selectedToastModal.id)"
+                >
+                  <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
+                  <span class="sr-only">Mark as toasted</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

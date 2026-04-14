@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -18,7 +18,6 @@ const route = useRoute();
 const router = useRouter();
 const touchStart = ref(null);
 const workspacePickerOpen = ref(false);
-const profileMenuOpen = ref(false);
 
 const tabs = computed(() => [
   {
@@ -125,20 +124,6 @@ const workspaceOptions = computed(() => (props.navigationWorkspaces ?? [])
     isInboxWorkspace: workspace.isInboxWorkspace === true,
   })));
 
-const profileMenuItems = [
-  { label: 'Infos', to: '/app/profile' },
-  { label: 'Preferences', to: '/app/profile?section=preferences' },
-  { label: 'API tokens', to: '/app/profile?section=api' },
-  { label: 'Trash', to: '/app/profile?section=trash' },
-  { label: 'Account', to: '/app/profile?section=account' },
-];
-
-const adminMenuItems = [
-  { label: 'Statistics', to: '/admin' },
-  { label: 'Users', to: '/admin/users' },
-  { label: 'Prompts', to: '/admin/prompts' },
-];
-
 const requestCreateToastInCurrentWorkspace = () => {
   window.dispatchEvent(new CustomEvent('toastit:create-toast'));
 };
@@ -192,7 +177,7 @@ const openCreateWorkspace = () => {
 
 const navigateToTab = (tabKey) => {
   if (tabKey === 'profile') {
-    profileMenuOpen.value = true;
+    router.push('/app/profile');
     return;
   }
 
@@ -202,17 +187,6 @@ const navigateToTab = (tabKey) => {
   }
 
   router.push(tab.to);
-};
-
-const openProfileMenuItem = (target) => {
-  profileMenuOpen.value = false;
-  router.push(target);
-};
-
-const shouldOpenProfileMenuFromRoute = () => {
-  const routeName = String(route.name ?? '');
-  const menuQuery = typeof route.query.menu === 'string' ? route.query.menu.toLowerCase() : '';
-  return routeName === 'profile' && ['1', 'true', 'on'].includes(menuQuery);
 };
 
 const shouldIgnoreSwipe = (event) => {
@@ -271,17 +245,6 @@ const handleTouchEnd = (event) => {
   navigateToTab(targetKey);
 };
 
-watch(
-  () => route.fullPath,
-  () => {
-    if (!shouldOpenProfileMenuFromRoute()) {
-      return;
-    }
-
-    profileMenuOpen.value = true;
-  },
-  { immediate: true },
-);
 </script>
 
 <template>
@@ -362,46 +325,5 @@ watch(
       </div>
     </ModalDialog>
 
-    <ModalDialog v-if="profileMenuOpen" max-width-class="max-w-2xl" @close="profileMenuOpen = false">
-      <ModalHeader
-        eyebrow="Profile"
-        title="My profile"
-        description="Choose where to go."
-        @close="profileMenuOpen = false"
-      />
-      <div class="max-h-[calc(100dvh-9rem)] space-y-6 overflow-y-auto px-6 py-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <section class="space-y-2">
-          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">My profile</p>
-          <div class="overflow-hidden border-y border-stone-200 bg-white">
-            <button
-              v-for="item in profileMenuItems"
-              :key="item.to"
-              type="button"
-              class="flex w-full items-center justify-between border-b border-stone-200 px-4 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
-              @click="openProfileMenuItem(item.to)"
-            >
-              <span>{{ item.label }}</span>
-              <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
-            </button>
-          </div>
-        </section>
-
-        <section v-if="props.user?.isRoot" class="space-y-2">
-          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Administration</p>
-          <div class="overflow-hidden border-y border-stone-200 bg-white">
-            <button
-              v-for="item in adminMenuItems"
-              :key="item.to"
-              type="button"
-              class="flex w-full items-center justify-between border-b border-stone-200 px-4 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
-              @click="openProfileMenuItem(item.to)"
-            >
-              <span>{{ item.label }}</span>
-              <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
-            </button>
-          </div>
-        </section>
-      </div>
-    </ModalDialog>
   </div>
 </template>

@@ -5,6 +5,7 @@ defineProps({
   eyebrow: { type: String, default: '' },
   title: { type: String, required: true },
   description: { type: String, default: '' },
+  showBackButton: { type: Boolean, default: true },
 });
 
 defineEmits(['close']);
@@ -12,7 +13,7 @@ defineEmits(['close']);
 
 <template>
   <div class="sticky top-0 z-20 border-b border-stone-100 bg-white px-4 py-4 md:static md:px-6 md:py-5 md:pr-20">
-    <div class="mb-3 md:hidden">
+    <div v-if="showBackButton" class="mb-3 md:hidden">
       <button
         type="button"
         class="inline-grid h-9 w-9 place-items-center rounded-full border border-stone-200 text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
