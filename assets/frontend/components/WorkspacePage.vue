@@ -91,6 +91,7 @@ const mobileCommentsSectionRef = ref(null);
 const mobileActionBarDocked = ref(false);
 const mobileActionBarScrollFrame = ref(0);
 const isMobileCommentModalOpen = ref(false);
+const mobileVetoConfirmToastId = ref(null);
 let archivedToastObserver = null;
 let inboxAddressCopiedTimeout = null;
 const apiClient = new ToastitApiClient(props.accessToken, {
@@ -1205,6 +1206,7 @@ const openToastModal = (item) => {
 const closeToastModal = () => {
   closeMoveCopyToastModal();
   closeMobileCommentModal();
+  closeMobileVetoConfirmModal();
 
   if (standaloneMode.value) {
     router.push(resolveToastReturnToPath());
@@ -1379,6 +1381,21 @@ const submitMobileComment = async () => {
   }
 };
 
+const closeMobileVetoConfirmModal = () => {
+  mobileVetoConfirmToastId.value = null;
+};
+
+const confirmMobileVeto = async () => {
+  const toastId = Number(mobileVetoConfirmToastId.value);
+  if (!Number.isFinite(toastId) || toastId <= 0) {
+    closeMobileVetoConfirmModal();
+    return;
+  }
+
+  closeMobileVetoConfirmModal();
+  await toggleVeto(toastId);
+};
+
 const saveWorkspaceSettings = async () => {
   if (!workspace.value?.currentUserIsOwner) return;
 
@@ -1514,10 +1531,8 @@ const requestMobileToastVeto = async (itemId) => {
   }
 
   if (target.status !== 'discarded') {
-    const confirmed = window.confirm('Decline this toast?');
-    if (!confirmed) {
-      return;
-    }
+    mobileVetoConfirmToastId.value = target.id;
+    return;
   }
 
   await toggleVeto(itemId);
@@ -2798,6 +2813,33 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
               @click="submitMobileComment"
             >
               Add comment
+            </button>
+          </div>
+        </div>
+      </ModalDialog>
+
+      <ModalDialog v-if="useDedicatedMobileToastView && selectedToastModal && mobileVetoConfirmToastId" max-width-class="max-w-4xl" @close="closeMobileVetoConfirmModal">
+        <ModalHeader
+          eyebrow="Confirmation"
+          title="Decline this toast?"
+          description="This action will move the toast to declined."
+          @close="closeMobileVetoConfirmModal"
+        />
+        <div class="space-y-4 px-6 py-6">
+          <div class="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+              @click="closeMobileVetoConfirmModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
+              @click="confirmMobileVeto"
+            >
+              Decline toast
             </button>
           </div>
         </div>
