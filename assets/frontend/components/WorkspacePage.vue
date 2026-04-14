@@ -1587,6 +1587,11 @@ const toastItem = async (itemId) => {
     return;
   }
 
+  if (standaloneMode.value && isMobileViewport.value) {
+    router.push(resolveToastReturnToPath());
+    return;
+  }
+
   await fetchWorkspace();
 };
 
