@@ -31,14 +31,15 @@ class UserRepository extends ServiceEntityRepository
      */
     public function findDigestRecipients(): array
     {
-        $users = $this->createQueryBuilder('user')
+        return $this->createQueryBuilder('user')
+            ->where('user.pinHash IS NOT NULL')
             ->orderBy('user.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
 
-        return array_values(array_filter(
-            $users,
-            static fn (User $user): bool => null !== $user->getPublicEmail(),
-        ));
+    public function isEligibleForDailyDigest(User $user): bool
+    {
+        return null !== $user->getPublicEmail() && $user->hasPin();
     }
 }

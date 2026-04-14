@@ -45,7 +45,7 @@ final class SendDailyDigestCommand extends Command
         $recipients = '' !== $email
             ? array_filter(
                 [$this->userRepository->findOneByNormalizedEmail(mb_strtolower($email))],
-                static fn ($user): bool => null !== $user && null !== $user->getPublicEmail()
+                fn ($user): bool => null !== $user && $this->userRepository->isEligibleForDailyDigest($user)
             )
             : $this->userRepository->findDigestRecipients();
 
