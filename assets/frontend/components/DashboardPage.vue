@@ -275,8 +275,7 @@ onUnmounted(() => {
     <div v-if="!isMobileViewport || mobileSection === 'toasts'" class="tw-toastit-card overflow-hidden p-6">
         <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">My actions</p>
-            <h2 class="mt-2 text-2xl font-semibold tracking-tight text-stone-950">Focus now.</h2>
+            <h2 class="text-2xl font-semibold tracking-tight text-stone-950">Focus now.</h2>
           </div>
         </div>
 
@@ -333,8 +332,7 @@ onUnmounted(() => {
     <div v-if="!isMobileViewport || mobileSection === 'workspaces'" class="tw-toastit-card overflow-hidden p-6">
       <div class="mb-5 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Workspace</p>
-          <h2 class="mt-2 text-2xl font-semibold tracking-tight text-stone-950">All workspaces.</h2>
+          <h2 class="text-2xl font-semibold tracking-tight text-stone-950">All workspaces.</h2>
         </div>
       </div>
 
