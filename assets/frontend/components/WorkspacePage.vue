@@ -1925,7 +1925,10 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
       <template v-if="!standaloneMode">
       <div
         class="relative px-4 lg:px-6"
-        :class="resolvedWorkspaceBackgroundUrl ? 'rounded-none lg:rounded-3xl py-4 lg:py-6' : 'py-4 lg:py-0'"
+        :class="[
+          resolvedWorkspaceBackgroundUrl ? 'rounded-none lg:rounded-3xl py-4 lg:py-6' : 'py-4 lg:py-0',
+          isMobileViewport ? 'sticky top-0 z-30 bg-white/95 backdrop-blur' : '',
+        ]"
         :style="resolvedWorkspaceBackgroundUrl ? workspaceHeaderBackgroundStyle : {}"
       >
         <PageHeader

@@ -290,8 +290,8 @@ onUnmounted(() => {
 
 <template>
   <section class="space-y-6">
-    <div v-if="!isMobileViewport || mobileSection === 'toasts'" class="tw-toastit-card overflow-hidden p-6">
-        <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div v-if="!isMobileViewport || mobileSection === 'toasts'" class="tw-toastit-card p-6">
+        <div class="sticky top-0 z-20 -mx-6 mb-5 flex flex-col gap-4 bg-white/95 px-6 py-2 backdrop-blur lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-0 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 class="text-2xl font-semibold tracking-tight text-stone-950">Focus now.</h2>
           </div>
@@ -347,8 +347,8 @@ onUnmounted(() => {
         </div>
     </div>
 
-    <div v-if="!isMobileViewport || mobileSection === 'workspaces'" class="tw-toastit-card overflow-hidden p-6">
-      <div class="mb-5 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+    <div v-if="!isMobileViewport || mobileSection === 'workspaces'" class="tw-toastit-card p-6">
+      <div class="sticky top-0 z-20 -mx-6 mb-5 flex flex-col gap-2 bg-white/95 px-6 py-2 backdrop-blur lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-0 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 class="text-2xl font-semibold tracking-tight text-stone-950">All workspaces.</h2>
         </div>
