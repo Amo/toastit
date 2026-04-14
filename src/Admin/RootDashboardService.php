@@ -77,6 +77,7 @@ LEFT JOIN (
     FROM api_refresh_token
     GROUP BY user_id
 ) last_refresh ON last_refresh.user_id = u.id
+WHERE COALESCE(last_event.occurred_at, last_refresh.lastSeenAt) IS NOT NULL
 ORDER BY u.created_at DESC, u.id DESC
 SQL;
 
