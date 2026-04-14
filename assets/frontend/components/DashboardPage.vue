@@ -280,12 +280,12 @@ onUnmounted(() => {
 
       <EmptyState v-if="isLoading" message="Loading..." />
       <EmptyState v-else-if="!(payload.workspaces?.length ?? 0)" message="No workspace yet." />
-      <div v-else class="grid gap-3">
+      <div v-else class="-mx-6 space-y-3 bg-white py-4 lg:mx-0 lg:grid lg:gap-3 lg:space-y-0 lg:bg-transparent lg:py-0">
         <button
           v-for="workspace in payload.workspaces"
           :key="workspace.id"
           type="button"
-          class="group rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left transition hover:border-amber-200 hover:bg-amber-50/30"
+          class="group border-l-[5px] border-transparent px-4 py-2 text-left transition hover:bg-stone-50 lg:rounded-2xl lg:border lg:border-stone-200 lg:bg-white lg:px-4 lg:py-3 lg:hover:border-amber-200 lg:hover:bg-amber-50/30"
           @click="openWorkspaceFromSummary(workspace)"
         >
           <div class="flex items-center justify-between gap-3">
