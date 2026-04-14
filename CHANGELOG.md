@@ -1,3 +1,29 @@
+## 1.1.0 (April 14, 2026)
+- NEW: redesigned mobile experience to feel like a real app
+  - Simplified mobile navigation with a fixed bottom bar (Toasts, Workspaces, Profile)
+  - Reworked main screens for smoother reading and navigation on mobile
+  - Updated floating action buttons for easier thumb interaction
+- NEW: clearer priorities and list readability
+  - Toasts now show clearer visual priority states (late, due soon, boosted)
+  - Colors and icons are now consistent across the app
+  - Removed redundant or unnecessary elements to make screens lighter
+- NEW: clearer workspace list
+  - More explicit per-workspace counters (late, due soon, boosted)
+  - Zero-value counters are hidden
+  - Counters are grouped into a single right-aligned capsule
+  - Shows the total number of active toasts (new + ready) per workspace
+- NEW: improved toast view and editing on mobile
+  - Sticky header with more consistent back navigation and better long-title handling
+  - Toast actions repositioned to stay accessible while scrolling
+  - Delete confirmation is now integrated in-app (instead of browser alerts)
+  - Edit form remains visible above the bottom navigation bar
+- REMAINING WORK
+  - Profile
+  - Preferences
+  - Admin
+  - Edit form
+  - AI actions (at least some views/actions still need mobile adaptation)
+
 ## 1.0.2 (April 13, 2026)
 - NEW: legal notice and developer access links
   - Added a public `Legal notice & GDPR` page with privacy, cookie, and operator/hosting information
