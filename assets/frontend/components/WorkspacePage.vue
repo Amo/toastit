@@ -1957,8 +1957,30 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
             </div>
 
             <div class="flex flex-nowrap items-start gap-2 pt-4">
-              <CompactDropdown v-model="currentToastFilter" class="min-w-0 flex-1" icon="fa-solid fa-filter" :options="statusFilterOptions" />
-              <CompactDropdown v-if="!isSoloWorkspace" v-model="currentAssigneeFilter" class="min-w-0 flex-1" icon="fa-solid fa-user-check" :options="assigneeFilterOptions" />
+              <template v-if="isMobileViewport">
+                <label class="relative min-w-0 flex-1">
+                  <span class="sr-only">Status filter</span>
+                  <select v-model="currentToastFilter" class="h-11 w-full appearance-none rounded-2xl border border-stone-200 bg-white px-4 pr-9 text-sm font-medium text-stone-700">
+                    <option v-for="option in statusFilterOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </option>
+                  </select>
+                  <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400" aria-hidden="true"></i>
+                </label>
+                <label v-if="!isSoloWorkspace" class="relative min-w-0 flex-1">
+                  <span class="sr-only">Assignee filter</span>
+                  <select v-model="currentAssigneeFilter" class="h-11 w-full appearance-none rounded-2xl border border-stone-200 bg-white px-4 pr-9 text-sm font-medium text-stone-700">
+                    <option v-for="option in assigneeFilterOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </option>
+                  </select>
+                  <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400" aria-hidden="true"></i>
+                </label>
+              </template>
+              <template v-else>
+                <CompactDropdown v-model="currentToastFilter" class="min-w-0 flex-1" icon="fa-solid fa-filter" :options="statusFilterOptions" />
+                <CompactDropdown v-if="!isSoloWorkspace" v-model="currentAssigneeFilter" class="min-w-0 flex-1" icon="fa-solid fa-user-check" :options="assigneeFilterOptions" />
+              </template>
             </div>
 
             <EmptyState v-if="currentToastFilter === 'active' && !displayedAgendaItems.length" message="No new toasts." />
