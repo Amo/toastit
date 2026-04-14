@@ -251,6 +251,16 @@
   .tw-mobile-toast-actions--docked {
     animation: tw-mobile-toast-actions-dock-in 220ms ease-out;
   }
+
+  .tw-inbox-attention-badge {
+    @apply absolute -right-1.5 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-amber-400 px-1 py-0.5 text-[10px] font-semibold leading-none text-stone-950 shadow-sm;
+    animation: toastit-inbox-pulse 1.4s ease-in-out infinite;
+  }
+
+  .tw-inbox-attention-badge--inline {
+    @apply static min-w-6 px-1.5 py-0.5;
+    animation: toastit-inbox-pulse 1.8s ease-in-out infinite;
+  }
 }
 
 @keyframes tw-mobile-toast-actions-float-in {
@@ -417,6 +427,23 @@
 
   100% {
     opacity: 1;
+  }
+}
+
+@keyframes toastit-inbox-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+  }
+
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
   }
 }
 

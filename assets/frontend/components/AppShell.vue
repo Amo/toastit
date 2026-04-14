@@ -56,6 +56,12 @@ const navigationOpenCount = computed(() => navigationWorkspaces.value
   .reduce((total, workspace) => total + Number(workspace?.openItemCount ?? 0), 0));
 const navigationAssignedCount = computed(() => navigationWorkspaces.value
   .reduce((total, workspace) => total + Number(workspace?.assignedOpenItemCount ?? 0), 0));
+const inboxWorkspace = computed(() => navigationWorkspaces.value
+  .find((workspace) => workspace?.isInboxWorkspace === true) ?? null);
+const inboxOpenCount = computed(() => {
+  const count = Number(inboxWorkspace.value?.openItemCount ?? 0);
+  return Number.isFinite(count) && count > 0 ? count : 0;
+});
 const mobileAppModeActive = computed(() => props.showAppNavigation && isMobilePlatform.value);
 const profileSectionHref = (sectionKey) => (
   sectionKey === 'infos' ? '/app/profile' : `/app/profile?section=${sectionKey}`
@@ -229,7 +235,7 @@ watch(() => route.fullPath, () => {
             <div class="flex items-center gap-3">
               <button
                 type="button"
-                class="inline-flex h-11 w-11 items-center justify-center rounded-full border transition"
+                class="relative inline-flex h-11 w-11 items-center justify-center rounded-full border transition"
                 :class="currentSection === 'inbox'
                   ? 'border-sky-300 bg-sky-100 text-sky-700'
                   : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:text-stone-950'"
@@ -237,6 +243,12 @@ watch(() => route.fullPath, () => {
                 title="Inbox"
               >
                 <i class="fa-solid fa-inbox" aria-hidden="true"></i>
+                <span
+                  v-if="inboxOpenCount > 0"
+                  class="tw-inbox-attention-badge"
+                >
+                  {{ inboxOpenCount }}
+                </span>
                 <span class="sr-only">Open inbox</span>
               </button>
 
@@ -417,11 +429,19 @@ watch(() => route.fullPath, () => {
                 </div>
                 <a
                   href="/app/inbox"
-                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
                   :class="currentSection === 'inbox' ? 'bg-sky-100 text-sky-900' : 'text-stone-700 hover:bg-stone-100'"
                 >
-                  <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
-                  <span>Inbox</span>
+                  <span class="inline-flex items-center gap-3">
+                    <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
+                    <span>Inbox</span>
+                  </span>
+                  <span
+                    v-if="inboxOpenCount > 0"
+                    class="tw-inbox-attention-badge tw-inbox-attention-badge--inline"
+                  >
+                    {{ inboxOpenCount }}
+                  </span>
                 </a>
                 <a
                   :href="profileUrl"
@@ -555,11 +575,19 @@ watch(() => route.fullPath, () => {
                 </div>
                 <a
                   href="/app/inbox"
-                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                  class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
                   :class="currentSection === 'inbox' ? 'bg-sky-100 text-sky-900' : 'text-stone-700 hover:bg-stone-100'"
                 >
-                  <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
-                  <span>Inbox</span>
+                  <span class="inline-flex items-center gap-3">
+                    <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
+                    <span>Inbox</span>
+                  </span>
+                  <span
+                    v-if="inboxOpenCount > 0"
+                    class="tw-inbox-attention-badge tw-inbox-attention-badge--inline"
+                  >
+                    {{ inboxOpenCount }}
+                  </span>
                 </a>
                 <a
                   :href="profileUrl"
