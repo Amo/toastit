@@ -599,7 +599,7 @@ onUnmounted(() => {
       <EmptyState v-if="isLoading" message="Loading..." />
       <div v-else :class="isMobileViewport ? 'space-y-6' : 'space-y-8'">
           <template v-if="currentProfileSection === 'infos'">
-            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
+            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-5 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                   <AvatarBadge
