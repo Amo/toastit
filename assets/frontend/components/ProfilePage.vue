@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { authStore } from '../authStore';
 import { ProfileApi } from '../api/profile';
@@ -68,6 +68,7 @@ const apiClient = new ToastitApiClient(props.accessToken, {
   },
 });
 const route = useRoute();
+const router = useRouter();
 const profileApi = new ProfileApi(apiClient);
 const MIN_AVATAR_SIZE = 64;
 const MAX_AVATAR_SIZE = 256;
@@ -86,6 +87,25 @@ const normalizeProfileSection = (value) => (
 const currentProfileSection = computed(() => normalizeProfileSection(
   typeof route.query.section === 'string' ? route.query.section : 'infos',
 ));
+
+const currentProfileSectionLabel = computed(() => (
+  profileSections.find((section) => section.key === currentProfileSection.value)?.label ?? 'Infos'
+));
+
+const isMobileViewport = ref(false);
+
+const syncViewport = () => {
+  isMobileViewport.value = window.innerWidth < 1024;
+};
+
+const goBackFromProfileSection = () => {
+  if (window.history.length > 1) {
+    router.back();
+    return;
+  }
+
+  router.push('/app');
+};
 
 const currentProfileSectionDescription = computed(() => {
   if (currentProfileSection.value === 'preferences') {
@@ -535,7 +555,11 @@ const copyNewPersonalToken = async () => {
   }
 };
 
-onMounted(fetchProfile);
+onMounted(() => {
+  syncViewport();
+  fetchProfile();
+  window.addEventListener('resize', syncViewport);
+});
 onUnmounted(() => {
   if (preferencesSaveTimer) {
     window.clearTimeout(preferencesSaveTimer);
@@ -543,22 +567,44 @@ onUnmounted(() => {
   }
 
   clearPreferenceHighlight();
+  window.removeEventListener('resize', syncViewport);
 });
 </script>
 
 <template>
   <section class="space-y-6">
+    <div
+      v-if="isMobileViewport"
+      class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/95 px-3 pb-3 backdrop-blur"
+      :style="{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))' }"
+    >
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="inline-grid h-9 w-9 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+          @click="goBackFromProfileSection"
+        >
+          <i class="fa-solid fa-arrow-left text-sm" aria-hidden="true"></i>
+          <span class="sr-only">Back</span>
+        </button>
+        <h1 class="line-clamp-2 text-xl font-semibold tracking-tight text-stone-950">
+          {{ currentProfileSectionLabel }}
+        </h1>
+      </div>
+    </div>
+
     <PageHero
+      v-if="!isMobileViewport"
       eyebrow="Profile"
       :title="profile.displayName || 'My profile'"
       :description="currentProfileSectionDescription"
     />
 
-    <div class="tw-toastit-card p-6">
+    <div :class="isMobileViewport ? '' : 'tw-toastit-card p-6'">
       <EmptyState v-if="isLoading" message="Loading..." />
-      <div v-else class="space-y-8">
+      <div v-else :class="isMobileViewport ? 'space-y-6' : 'space-y-8'">
           <template v-if="currentProfileSection === 'infos'">
-            <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
+            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                   <AvatarBadge
@@ -598,7 +644,7 @@ onUnmounted(() => {
               </PrimaryActionButton>
             </div>
 
-            <div v-if="profile.inboxEmailAddress" class="rounded-[1.5rem] border border-sky-200 bg-sky-50/70 p-5">
+            <div v-if="profile.inboxEmailAddress" :class="isMobileViewport ? 'border-y border-sky-200 bg-sky-50/70 px-4 py-4' : 'rounded-[1.5rem] border border-sky-200 bg-sky-50/70 p-5'">
               <div class="space-y-3">
                 <div>
                   <h3 class="text-base font-semibold text-sky-950">Inbound email</h3>
@@ -616,7 +662,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'preferences'">
-            <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
+            <div :class="isMobileViewport ? 'border-y border-stone-200 bg-white px-4 py-4' : 'rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
               <h3 class="text-base font-semibold text-stone-950">Inbound xAI auto-apply</h3>
               <p class="mt-1 text-sm text-stone-600">
                 Choose which xAI suggestions are automatically applied when a new toast is created from inbound email.
@@ -696,7 +742,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'api'">
-            <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5">
+            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
               <div>
                 <h3 class="text-base font-semibold text-stone-950">Personal access tokens</h3>
                 <p class="mt-1 text-sm text-stone-600">
@@ -793,7 +839,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'trash'">
-            <div class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5">
+            <div :class="isMobileViewport ? 'space-y-4 border-y border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5'">
               <div>
                 <h3 class="text-base font-semibold text-stone-950">Deleted workspaces</h3>
                 <p class="mt-1 text-sm text-stone-600">Only owners can see and restore deleted workspaces.</p>
@@ -822,7 +868,7 @@ onUnmounted(() => {
           </template>
 
           <template v-if="currentProfileSection === 'account'">
-            <div class="rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5">
+            <div :class="isMobileViewport ? 'border-y border-rose-200 bg-rose-50/60 px-4 py-4' : 'rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5'">
               <div class="space-y-3">
                 <div>
                   <h3 class="text-base font-semibold text-rose-900">Delete my account</h3>
