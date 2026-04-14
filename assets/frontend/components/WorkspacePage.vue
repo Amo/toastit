@@ -2143,7 +2143,7 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
       <template v-else-if="useDedicatedMobileToastView">
         <div class="space-y-0 pb-28 pt-0">
           <div class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/95 px-3 pb-3 backdrop-blur" :style="{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))' }">
-            <div class="flex items-start gap-3">
+            <div class="flex items-center gap-3">
               <button
                 type="button"
                 class="inline-grid h-9 w-9 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
