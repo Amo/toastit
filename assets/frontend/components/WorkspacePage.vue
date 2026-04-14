@@ -385,7 +385,7 @@ const workspaceHeaderStats = computed(() => [
     label: isMobileViewport.value
       ? String(newToastCount.value)
       : `${newToastCount.value} new toast${newToastCount.value > 1 ? 's' : ''}`,
-    icon: 'fa-solid fa-bread-slice',
+    icon: 'fa-solid fa-check',
     className: resolvedWorkspaceBackgroundUrl.value ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700',
   },
   {
@@ -2128,7 +2128,7 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                           title="Mark toasted"
                           @click.stop="toastItem(item.id)"
                         >
-                          <i class="fa-solid fa-bread-slice text-sm" aria-hidden="true"></i>
+                          <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
                           <span class="sr-only">Mark as toasted</span>
                         </button>
                         <button
@@ -2234,13 +2234,14 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                   <div
                     v-for="item in visibleResolvedItems"
                     :key="item.id"
-                    class="cursor-pointer space-y-2 px-4 py-3 transition hover:bg-stone-50"
+                    class="tw-toasted-item-highlight cursor-pointer space-y-2 bg-amber-200/90 px-4 py-3 text-amber-950 transition hover:bg-amber-200"
                     @click="openToastPermalink(item.id)"
                   >
-                    <p class="block w-full truncate text-left text-sm font-medium text-stone-900">
-                      {{ item.title }}
+                    <p class="flex items-center gap-2 text-left text-sm font-semibold">
+                      <i class="fa-solid fa-check text-amber-700" aria-hidden="true"></i>
+                      <span class="block min-w-0 flex-1 truncate">{{ item.title }}</span>
                     </p>
-                    <p class="min-w-0 truncate text-xs text-stone-600">
+                    <p class="min-w-0 truncate text-xs text-amber-900/80">
                       {{ item.owner?.displayName ?? 'Unassigned' }} • {{ item.statusChangedAtDisplay }}
                     </p>
                   </div>
@@ -2390,7 +2391,7 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                 class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center bg-transparent px-3.5 py-2.5 text-amber-700 transition"
                 @click="toastItem(selectedToastModal.id)"
               >
-                <i class="fa-solid fa-bread-slice text-sm" aria-hidden="true"></i>
+                <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
                 <span class="sr-only">Mark as done</span>
               </button>
               <button
@@ -2704,7 +2705,7 @@ watch([useDedicatedMobileToastView, selectedToastModal], async () => {
                 class="inline-grid h-10 w-10 place-items-center rounded-full border border-amber-200 bg-white text-amber-700 transition hover:border-amber-300 hover:bg-amber-50"
                 @click="toastItem(selectedToastModal.id)"
               >
-                  <i class="fa-solid fa-bread-slice text-sm" aria-hidden="true"></i>
+                  <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
                 <span class="sr-only">Mark as toasted</span>
               </button>
               <template v-if="workspace.currentUserIsOwner && isActiveToast(selectedToastModal) && !isToastingMode">

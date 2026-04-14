@@ -277,6 +277,22 @@
   }
 }
 
+@keyframes tw-toasted-item-highlight-in {
+  from {
+    transform: translateX(-4px);
+    filter: saturate(0.9);
+  }
+
+  to {
+    transform: translateX(0);
+    filter: saturate(1);
+  }
+}
+
+.tw-toasted-item-highlight {
+  animation: tw-toasted-item-highlight-in 220ms ease-out;
+}
+
 .datepicker-dropdown {
   z-index: 140 !important;
 }
