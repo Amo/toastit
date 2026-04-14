@@ -74,6 +74,7 @@ final class DashboardPayloadBuilder
         return [
             'id' => $workspace->getId(),
             'name' => $workspace->getName(),
+            'ownerDisplayName' => $workspace->getOrganizer()->getDisplayName(),
             'isInboxWorkspace' => $workspace->isInboxWorkspace(),
             'isDefault' => $workspace->isDefault(),
             'isSoloWorkspace' => $workspace->isSoloWorkspace(),

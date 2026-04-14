@@ -116,6 +116,8 @@ final class DashboardPayloadBuilderTest extends TestCase
             'workspaces' => [[
                 'id' => 42,
                 'name' => 'Delivery',
+                'ownerDisplayName' => 'owner@example.com',
+                'isInboxWorkspace' => false,
                 'isDefault' => false,
                 'isSoloWorkspace' => false,
                 'currentUserIsOwner' => true,

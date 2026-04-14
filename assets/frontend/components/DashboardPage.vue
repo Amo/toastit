@@ -208,6 +208,24 @@ const workspaceOpenToastLabel = (workspace) => {
   return `${normalizedTotal} toast${normalizedTotal > 1 ? 's' : ''}`;
 };
 
+const workspaceSecondaryMeta = (workspace) => {
+  const ownerDisplayName = typeof workspace?.ownerDisplayName === 'string' ? workspace.ownerDisplayName : '';
+  const ownerLabel = ownerDisplayName ? `Owner: ${ownerDisplayName}` : 'Owner: unknown';
+
+  if (workspace?.isInboxWorkspace) {
+    return `Inbox workspace - ${workspaceOpenToastLabel(workspace)} - ${ownerLabel}`;
+  }
+
+  if (workspace?.isSoloWorkspace) {
+    return `Solo workspace - ${workspaceOpenToastLabel(workspace)} - ${ownerLabel}`;
+  }
+
+  const memberCount = Number(workspace?.memberCount ?? 0);
+  const memberLabel = `${memberCount} member${memberCount > 1 ? 's' : ''}`;
+
+  return `${memberLabel} - ${workspaceOpenToastLabel(workspace)} - ${ownerLabel}`;
+};
+
 const openHome = () => {
   window.location.href = '/app';
 };
@@ -343,7 +361,7 @@ onUnmounted(() => {
           v-for="workspace in payload.workspaces"
           :key="workspace.id"
           type="button"
-          class="group border-l-[5px] border-transparent px-4 py-2 text-left transition hover:bg-stone-50 lg:rounded-2xl lg:border lg:border-stone-200 lg:bg-white lg:px-4 lg:py-3 lg:hover:border-amber-200 lg:hover:bg-amber-50/30"
+          class="group block w-full border-l-[5px] border-transparent px-4 py-2 text-left transition hover:bg-stone-50 lg:rounded-2xl lg:border lg:border-stone-200 lg:bg-white lg:px-4 lg:py-3 lg:hover:border-amber-200 lg:hover:bg-amber-50/30"
           @click="openWorkspaceFromSummary(workspace)"
         >
           <div class="flex items-center justify-between gap-3">
@@ -352,15 +370,7 @@ onUnmounted(() => {
                 {{ workspace.name }}
               </p>
               <p class="mt-1 truncate text-xs text-stone-500">
-                <span v-if="workspace.isInboxWorkspace">
-                  Inbox workspace - {{ workspaceOpenToastLabel(workspace) }}
-                </span>
-                <span v-else-if="workspace.isSoloWorkspace">
-                  Solo workspace - {{ workspaceOpenToastLabel(workspace) }}
-                </span>
-                <span v-else>
-                  {{ workspace.memberCount }} members - {{ workspaceOpenToastLabel(workspace) }}
-                </span>
+                {{ workspaceSecondaryMeta(workspace) }}
               </p>
             </div>
             <span
