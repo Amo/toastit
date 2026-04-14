@@ -44,9 +44,11 @@ final class ToastDraftRefinementService
 
         $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
             'toast_draft_refinement_system',
-            "Requested by:\n{{ requested_by_display_name }}\n\nLanguage rule:\n{{ reword_language_instruction }}\n\nWorkspace participants:\n{{ participants_text }}\n\nCurrent title:\n{{ current_title }}\n\nCurrent description:\n{{ current_description }}",
+            "Requested by:\n{{ requested_by_display_name }}\n\nLanguage rule:\n{{ reword_language_instruction }}\n\nWorkspace name:\n{{ workspace_name }}\n\nWorkspace due-date preference:\n{{ workspace_due_preference }}\n\nWorkspace participants:\n{{ participants_text }}\n\nCurrent title:\n{{ current_title }}\n\nCurrent description:\n{{ current_description }}",
             [
                 'requested_by_display_name' => $requestedBy?->getDisplayName() ?? 'UNKNOWN',
+                'workspace_name' => $workspace->getName(),
+                'workspace_due_preference' => $this->formatWorkspaceDuePreference($workspace->getDefaultDuePreset()),
                 'participants_text' => $this->formatParticipants($workspace),
                 'current_title' => '' !== $title ? $title : '(empty)',
                 'current_description' => '' !== $description ? $description : '(empty)',
@@ -148,5 +150,17 @@ final class ToastDraftRefinementService
             'Force output language for title and description to: %s.',
             User::getInboundRewordLanguageLabel($preferredLanguage),
         );
+    }
+
+    private function formatWorkspaceDuePreference(string $preset): string
+    {
+        return match ($preset) {
+            Workspace::DEFAULT_DUE_TOMORROW => 'Tomorrow',
+            Workspace::DEFAULT_DUE_NEXT_WEEK => 'Next week',
+            Workspace::DEFAULT_DUE_IN_2_WEEKS => 'In 2 weeks',
+            Workspace::DEFAULT_DUE_NEXT_MONDAY => 'Next Monday',
+            Workspace::DEFAULT_DUE_FIRST_MONDAY_NEXT_MONTH => 'First Monday next month',
+            default => 'Next week',
+        };
     }
 }

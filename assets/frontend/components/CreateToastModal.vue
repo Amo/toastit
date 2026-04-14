@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, ref, watch } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import DatePickerField from './DatePickerField.vue';
 import KeyboardHint from './KeyboardHint.vue';
 import ModalDialog from './ModalDialog.vue';
@@ -18,6 +18,11 @@ const props = defineProps({
 const emit = defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
 
 const titleInput = ref(null);
+const isMobileViewport = ref(false);
+
+const syncViewport = () => {
+  isMobileViewport.value = window.innerWidth < 1024;
+};
 
 const resizeTitleField = (target = titleInput.value) => {
   if (!(target instanceof HTMLElement)) {
@@ -59,6 +64,15 @@ watch(() => props.itemForm?.title, async () => {
 defineExpose({
   focusTitle,
 });
+
+onMounted(() => {
+  syncViewport();
+  window.addEventListener('resize', syncViewport);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', syncViewport);
+});
 </script>
 
 <template>
@@ -74,63 +88,82 @@ defineExpose({
         <p class="text-sm font-medium">Improving your draft with AI…</p>
       </div>
 
-      <label class="grid gap-2 text-sm font-medium text-stone-700">
-        <span>Title</span>
-        <textarea
-          ref="titleInput"
-          class="min-h-12 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
-          :value="itemForm.title"
-          :disabled="isRefining"
-          rows="1"
-          autofocus
-          placeholder="New toast"
-          @input="handleTitleInput"
-          @keydown="$emit('title-input', $event)"
-        />
-      </label>
-
-      <div class="grid gap-4 md:grid-cols-2">
+      <template v-if="isMobileViewport">
         <label class="grid gap-2 text-sm font-medium text-stone-700">
-          <span>Assignee</span>
-          <select class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.ownerId" :disabled="isRefining" @change="$emit('update:ownerId', $event.target.value)">
-            <option value="">Unassigned</option>
-            <option v-for="invitee in participants" :key="invitee.id" :value="String(invitee.id)">{{ invitee.displayName }}</option>
-          </select>
+          <span>Toast</span>
+          <textarea
+            ref="titleInput"
+            class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
+            :value="itemForm.description"
+            :disabled="isRefining"
+            autofocus
+            placeholder="Describe what needs to be done..."
+            @input="$emit('update:description', $event.target.value)"
+            @keydown="$emit('title-input', $event)"
+          />
         </label>
-        <DatePickerField
-          :model-value="itemForm.dueOn"
-          label="Date"
-          @update:model-value="$emit('update:dueOn', $event)"
-        />
-      </div>
+      </template>
+      <template v-else>
+        <label class="grid gap-2 text-sm font-medium text-stone-700">
+          <span>Title</span>
+          <textarea
+            ref="titleInput"
+            class="min-h-12 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
+            :value="itemForm.title"
+            :disabled="isRefining"
+            rows="1"
+            autofocus
+            placeholder="New toast"
+            @input="handleTitleInput"
+            @keydown="$emit('title-input', $event)"
+          />
+        </label>
 
-      <label class="grid gap-2 text-sm font-medium text-stone-700">
-        <span>Details</span>
-        <textarea class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" :disabled="isRefining" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
-      </label>
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="grid gap-2 text-sm font-medium text-stone-700">
+            <span>Assignee</span>
+            <select class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.ownerId" :disabled="isRefining" @change="$emit('update:ownerId', $event.target.value)">
+              <option value="">Unassigned</option>
+              <option v-for="invitee in participants" :key="invitee.id" :value="String(invitee.id)">{{ invitee.displayName }}</option>
+            </select>
+          </label>
+          <DatePickerField
+            :model-value="itemForm.dueOn"
+            label="Date"
+            @update:model-value="$emit('update:dueOn', $event)"
+          />
+        </div>
+
+        <label class="grid gap-2 text-sm font-medium text-stone-700">
+          <span>Details</span>
+          <textarea class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" :disabled="isRefining" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
+        </label>
+      </template>
 
       <div class="flex items-center justify-between gap-3">
         <KeyboardHint>Press Cmd+Enter or Ctrl+Enter to create this toast.</KeyboardHint>
         <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            :class="['inline-grid h-12 w-12 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60', isRefining ? 'tw-ai-pending' : '']"
-            :disabled="isRefining"
-            title="Improve draft with xAI"
-            @click="$emit('refine')"
-          >
-            <i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i>
-            <span class="sr-only">Improve draft with xAI</span>
-          </button>
-          <button
-            v-if="canUndoRefinement"
-            type="button"
-            class="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
-            :disabled="isRefining"
-            @click="$emit('undo-refine')"
-          >
-            Undo AI change
-          </button>
+          <template v-if="!isMobileViewport">
+            <button
+              type="button"
+              :class="['inline-grid h-12 w-12 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60', isRefining ? 'tw-ai-pending' : '']"
+              :disabled="isRefining"
+              title="Improve draft with xAI"
+              @click="$emit('refine')"
+            >
+              <i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i>
+              <span class="sr-only">Improve draft with xAI</span>
+            </button>
+            <button
+              v-if="canUndoRefinement"
+              type="button"
+              class="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+              :disabled="isRefining"
+              @click="$emit('undo-refine')"
+            >
+              Undo AI change
+            </button>
+          </template>
           <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60" :disabled="isRefining" @click="$emit('close')">Cancel</button>
           <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isRefining" @click="$emit('create')">{{ actionLabel }}</button>
         </div>

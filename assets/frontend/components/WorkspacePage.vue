@@ -675,8 +675,17 @@ const removeMember = async (memberId) => {
 
 const createItem = async () => {
   if (isToastDraftRefining.value) return;
-  if (!workspace.value || !itemForm.value.title.trim()) return;
+  if (!workspace.value) return;
+
   const isEditingToast = !!editingToastId.value;
+  if (!isEditingToast && isMobileViewport.value && !itemForm.value.title.trim() && itemForm.value.description.trim()) {
+    const refined = await refineToastDraft();
+    if (!refined) {
+      return;
+    }
+  }
+
+  if (!itemForm.value.title.trim()) return;
   const { ok, data } = isEditingToast
     ? await workspacesApi.updateToast(editingToastId.value, itemForm.value)
     : await workspacesApi.createToast(workspace.value.id, itemForm.value);
@@ -706,7 +715,7 @@ const createItem = async () => {
 
 const refineToastDraft = async () => {
   if (!workspace.value || isToastDraftRefining.value) {
-    return;
+    return false;
   }
 
   isToastDraftRefining.value = true;
@@ -744,7 +753,7 @@ const refineToastDraft = async () => {
   if (!ok || !data?.ok || !data.draft) {
     errorMessage.value = data?.message ?? 'Unable to improve this toast draft.';
     isToastDraftRefining.value = false;
-    return;
+    return false;
   }
 
   toastDraftRefinementBackup.value = previousDraft;
@@ -756,6 +765,7 @@ const refineToastDraft = async () => {
     dueOn: data.draft.dueOn ?? '',
   };
   isToastDraftRefining.value = false;
+  return true;
 };
 
 const undoToastDraftRefinement = () => {
