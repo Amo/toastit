@@ -24,6 +24,14 @@
     caret-color: rgb(28 25 23);
     transition: background-color 9999s ease-in-out 0s;
   }
+
+  @media (max-width: 1023px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
 }
 
 @layer components {
