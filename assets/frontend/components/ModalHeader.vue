@@ -11,15 +11,15 @@ defineEmits(['close']);
 </script>
 
 <template>
-  <div class="relative border-b border-stone-100 px-4 py-4 md:px-6 md:py-5 md:pr-20">
+  <div class="sticky top-0 z-20 border-b border-stone-100 bg-white px-4 py-4 md:static md:px-6 md:py-5 md:pr-20">
     <div class="mb-3 md:hidden">
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-full border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:border-stone-300 hover:text-stone-800"
+        class="inline-grid h-9 w-9 place-items-center rounded-full border border-stone-200 text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
         @click="$emit('close')"
       >
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-        <span>Back</span>
+        <span class="sr-only">Back</span>
       </button>
     </div>
     <div>
