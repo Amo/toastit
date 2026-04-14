@@ -12,7 +12,12 @@ const props = defineProps({
 });
 
 const inputRef = ref(null);
+const isMobileViewport = ref(false);
 let instance = null;
+
+const syncViewport = () => {
+  isMobileViewport.value = window.innerWidth < 1024;
+};
 
 const syncFromPicker = () => {
   model.value = inputRef.value?.value ?? '';
@@ -32,6 +37,13 @@ const syncToPicker = () => {
 };
 
 onMounted(() => {
+  syncViewport();
+  window.addEventListener('resize', syncViewport);
+
+  if (isMobileViewport.value) {
+    return;
+  }
+
   if (!inputRef.value) {
     return;
   }
@@ -49,6 +61,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('resize', syncViewport);
+
   if (inputRef.value) {
     inputRef.value.removeEventListener('changeDate', syncFromPicker);
   }
@@ -66,16 +80,17 @@ watch(model, () => {
   <FormField :label="label" :help="help">
     <input
       ref="inputRef"
-      datepicker
-      datepicker-buttons
-      datepicker-autohide
-      datepicker-format="yyyy-mm-dd"
-      datepicker-orientation="bottom"
       class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm"
-      type="text"
+      :type="isMobileViewport ? 'date' : 'text'"
       :value="model"
       :placeholder="placeholder"
-      readonly
+      :readonly="!isMobileViewport"
+      :datepicker="isMobileViewport ? null : true"
+      :datepicker-buttons="isMobileViewport ? null : true"
+      :datepicker-autohide="isMobileViewport ? null : true"
+      :datepicker-format="isMobileViewport ? null : 'yyyy-mm-dd'"
+      :datepicker-orientation="isMobileViewport ? null : 'bottom'"
+      @input="model = $event.target.value"
     >
   </FormField>
 </template>
