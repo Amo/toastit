@@ -30,7 +30,7 @@ defineExpose({
 </script>
 
 <template>
-  <ModalDialog v-if="open" max-width-class="max-w-4xl" @close="$emit('close')">
+  <ModalDialog v-if="open" max-width-class="max-w-4xl" z-index-class="z-[110]" @close="$emit('close')">
     <ModalHeader eyebrow="New toast" :title="title" @close="$emit('close')" />
 
     <div class="space-y-4 overflow-y-auto px-6 py-6" @keydown="$emit('title-keydown', $event)">
