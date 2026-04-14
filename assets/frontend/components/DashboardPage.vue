@@ -354,14 +354,14 @@ onUnmounted(() => {
                 </span>
               </p>
             </div>
-            <span class="inline-flex items-center gap-1.5">
-              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-red-500 px-2 py-1 text-[11px] font-semibold text-white" title="Late assigned toasts">
+            <span class="ml-auto inline-flex items-center overflow-hidden rounded-full border border-stone-200/70 shadow-sm">
+              <span class="inline-flex min-w-6 items-center justify-center bg-red-500 px-2 py-1 text-[11px] font-semibold text-white" title="Late assigned toasts">
                 {{ workspacePriorityCounts(workspace.id).late }}
               </span>
-              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-yellow-400 px-2 py-1 text-[11px] font-semibold text-white" title="Due soon assigned toasts">
+              <span class="inline-flex min-w-6 items-center justify-center border-l border-white/50 bg-yellow-400 px-2 py-1 text-[11px] font-semibold text-white" title="Due soon assigned toasts">
                 {{ workspacePriorityCounts(workspace.id).dueSoon }}
               </span>
-              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-slate-400 px-2 py-1 text-[11px] font-semibold text-white" title="Boosted assigned toasts">
+              <span class="inline-flex min-w-6 items-center justify-center border-l border-white/50 bg-slate-400 px-2 py-1 text-[11px] font-semibold text-white" title="Boosted assigned toasts">
                 {{ workspacePriorityCounts(workspace.id).boosted }}
               </span>
             </span>
