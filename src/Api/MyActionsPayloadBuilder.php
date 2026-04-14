@@ -5,6 +5,7 @@ namespace App\Api;
 use App\Entity\Toast;
 use App\Entity\User;
 use App\Profile\AvatarUrlService;
+use App\Profile\UserDateTimeFormatter;
 use App\Repository\ToastRepository;
 use App\Workspace\AssignedToastPriorityService;
 
@@ -14,6 +15,7 @@ final class MyActionsPayloadBuilder
         private readonly ToastRepository $toastRepository,
         private readonly AssignedToastPriorityService $assignedToastPriority,
         private readonly AvatarUrlService $avatarUrl,
+        private readonly UserDateTimeFormatter $userDateTimeFormatter,
     ) {
     }
 
@@ -57,13 +59,13 @@ final class MyActionsPayloadBuilder
                 'workspaceCount' => count($workspaceIds),
             ],
             'actions' => array_map(
-                fn (Toast $action): array => $this->buildActionPayload($action, $today),
+                fn (Toast $action): array => $this->buildActionPayload($action, $today, $user),
                 $actions,
             ),
         ];
     }
 
-    private function buildActionPayload(Toast $action, \DateTimeImmutable $today): array
+    private function buildActionPayload(Toast $action, \DateTimeImmutable $today, User $user): array
     {
         $dueAt = $action->getDueAt();
         $isLate = null !== $dueAt && $dueAt < $today;
@@ -78,9 +80,9 @@ final class MyActionsPayloadBuilder
             'isLate' => $isLate,
             'isDueSoon' => $isDueSoon,
             'dueOn' => $dueAt?->format('Y-m-d'),
-            'dueOnDisplay' => $dueAt?->format('d/m/Y'),
+            'dueOnDisplay' => $this->userDateTimeFormatter->formatDate($dueAt, $user),
             'createdAt' => $action->getCreatedAt()->format(\DateTimeInterface::ATOM),
-            'createdAtDisplay' => $action->getCreatedAt()->format('d/m/Y H:i'),
+            'createdAtDisplay' => $this->userDateTimeFormatter->formatDateTime($action->getCreatedAt(), $user),
             'commentsCount' => $action->getComments()->count(),
             'workspace' => [
                 'id' => $action->getWorkspace()->getId(),

@@ -1,8 +1,8 @@
 Toastit recap for {{ workspace.name }} session #{{ session.id }}
 
-Started {{ session.startedAt|date('d/m/Y H:i') }}
-{% if session.endedAt %}
-Ended {{ session.endedAt|date('d/m/Y H:i') }}
+Started {{ session_started_at_display }}
+{% if session_ended_at_display %}
+Ended {{ session_ended_at_display }}
 {% endif %}
 
 {{ summary_text }}

@@ -31,6 +31,8 @@ final class ProfileAvatarFlowTest extends WebTestCase
             'workspace' => true,
         ], $initialPayload['user']['inboundAiAutoApply']);
         self::assertSame('auto', $initialPayload['user']['inboundRewordLanguage']);
+        self::assertSame('auto', $initialPayload['user']['timezone']);
+        self::assertNotEmpty($initialPayload['user']['timezoneChoices']);
         self::assertCount(11, $initialPayload['user']['inboundRewordLanguageChoices']);
 
         $client->request('PUT', '/api/profile', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
@@ -43,6 +45,7 @@ final class ProfileAvatarFlowTest extends WebTestCase
                 'workspace' => true,
             ],
             'inboundRewordLanguage' => 'fr',
+            'timezone' => 'America/New_York',
         ], JSON_THROW_ON_ERROR));
         self::assertResponseIsSuccessful();
         $updatePayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -53,6 +56,7 @@ final class ProfileAvatarFlowTest extends WebTestCase
             'workspace' => true,
         ], $updatePayload['user']['inboundAiAutoApply']);
         self::assertSame('fr', $updatePayload['user']['inboundRewordLanguage']);
+        self::assertSame('America/New_York', $updatePayload['user']['timezone']);
 
         $client->request('GET', '/api/profile');
         self::assertResponseIsSuccessful();
@@ -64,6 +68,14 @@ final class ProfileAvatarFlowTest extends WebTestCase
             'workspace' => true,
         ], $reloadedPayload['user']['inboundAiAutoApply']);
         self::assertSame('fr', $reloadedPayload['user']['inboundRewordLanguage']);
+        self::assertSame('America/New_York', $reloadedPayload['user']['timezone']);
+
+        $client->request('PUT', '/api/profile', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+            'timezone' => 'Not/A_Timezone',
+        ], JSON_THROW_ON_ERROR));
+        self::assertResponseStatusCodeSame(400);
+        $invalidTimezonePayload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('invalid_timezone', $invalidTimezonePayload['error'] ?? null);
     }
 
     public function testAuthenticatedUserCanUploadAvatarAndReadItFromReturnedUrl(): void

@@ -54,6 +54,8 @@ const profile = ref({
   lastName: '',
   inboundRewordLanguage: 'auto',
   inboundRewordLanguageChoices: [],
+  timezone: 'auto',
+  timezoneChoices: [],
   inboundAiAutoApply: {
     reword: true,
     assignee: true,
@@ -240,6 +242,7 @@ const saveInboundPreferences = async (preferenceKey) => {
   const { ok, data } = await profileApi.saveProfile(props.updateUrl, {
     inboundAiAutoApply: profile.value.inboundAiAutoApply,
     inboundRewordLanguage: profile.value.inboundRewordLanguage,
+    timezone: profile.value.timezone,
   });
 
   if (currentSequence !== preferencesSaveSequence) {
@@ -262,6 +265,8 @@ const saveInboundPreferences = async (preferenceKey) => {
   };
   profile.value.inboundRewordLanguage = data.user.inboundRewordLanguage ?? profile.value.inboundRewordLanguage;
   profile.value.inboundRewordLanguageChoices = data.user.inboundRewordLanguageChoices ?? profile.value.inboundRewordLanguageChoices;
+  profile.value.timezone = data.user.timezone ?? profile.value.timezone;
+  profile.value.timezoneChoices = data.user.timezoneChoices ?? profile.value.timezoneChoices;
 
   highlightedPreferenceState.value = 'saved';
   if (preferencesHighlightTimer) {
@@ -419,6 +424,8 @@ const fetchProfile = async () => {
       ...data.user,
       inboundRewordLanguage: data.user?.inboundRewordLanguage ?? 'auto',
       inboundRewordLanguageChoices: data.user?.inboundRewordLanguageChoices ?? [],
+      timezone: data.user?.timezone ?? 'auto',
+      timezoneChoices: data.user?.timezoneChoices ?? [],
       inboundAiAutoApply,
       deletedWorkspaces: data.deletedWorkspaces ?? [],
     };
@@ -822,6 +829,33 @@ onUnmounted(() => {
                   >
                     <option
                       v-for="choice in profile.inboundRewordLanguageChoices"
+                      :key="choice.code"
+                      :value="choice.code"
+                    >
+                      {{ choice.label }}
+                    </option>
+                  </select>
+                </label>
+
+                <label
+                  :class="[
+                    'rounded-2xl border px-4 py-3 transition',
+                    isMobileViewport ? 'flex flex-col items-start gap-2' : 'flex items-center justify-between gap-4',
+                    preferenceRowClass('timezone'),
+                  ]"
+                >
+                  <span class="flex items-center gap-2 text-sm font-medium text-stone-900">
+                    <span>Timezone</span>
+                    <span v-if="highlightedPreferenceKey === 'timezone' && highlightedPreferenceState === 'saved'" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Saved</span>
+                  </span>
+                  <select
+                    v-model="profile.timezone"
+                    class="max-w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    :class="isMobileViewport ? 'w-full' : ''"
+                    @change="onPreferenceToggle('timezone')"
+                  >
+                    <option
+                      v-for="choice in profile.timezoneChoices"
                       :key="choice.code"
                       :value="choice.code"
                     >

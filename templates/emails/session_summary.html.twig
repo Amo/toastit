@@ -7,9 +7,9 @@
     </p>
     <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">Session details</p>
     <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#1f1209;">
-        Started {{ session.startedAt|date('d/m/Y H:i') }}
-        {% if session.endedAt %}
-            <br>Ended {{ session.endedAt|date('d/m/Y H:i') }}
+        Started {{ session_started_at_display }}
+        {% if session_ended_at_display %}
+            <br>Ended {{ session_ended_at_display }}
         {% endif %}
     </p>
     <div style="margin:0;padding:20px;border:1px solid #eceff3;border-radius:20px;background:#faf8f4;font-size:15px;line-height:1.7;color:#1f1209;">

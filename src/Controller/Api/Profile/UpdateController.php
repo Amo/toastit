@@ -62,6 +62,28 @@ final class UpdateController extends AbstractController
             }
         }
 
+        if (array_key_exists('timezone', $payload)) {
+            $timezone = $payload['timezone'];
+            if (!is_string($timezone)) {
+                return $this->json([
+                    'ok' => false,
+                    'error' => 'invalid_timezone',
+                ], 400);
+            }
+
+            $normalizedTimezone = trim($timezone);
+            if ('' === $normalizedTimezone || 'auto' === strtolower($normalizedTimezone)) {
+                $user->setPreferredTimezone(null);
+            } elseif (User::isSupportedTimezone($normalizedTimezone)) {
+                $user->setPreferredTimezone($normalizedTimezone);
+            } else {
+                return $this->json([
+                    'ok' => false,
+                    'error' => 'invalid_timezone',
+                ], 400);
+            }
+        }
+
         $this->entityManager->flush();
 
         return $this->json([

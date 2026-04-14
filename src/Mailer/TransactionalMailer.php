@@ -7,6 +7,7 @@ use App\Entity\Toast;
 use App\Entity\ToastingSession;
 use App\Entity\User;
 use App\Entity\Workspace;
+use App\Profile\UserDateTimeFormatter;
 use League\CommonMark\CommonMarkConverter;
 use Twig\Environment;
 use Symfony\Component\Mailer\MailerInterface;
@@ -19,6 +20,7 @@ final class TransactionalMailer
         private readonly MailerInterface $mailer,
         private readonly Environment $twig,
         private readonly CommonMarkConverter $markdownConverter,
+        private readonly UserDateTimeFormatter $userDateTimeFormatter,
         private readonly string $defaultFrom,
     ) {
     }
@@ -288,6 +290,8 @@ final class TransactionalMailer
                 'recipient' => $recipient,
                 'workspace' => $workspace,
                 'session' => $session,
+                'session_started_at_display' => $this->userDateTimeFormatter->formatDateTime($session->getStartedAt(), $recipient),
+                'session_ended_at_display' => $this->userDateTimeFormatter->formatDateTime($session->getEndedAt(), $recipient),
                 'summary_html' => $this->formatSessionSummaryHtml($summary, $toastUrlsById),
                 'summary_text' => $this->formatSessionSummaryText($summary, $toastUrlsById),
             ];

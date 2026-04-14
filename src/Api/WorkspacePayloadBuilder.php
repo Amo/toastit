@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Entity\Workspace;
 use App\Meeting\MeetingAgendaBuilder;
 use App\Profile\AvatarUrlService;
+use App\Profile\UserDateTimeFormatter;
 use App\Repository\WorkspaceRepository;
 use App\Workspace\InboundEmailAddressService;
 use App\Workspace\WorkspaceWorkflowService;
@@ -20,6 +21,7 @@ final class WorkspacePayloadBuilder
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
         private readonly WorkspaceRepository $workspaceRepository,
         private readonly AvatarUrlService $avatarUrl,
+        private readonly UserDateTimeFormatter $userDateTimeFormatter,
         private readonly InboundEmailAddressService $inboundEmailAddress,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {
@@ -89,7 +91,7 @@ final class WorkspacePayloadBuilder
                 $invitees
             ),
             'toastingSessions' => array_map(
-                fn (ToastingSession $session): array => $this->buildSessionPayload($session),
+                fn (ToastingSession $session): array => $this->buildSessionPayload($session, $currentUser),
                 $workspace->getToastingSessions()->toArray()
             ),
             'agendaItems' => array_map(
@@ -136,14 +138,14 @@ final class WorkspacePayloadBuilder
                 'status' => $item->getPreviousItem()->getStatus(),
             ] : null,
             'followUpItems' => array_map(
-                static fn (Toast $followUp): array => [
+                fn (Toast $followUp): array => [
                     'id' => $followUp->getId(),
                     'title' => $followUp->getTitle(),
                     'status' => $followUp->getStatus(),
                     'ownerId' => $followUp->getOwner()?->getId(),
                     'ownerName' => $followUp->getOwner()?->getDisplayName(),
                     'dueOn' => $followUp->getDueAt()?->format('Y-m-d'),
-                    'dueOnDisplay' => $followUp->getDueAt()?->format('d/m/Y'),
+                    'dueOnDisplay' => $this->userDateTimeFormatter->formatDate($followUp->getDueAt(), $currentUser),
                 ],
                 $followUps
             ),
@@ -152,7 +154,7 @@ final class WorkspacePayloadBuilder
                     'id' => $comment->getId(),
                     'content' => $comment->getContent(),
                     'createdAt' => $comment->getCreatedAt()->format(\DateTimeInterface::ATOM),
-                    'createdAtDisplay' => $comment->getCreatedAt()->format('d/m/Y H:i'),
+                    'createdAtDisplay' => $this->userDateTimeFormatter->formatDateTime($comment->getCreatedAt(), $currentUser),
                     'author' => [
                         'id' => $comment->getAuthor()->getId(),
                         'displayName' => $comment->getAuthor()->getDisplayName(),
@@ -169,9 +171,9 @@ final class WorkspacePayloadBuilder
                 'gravatarUrl' => $this->avatarUrl->resolve($item->getOwner()),
             ] : null,
             'dueOn' => $item->getDueAt()?->format('Y-m-d'),
-            'dueOnDisplay' => $item->getDueAt()?->format('d/m/Y'),
+            'dueOnDisplay' => $this->userDateTimeFormatter->formatDate($item->getDueAt(), $currentUser),
             'statusChangedAt' => $item->getStatusChangedAt()?->format('Y-m-d'),
-            'statusChangedAtDisplay' => ($item->getStatusChangedAt() ?? $item->getCreatedAt())->format('d/m/Y'),
+            'statusChangedAtDisplay' => $this->userDateTimeFormatter->formatDate($item->getStatusChangedAt() ?? $item->getCreatedAt(), $currentUser),
             'author' => [
                 'id' => $item->getAuthor()->getId(),
                 'displayName' => $item->getAuthor()->getDisplayName(),
@@ -189,14 +191,14 @@ final class WorkspacePayloadBuilder
         ];
     }
 
-    public function buildSessionPayload(ToastingSession $session): array
+    public function buildSessionPayload(ToastingSession $session, User $currentUser): array
     {
         return [
             'id' => $session->getId(),
             'startedAt' => $session->getStartedAt()->format(\DateTimeInterface::ATOM),
-            'startedAtDisplay' => $session->getStartedAt()->format('d/m/Y H:i'),
+            'startedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($session->getStartedAt(), $currentUser),
             'endedAt' => $session->getEndedAt()?->format(\DateTimeInterface::ATOM),
-            'endedAtDisplay' => $session->getEndedAt()?->format('d/m/Y H:i'),
+            'endedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($session->getEndedAt(), $currentUser),
             'isActive' => $session->isActive(),
             'startedBy' => [
                 'id' => $session->getStartedBy()->getId(),
@@ -208,9 +210,9 @@ final class WorkspacePayloadBuilder
             ] : null,
             'summary' => $session->getSummary(),
             'summaryGeneratedAt' => $session->getSummaryGeneratedAt()?->format(\DateTimeInterface::ATOM),
-            'summaryGeneratedAtDisplay' => $session->getSummaryGeneratedAt()?->format('d/m/Y H:i'),
+            'summaryGeneratedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($session->getSummaryGeneratedAt(), $currentUser),
             'summaryUpdatedAt' => $session->getSummaryUpdatedAt()?->format(\DateTimeInterface::ATOM),
-            'summaryUpdatedAtDisplay' => $session->getSummaryUpdatedAt()?->format('d/m/Y H:i'),
+            'summaryUpdatedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($session->getSummaryUpdatedAt(), $currentUser),
         ];
     }
 

@@ -74,6 +74,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 8, nullable: true)]
     private ?string $inboundRewordLanguage = null;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $preferredTimezone = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -332,6 +335,26 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->inboundRewordLanguage;
     }
 
+    public function getPreferredTimezone(): ?string
+    {
+        return $this->preferredTimezone;
+    }
+
+    public function setPreferredTimezone(?string $preferredTimezone): self
+    {
+        $normalized = null !== $preferredTimezone ? trim($preferredTimezone) : null;
+
+        if (null === $normalized || '' === $normalized || !self::isSupportedTimezone($normalized)) {
+            $this->preferredTimezone = null;
+
+            return $this;
+        }
+
+        $this->preferredTimezone = $normalized;
+
+        return $this;
+    }
+
     public function setInboundRewordLanguage(?string $inboundRewordLanguage): self
     {
         $normalized = null !== $inboundRewordLanguage ? strtolower(trim($inboundRewordLanguage)) : null;
@@ -373,6 +396,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $normalized = null !== $language ? strtolower(trim($language)) : '';
 
         return self::INBOUND_REWORD_LANGUAGES[$normalized] ?? 'Auto (match email language)';
+    }
+
+    public static function isSupportedTimezone(string $timezone): bool
+    {
+        return in_array(trim($timezone), \DateTimeZone::listIdentifiers(), true);
+    }
+
+    /**
+     * @return list<array{code: string, label: string}>
+     */
+    public static function getTimezoneChoices(): array
+    {
+        $choices = [
+            ['code' => 'auto', 'label' => 'Auto (device timezone)'],
+        ];
+
+        foreach (\DateTimeZone::listIdentifiers() as $timezone) {
+            $choices[] = ['code' => $timezone, 'label' => $timezone];
+        }
+
+        return $choices;
     }
 
     public function anonymize(): self
