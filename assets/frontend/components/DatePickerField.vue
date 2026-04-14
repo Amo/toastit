@@ -1,6 +1,6 @@
 <script setup>
 import { Datepicker } from 'flowbite';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import FormField from './FormField.vue';
 
 const model = defineModel({ default: '' });
@@ -72,6 +72,31 @@ onUnmounted(() => {
 });
 
 watch(model, () => {
+  syncToPicker();
+});
+
+watch(isMobileViewport, async (isMobile) => {
+  await nextTick();
+
+  if (isMobile) {
+    instance?.destroyAndRemoveInstance?.();
+    instance = null;
+    return;
+  }
+
+  if (!inputRef.value || instance) {
+    return;
+  }
+
+  instance = new Datepicker(inputRef.value, {
+    autohide: true,
+    format: 'yyyy-mm-dd',
+    buttons: true,
+    todayHighlight: true,
+    weekStart: 1,
+  });
+
+  inputRef.value.addEventListener('changeDate', syncFromPicker);
   syncToPicker();
 });
 </script>
