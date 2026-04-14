@@ -190,6 +190,17 @@ const workspacePriorityCounts = (workspaceId) => {
   return workspaceAssignedPriorityCounts.value[normalizedWorkspaceId] ?? { late: 0, dueSoon: 0, boosted: 0 };
 };
 
+const workspacePriorityBadges = (workspaceId) => {
+  const counts = workspacePriorityCounts(workspaceId);
+  const badges = [
+    { key: 'late', value: counts.late, className: 'bg-red-500', title: 'Late assigned toasts' },
+    { key: 'dueSoon', value: counts.dueSoon, className: 'bg-yellow-400', title: 'Due soon assigned toasts' },
+    { key: 'boosted', value: counts.boosted, className: 'bg-slate-400', title: 'Boosted assigned toasts' },
+  ];
+
+  return badges.filter((badge) => Number(badge.value) > 0);
+};
+
 const workspaceOpenToastLabel = (workspace) => {
   const total = Number(workspace?.openItemCount ?? 0);
   const normalizedTotal = Number.isFinite(total) && total > 0 ? total : 0;
@@ -354,15 +365,21 @@ onUnmounted(() => {
                 </span>
               </p>
             </div>
-            <span class="ml-auto inline-flex items-center overflow-hidden rounded-full border border-stone-200/70 shadow-sm">
-              <span class="inline-flex min-w-6 items-center justify-center bg-red-500 px-2 py-1 text-[11px] font-semibold text-white" title="Late assigned toasts">
-                {{ workspacePriorityCounts(workspace.id).late }}
-              </span>
-              <span class="inline-flex min-w-6 items-center justify-center border-l border-white/50 bg-yellow-400 px-2 py-1 text-[11px] font-semibold text-white" title="Due soon assigned toasts">
-                {{ workspacePriorityCounts(workspace.id).dueSoon }}
-              </span>
-              <span class="inline-flex min-w-6 items-center justify-center border-l border-white/50 bg-slate-400 px-2 py-1 text-[11px] font-semibold text-white" title="Boosted assigned toasts">
-                {{ workspacePriorityCounts(workspace.id).boosted }}
+            <span
+              v-if="workspacePriorityBadges(workspace.id).length > 0"
+              class="ml-auto inline-flex items-center overflow-hidden rounded-full border border-stone-200/70 shadow-sm"
+            >
+              <span
+                v-for="(badge, badgeIndex) in workspacePriorityBadges(workspace.id)"
+                :key="`${workspace.id}-${badge.key}`"
+                :class="[
+                  'inline-flex min-w-6 items-center justify-center px-2 py-1 text-[11px] font-semibold text-white',
+                  badge.className,
+                  badgeIndex > 0 ? 'border-l border-white/50' : '',
+                ]"
+                :title="badge.title"
+              >
+                {{ badge.value }}
               </span>
             </span>
           </div>
