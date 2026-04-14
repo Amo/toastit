@@ -23,6 +23,7 @@ final class UsersController extends AbstractController
 
         return $this->json([
             'users' => $this->rootDashboard->buildUsers(),
+            'prunableUsers' => $this->rootDashboard->buildPrunableNeverConnectedUsers(),
         ]);
     }
 }

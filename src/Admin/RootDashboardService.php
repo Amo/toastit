@@ -96,6 +96,97 @@ SQL;
     }
 
     /**
+     * @return list<array<string, mixed>>
+     */
+    public function buildPrunableNeverConnectedUsers(): array
+    {
+        $sql = <<<'SQL'
+SELECT
+    u.id,
+    u.email,
+    u.created_at AS createdAt
+FROM user u
+LEFT JOIN (
+    SELECT user_id, MAX(occurred_at) AS occurred_at
+    FROM app_event
+    WHERE kind = 'auth.login_succeeded'
+      AND user_id IS NOT NULL
+    GROUP BY user_id
+) last_event ON last_event.user_id = u.id
+LEFT JOIN (
+    SELECT user_id, MAX(last_used_at) AS lastSeenAt
+    FROM api_refresh_token
+    GROUP BY user_id
+) last_refresh ON last_refresh.user_id = u.id
+LEFT JOIN (
+    SELECT
+        author_id AS user_id,
+        COUNT(*) AS totalToastCount
+    FROM toast
+    GROUP BY author_id
+) authored_toasts ON authored_toasts.user_id = u.id
+LEFT JOIN (
+    SELECT
+        organizer_id AS user_id,
+        COUNT(*) AS workspaceCount
+    FROM workspace
+    GROUP BY organizer_id
+) owned_workspaces ON owned_workspaces.user_id = u.id
+WHERE COALESCE(last_event.occurred_at, last_refresh.lastSeenAt) IS NULL
+  AND COALESCE(authored_toasts.totalToastCount, 0) = 0
+  AND COALESCE(owned_workspaces.workspaceCount, 0) = 0
+  AND u.created_at <= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
+ORDER BY u.created_at ASC, u.id ASC
+SQL;
+
+        return array_map(static function (array $row): array {
+            return [
+                'id' => (int) $row['id'],
+                'email' => (string) $row['email'],
+                'createdAt' => (string) $row['createdAt'],
+            ];
+        }, $this->connection->fetchAllAssociative($sql));
+    }
+
+    public function deletePrunableNeverConnectedUser(int $userId): bool
+    {
+        $userRow = $this->connection->fetchAssociative('SELECT roles FROM user WHERE id = :id', ['id' => $userId]);
+        if (!is_array($userRow)) {
+            return false;
+        }
+
+        $roles = json_decode((string) ($userRow['roles'] ?? '[]'), true);
+        if (in_array('ROLE_ROOT', is_array($roles) ? $roles : [], true)) {
+            return false;
+        }
+
+        $affectedRows = $this->connection->executeStatement(<<<'SQL'
+DELETE FROM user
+WHERE id = :id
+  AND created_at <= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
+  AND NOT EXISTS (
+      SELECT 1 FROM app_event
+      WHERE user_id = :id
+        AND kind = 'auth.login_succeeded'
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM api_refresh_token
+      WHERE user_id = :id
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM toast
+      WHERE author_id = :id OR owner_id = :id
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM workspace
+      WHERE organizer_id = :id
+  )
+SQL, ['id' => $userId]);
+
+        return 1 === $affectedRows;
+    }
+
+    /**
      * @return list<array{day: string, count: int}>
      */
     private function fetchSeries(string $kind): array
