@@ -72,6 +72,7 @@ const isToastCurationGenerating = ref(false);
 const toastCurationApplyingIndex = ref(-1);
 const toastCurationActionStatuses = ref({});
 const isToastDraftRefining = ref(false);
+const TOAST_DRAFT_REFINE_TIMEOUT_MS = 30_000;
 const toastDraftRefinementBackup = ref(null);
 const isSessionArchiveOpen = ref(false);
 const selectedSessionArchiveId = ref(null);
@@ -671,6 +672,7 @@ const removeMember = async (memberId) => {
 };
 
 const createItem = async () => {
+  if (isToastDraftRefining.value) return;
   if (!workspace.value || !itemForm.value.title.trim()) return;
   const isEditingToast = !!editingToastId.value;
   const { ok, data } = isEditingToast
@@ -701,7 +703,7 @@ const createItem = async () => {
 };
 
 const refineToastDraft = async () => {
-  if (!workspace.value) {
+  if (!workspace.value || isToastDraftRefining.value) {
     return;
   }
 
@@ -715,10 +717,27 @@ const refineToastDraft = async () => {
     dueOn: itemForm.value.dueOn ?? '',
   };
 
-  const { ok, data } = await workspacesApi.refineToastDraft(workspace.value.id, {
-    title: previousDraft.title,
-    description: previousDraft.description,
+  let timeoutHandle = null;
+  const timeoutResultPromise = new Promise((resolve) => {
+    timeoutHandle = window.setTimeout(() => {
+      resolve({
+        ok: false,
+        data: { message: 'AI rewrite timed out after 30 seconds. Please try again.' },
+      });
+    }, TOAST_DRAFT_REFINE_TIMEOUT_MS);
   });
+
+  const { ok, data } = await Promise.race([
+    workspacesApi.refineToastDraft(workspace.value.id, {
+      title: previousDraft.title,
+      description: previousDraft.description,
+    }),
+    timeoutResultPromise,
+  ]);
+
+  if (timeoutHandle !== null) {
+    window.clearTimeout(timeoutHandle);
+  }
 
   if (!ok || !data?.ok || !data.draft) {
     errorMessage.value = data?.message ?? 'Unable to improve this toast draft.';
@@ -753,6 +772,10 @@ const undoToastDraftRefinement = () => {
 };
 
 const handleCreateToastModalKeydown = (event) => {
+  if (isToastDraftRefining.value) {
+    return;
+  }
+
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
     event.preventDefault();
     createItem();
@@ -1054,6 +1077,10 @@ const openCreateToastModal = async () => {
 };
 
 const closeCreateToastModal = () => {
+  if (isToastDraftRefining.value) {
+    return;
+  }
+
   isCreateToastModalOpen.value = false;
   editingToastId.value = null;
   isToastDraftRefining.value = false;
