@@ -75,6 +75,54 @@ Toastit will be proxied to `127.0.0.1:8084` by default.
 - Inbound SMTP is exposed on `${INBOUND_SMTP_BIND_PORT}`. Point MX or mail forwarding there only if you actually want the VPS to receive mail directly.
 - If direct MX delivery is not desired, keep the inbound app flow and use an external mail provider to forward mail to the VPS or to the HTTP endpoint.
 
+## Hardening override
+
+The repository includes an additional production asset:
+
+- `docker-compose.prod.hardening.override.yml`: container security defaults for app/worker/inbound-smtp/database
+
+Use it when starting the app stack:
+
+```bash
+docker compose \
+  -f ops/docker-compose.prod.yml \
+  -f ops/docker-compose.prod.hardening.override.yml \
+  --env-file ops/env/.env.prod.toastit.cc \
+  up -d
+```
+
+This keeps the current architecture (Symfony + FrankenPHP + MariaDB + inbound SMTP) and adds security constraints without creating a parallel deployment path.
+
+## DB migration runbook (shared DB -> dedicated DB on vps2)
+
+Use this when moving Toastit from a shared MariaDB strategy to the dedicated `database` container in `ops/docker-compose.prod.yml`.
+
+1. Prepare maintenance window
+   - Announce a short write-freeze window.
+   - Ensure latest backup exists for the current shared DB.
+   - Ensure `vps2` env points app/worker to `database:3306`:
+     - `DATABASE_URL=mysql://<user>:<pass>@database:3306/<db>?serverVersion=11.4.10-MariaDB&charset=utf8mb4`
+2. Export source DB from current shared host
+   - `mysqldump --single-transaction --routines --triggers --events -h <shared-host> -u <user> -p <db> > toastit-precutover.sql`
+3. Bring up dedicated DB container on vps2
+   - `docker compose --project-name toastit-prod --env-file ops/env/.env.prod.toastit.cc -f ops/docker-compose.prod.yml up -d database`
+   - Wait for healthy status:
+     - `docker compose --project-name toastit-prod --env-file ops/env/.env.prod.toastit.cc -f ops/docker-compose.prod.yml ps`
+4. Restore dump into dedicated DB
+   - `cat toastit-precutover.sql | docker compose --project-name toastit-prod --env-file ops/env/.env.prod.toastit.cc -f ops/docker-compose.prod.yml exec -T database mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"`
+5. Cutover app to dedicated DB
+   - Deploy the tagged release:
+     - `make deploy-prod ENV_FILE=.env.prod.toastit.cc DEPLOY_TAG=vX.Y.Z GHCR_USER=<owner>`
+   - Run migrations (already part of `deploy-prod`).
+6. Post-cutover verification
+   - Check app health and login flow.
+   - Create a test toast, vote/boost/update status, and confirm persistence.
+   - Check worker processing and inbound SMTP flow.
+7. Rollback plan
+   - Keep pre-cutover dump and old shared DB access until validation is complete.
+   - If critical issue occurs, revert `DATABASE_URL` to shared DB host in prod env and redeploy previous known-good tag.
+   - Re-run smoke tests after rollback.
+
 ## Scheduled jobs (backup + daily digest)
 
 This repository includes host-level scheduler assets under `ops/scheduler/`:
