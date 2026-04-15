@@ -77,6 +77,7 @@ const toastCurationApplyingIndex = ref(-1);
 const toastCurationActionStatuses = ref({});
 const isToastDraftRefining = ref(false);
 const TOAST_DRAFT_REFINE_TIMEOUT_MS = 30_000;
+const QUICK_ADD_CAPTURE_TIMER_KEY = 'toastit:quick-add-start-ms';
 const toastDraftRefinementBackup = ref(null);
 let toastDraftRefinementRequestId = 0;
 const isSessionArchiveOpen = ref(false);
@@ -823,6 +824,31 @@ const createItem = async () => {
 
   if (shouldRefineAfterCreateInBackground && Number.isFinite(createdItemId) && createdItemId > 0 && draftSnapshotForBackgroundRefine) {
     void refineCreatedToastInBackground(workspace.value.id, createdItemId, draftSnapshotForBackgroundRefine);
+  }
+
+  if (!isEditingToast && Number.isFinite(createdItemId) && createdItemId > 0) {
+    try {
+      const startedAtRaw = window.sessionStorage.getItem(QUICK_ADD_CAPTURE_TIMER_KEY);
+      window.sessionStorage.removeItem(QUICK_ADD_CAPTURE_TIMER_KEY);
+      const startedAt = Number(startedAtRaw ?? 0);
+      if (Number.isFinite(startedAt) && startedAt > 0) {
+        const durationMs = Math.max(0, Date.now() - startedAt);
+        const storageKey = 'toastit:quick-add-capture-durations-ms';
+        const existing = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]');
+        const normalized = Array.isArray(existing) ? existing.filter((value) => Number.isFinite(Number(value))) : [];
+        normalized.push(durationMs);
+        window.localStorage.setItem(storageKey, JSON.stringify(normalized.slice(-25)));
+        window.dispatchEvent(new CustomEvent('toastit:quick-add-captured', {
+          detail: {
+            durationMs,
+            workspaceId: workspace.value.id,
+            toastId: createdItemId,
+          },
+        }));
+      }
+    } catch {
+      // Ignore local/session storage errors.
+    }
   }
 
   if (props.createOnlyMode && !isEditingToast) {

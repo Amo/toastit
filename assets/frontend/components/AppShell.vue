@@ -137,16 +137,37 @@ const handleGlobalAppKeydown = (event) => {
     return;
   }
 
-  if (event.key.toLowerCase() !== 'h') {
+  if (event.key.toLowerCase() === 'h') {
+    event.preventDefault();
+    window.location.href = props.dashboardUrl;
     return;
   }
 
-  event.preventDefault();
-  window.location.href = props.dashboardUrl;
+  if (event.key.toLowerCase() === 'c') {
+    event.preventDefault();
+    openGlobalQuickAdd();
+  }
 };
 
 const openInbox = () => {
   window.location.href = '/app/inbox';
+};
+
+const openGlobalQuickAdd = () => {
+  const fallbackWorkspace = listedNavigationWorkspaces.value[0] ?? inboxWorkspace.value;
+  const targetWorkspace = inboxWorkspace.value ?? fallbackWorkspace;
+  if (!targetWorkspace?.id) {
+    window.location.href = props.dashboardUrl;
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem('toastit:quick-add-start-ms', String(Date.now()));
+  } catch {
+    // Ignore storage failures.
+  }
+
+  window.location.href = `/app/workspaces/${targetWorkspace.id}?create=1`;
 };
 
 const logout = () => {
@@ -282,6 +303,16 @@ watch(() => route.fullPath, () => {
 
               <button
                 type="button"
+                class="inline-flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+                @click="openGlobalQuickAdd"
+                title="Quick add toast"
+              >
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                <span>Quick add</span>
+              </button>
+
+              <button
+                type="button"
                 class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-950"
                 @click="keyboardShortcutsOpen = true"
                 title="Keyboard shortcuts"
@@ -348,8 +379,15 @@ watch(() => route.fullPath, () => {
               <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">H</span>
             </div>
             <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <span class="text-sm text-stone-700">Quick add a toast</span>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">C</span>
+            </div>
+            <div class="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
               <span class="text-sm text-stone-700">Close any modal</span>
               <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700">Esc</span>
+            </div>
+            <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+              Email capture: use your personal inbox address from <a href="/app/profile?section=infos" class="font-semibold underline">Profile</a> to create toasts by email.
             </div>
           </div>
         </div>
