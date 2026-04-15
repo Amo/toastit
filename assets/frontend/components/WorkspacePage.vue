@@ -114,6 +114,14 @@ const standaloneMode = computed(() => null !== props.standaloneToastId && '' !==
 const useDedicatedMobileToastView = computed(() => standaloneMode.value && isMobileViewport.value);
 const TOAST_RETURN_TO_STORAGE_KEY = 'toastit:toast-return-to';
 const otherWorkspaces = computed(() => payload.value?.otherWorkspaces ?? []);
+const selectedTargetWorkspace = computed(() => {
+  const targetId = Number(selectedTargetWorkspaceId.value ?? 0);
+  if (!Number.isFinite(targetId) || targetId <= 0) {
+    return null;
+  }
+
+  return otherWorkspaces.value.find((candidate) => Number(candidate?.id ?? 0) === targetId) ?? null;
+});
 const members = computed(() => payload.value?.memberships ?? []);
 const participants = computed(() => payload.value?.participants ?? []);
 const participantsLookup = computed(() => Object.fromEntries(
@@ -1778,8 +1786,36 @@ const setReady = async (itemId, ready) => {
   await fetchWorkspace();
 };
 
+const resolveWorkspacePrivacyLabel = (candidateWorkspace) => (
+  candidateWorkspace?.isSoloWorkspace ? 'private' : 'shared'
+);
+
+const buildCrossWorkspaceConfirmation = (targetWorkspaceId, actionLabel) => {
+  const targetId = Number(targetWorkspaceId ?? 0);
+  if (!Number.isFinite(targetId) || targetId <= 0) {
+    return null;
+  }
+
+  const targetWorkspace = otherWorkspaces.value.find((candidate) => Number(candidate?.id ?? 0) === targetId);
+  if (!targetWorkspace || !workspace.value) {
+    return null;
+  }
+
+  const sourcePrivacy = resolveWorkspacePrivacyLabel(workspace.value);
+  const targetPrivacy = resolveWorkspacePrivacyLabel(targetWorkspace);
+  if (sourcePrivacy === targetPrivacy) {
+    return null;
+  }
+
+  return `You are about to ${actionLabel} a toast from a ${sourcePrivacy} workspace to a ${targetPrivacy} workspace (${targetWorkspace.name}). Confirm?`;
+};
+
 const copyToast = async (targetWorkspaceId = null) => {
   if (!selectedToastModal.value) return;
+  const confirmationMessage = buildCrossWorkspaceConfirmation(targetWorkspaceId, 'copy');
+  if (confirmationMessage && !window.confirm(confirmationMessage)) {
+    return;
+  }
 
   const { ok, data } = await workspacesApi.copyToast(selectedToastModal.value.id, targetWorkspaceId ?? null);
 
@@ -1805,6 +1841,10 @@ const copyToast = async (targetWorkspaceId = null) => {
 
 const transferToast = async () => {
   if (!selectedToastModal.value || !selectedTargetWorkspaceId.value) return;
+  const confirmationMessage = buildCrossWorkspaceConfirmation(selectedTargetWorkspaceId.value, 'move');
+  if (confirmationMessage && !window.confirm(confirmationMessage)) {
+    return;
+  }
 
   const { ok, data } = await workspacesApi.transferToast(selectedToastModal.value.id, Number(selectedTargetWorkspaceId.value));
 
@@ -3170,6 +3210,19 @@ watch(isMobileViewport, (isMobile) => {
               <option value="" disabled>Select workspace</option>
               <option v-for="candidate in otherWorkspaces" :key="candidate.id" :value="String(candidate.id)">{{ candidate.name }}</option>
             </select>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span class="rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.06em]" :class="workspace?.isSoloWorkspace ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'">
+                Source: {{ workspace?.isSoloWorkspace ? 'Private' : 'Shared' }}
+              </span>
+              <span
+                v-if="selectedTargetWorkspace"
+                class="rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.06em]"
+                :class="selectedTargetWorkspace.isSoloWorkspace ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'"
+              >
+                Target: {{ selectedTargetWorkspace.isSoloWorkspace ? 'Private' : 'Shared' }}
+              </span>
+            </div>
+            <p class="mt-3 text-xs text-stone-500">Crossing private/shared boundaries will require explicit confirmation before copy or transfer.</p>
           </div>
 
           <div class="flex flex-wrap justify-end gap-3">

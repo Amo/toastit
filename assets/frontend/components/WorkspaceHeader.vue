@@ -25,7 +25,9 @@ defineEmits(['open-manage', 'start-meeting', 'stop-meeting']);
               <span>{{ workspace.name }}</span>
             </h1>
             <span v-if="workspace.isDefault" class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" :class="backgroundVisible ? 'bg-white/15 text-white' : 'bg-amber-100 text-amber-700'">Default workspace</span>
-            <span v-if="isSoloWorkspace" class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" :class="backgroundVisible ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">Solo workspace</span>
+            <span class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" :class="backgroundVisible ? 'bg-white/15 text-white' : (isSoloWorkspace ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700')">
+              {{ isSoloWorkspace ? 'Private workspace' : 'Shared workspace' }}
+            </span>
           </div>
           <div class="mt-3 flex flex-wrap gap-3 text-sm" :class="backgroundVisible ? 'text-white/85' : 'text-stone-500'">
             <span class="rounded-full px-3 py-1 font-medium" :class="backgroundVisible ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ newToastCount }} new toast<span v-if="newToastCount > 1">s</span></span>
@@ -33,6 +35,9 @@ defineEmits(['open-manage', 'start-meeting', 'stop-meeting']);
             <span class="rounded-full px-3 py-1 font-medium" :class="backgroundVisible ? 'bg-white/15 text-white' : 'bg-stone-100 text-stone-700'">{{ memberCount }} member<span v-if="memberCount > 1">s</span></span>
           </div>
           <p v-if="workspace.isDefault" class="mt-2 text-sm" :class="backgroundVisible ? 'text-white/80' : 'text-stone-500'">This workspace is created automatically for every user and stays available as the permanent default.</p>
+          <p class="mt-2 text-sm" :class="backgroundVisible ? 'text-white/80' : 'text-stone-500'">
+            {{ isSoloWorkspace ? 'Private: only you can see these toasts until you explicitly promote or copy them.' : 'Shared: members of this workspace can collaborate on these toasts.' }}
+          </p>
         </div>
         <div v-if="workspace.currentUserIsOwner" class="flex flex-wrap items-center justify-end gap-3">
           <button
