@@ -293,6 +293,7 @@ final class WorkspaceFlowTest extends WebTestCase
         self::assertTrue($stopPayload['ok']);
         self::assertGreaterThan(0, $stopPayload['sessionId']);
         self::assertStringContainsString('Wrap the session cleanly', $stopPayload['summary']['summary']);
+        self::assertArrayHasKey('startedAtDisplay', $stopPayload['summary']);
 
         $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
         self::assertResponseIsSuccessful();

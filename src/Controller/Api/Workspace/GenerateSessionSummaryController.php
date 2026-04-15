@@ -26,6 +26,7 @@ final class GenerateSessionSummaryController extends AbstractController
     public function __invoke(int $id, int $sessionId): JsonResponse
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
+        $currentUser = $this->workspaceAccess->getUserOrFail();
         $this->workspaceAccess->assertOwner($workspace);
 
         if ($workspace->isSoloWorkspace()) {
@@ -35,11 +36,12 @@ final class GenerateSessionSummaryController extends AbstractController
         $session = $this->workspaceAccess->getToastingSessionOrFail($workspace, $sessionId);
 
         try {
-            $session = $this->sessionSummary->generateSessionSummary($workspace, $session, $this->workspaceAccess->getUserOrFail());
+            $session = $this->sessionSummary->generateSessionSummary($workspace, $session, $currentUser);
             $this->entityManager->flush();
         } catch (SessionSummaryUnavailableException $exception) {
             $statusCode = match ($exception->getReason()) {
                 'xai_not_configured' => 503,
+                'xai_request_timeout' => 504,
                 default => 502,
             };
 
@@ -52,7 +54,7 @@ final class GenerateSessionSummaryController extends AbstractController
 
         return $this->json([
             'ok' => true,
-            'summary' => $this->workspacePayloadBuilder->buildSessionPayload($session),
+            'summary' => $this->workspacePayloadBuilder->buildSessionPayload($session, $currentUser),
         ]);
     }
 }

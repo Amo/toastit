@@ -26,6 +26,7 @@ final class UpdateSessionSummaryController extends AbstractController
     public function __invoke(Request $request, int $id, int $sessionId): JsonResponse
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
+        $currentUser = $this->workspaceAccess->getUserOrFail();
         $this->workspaceAccess->assertOwner($workspace);
 
         if ($workspace->isSoloWorkspace()) {
@@ -41,7 +42,7 @@ final class UpdateSessionSummaryController extends AbstractController
 
         return $this->json([
             'ok' => true,
-            'summary' => $this->workspacePayloadBuilder->buildSessionPayload($session),
+            'summary' => $this->workspacePayloadBuilder->buildSessionPayload($session, $currentUser),
         ]);
     }
 }

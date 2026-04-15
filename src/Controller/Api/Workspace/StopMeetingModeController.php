@@ -44,7 +44,7 @@ final class StopMeetingModeController extends AbstractController
             try {
                 $session = $this->sessionSummary->generateSessionSummary($workspace, $activeSession, $currentUser);
                 $this->entityManager->flush();
-                $summaryPayload = $this->workspacePayloadBuilder->buildSessionPayload($session);
+                $summaryPayload = $this->workspacePayloadBuilder->buildSessionPayload($session, $currentUser);
             } catch (SessionSummaryUnavailableException $exception) {
                 $summaryError = [
                     'error' => $exception->getReason(),

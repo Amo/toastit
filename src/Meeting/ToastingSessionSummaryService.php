@@ -61,6 +61,8 @@ final class ToastingSessionSummaryService
             [
                 'source' => 'session_summary',
                 'userId' => $requestedBy->getId(),
+                'workspaceId' => $workspace->getId(),
+                'sessionId' => $session->getId(),
             ],
         );
 
