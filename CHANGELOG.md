@@ -1,3 +1,6 @@
+## 1.4.2 (April 15, 2026)
+  - TECH: env
+
 ## 1.4.1 (April 15, 2026)
   - TECH: updated env
 
