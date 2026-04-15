@@ -108,9 +108,9 @@ final class TodoDigestService
             $recentComments,
             static fn (ToastComment $comment): bool => $comment->getAuthor()->getId() !== $user->getId(),
         ));
-        $assignedActionsToday = $this->toastRepository->findAssignedActiveForUser($user, 20);
+        $actionableAssignedToasts = $this->toastRepository->findAssignedActionableForUser($user, 80);
 
-        if ([] === $statusUpdates && [] === $collaborativeComments) {
+        if ([] === $statusUpdates && [] === $collaborativeComments && [] === $actionableAssignedToasts) {
             $this->transactionalMailer->sendDailyRecap(
                 $user,
                 sprintf(
@@ -128,7 +128,7 @@ final class TodoDigestService
                 'Return markdown only.',
                 'Write a concise daily collaboration recap for one user.',
                 'Focus on work completed yesterday and collaborative signals.',
-                'Required sections: Yesterday completed, Collaborative signals, Attention points for today.',
+                'Required sections: Yesterday completed, Collaborative signals, Today and upcoming toasts, Attention points for today.',
                 'Do not invent events. Only use provided data.',
             ]);
         }
@@ -148,6 +148,9 @@ final class TodoDigestService
                 '',
                 "Today's currently assigned active actions:",
                 '{{ assigned_today }}',
+                '',
+                'Today and upcoming toasts with priority signals (due date, comment activity, boost, votes):',
+                '{{ today_and_upcoming }}',
             ]),
             [
                 'user_display_name' => $user->getDisplayName(),
@@ -155,7 +158,8 @@ final class TodoDigestService
                 'day_covered' => $windowStart->format('Y-m-d'),
                 'status_updates' => $this->buildStatusUpdatesText($statusUpdates),
                 'collaborative_comments' => $this->buildCollaborativeCommentsText($collaborativeComments),
-                'assigned_today' => $this->buildAssignedActionsText($user, $assignedActionsToday),
+                'assigned_today' => $this->buildAssignedActionsText($user, $actionableAssignedToasts),
+                'today_and_upcoming' => $this->buildTodayAndUpcomingActionsText($actionableAssignedToasts),
             ],
         );
 
@@ -429,6 +433,59 @@ final class TodoDigestService
             $lines[] = sprintf('  author: %s', $comment->getAuthor()->getDisplayName());
             $lines[] = sprintf('  created_at: %s', $comment->getCreatedAt()->format('Y-m-d H:i'));
             $lines[] = sprintf('  content: %s', trim($comment->getContent()));
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param list<Toast> $toasts
+     */
+    private function buildTodayAndUpcomingActionsText(array $toasts): string
+    {
+        if ([] === $toasts) {
+            return 'none';
+        }
+
+        $today = new \DateTimeImmutable('today');
+        $sevenDaysFromNow = $today->modify('+7 days');
+        $lines = [];
+
+        foreach ($this->assignedToastPriority->sort($toasts) as $toast) {
+            $latestComment = null;
+            $comments = $toast->getComments()->toArray();
+            if ([] !== $comments) {
+                $last = end($comments);
+                if ($last instanceof ToastComment) {
+                    $latestComment = $last;
+                }
+            }
+
+            $dueAt = $toast->getDueAt();
+            $dueBucket = 'no_due_date';
+            if ($dueAt instanceof \DateTimeImmutable) {
+                if ($dueAt < $today) {
+                    $dueBucket = 'overdue';
+                } elseif ($dueAt->format('Y-m-d') === $today->format('Y-m-d')) {
+                    $dueBucket = 'today';
+                } elseif ($dueAt <= $sevenDaysFromNow) {
+                    $dueBucket = 'next_7_days';
+                } else {
+                    $dueBucket = 'later';
+                }
+            }
+
+            $lines[] = sprintf('  id: %d', $toast->getId() ?? 0);
+            $lines[] = sprintf('- title: %s', $toast->getTitle());
+            $lines[] = sprintf('  workspace: %s', $toast->getWorkspace()->getName());
+            $lines[] = sprintf('  status: %s', $toast->getStatus());
+            $lines[] = sprintf('  due_on: %s', $dueAt?->format('Y-m-d') ?? 'none');
+            $lines[] = sprintf('  due_bucket: %s', $dueBucket);
+            $lines[] = sprintf('  boosted: %s', $toast->isBoosted() ? 'yes' : 'no');
+            $lines[] = sprintf('  vote_count: %d', $toast->getVoteCount());
+            $lines[] = sprintf('  comment_count: %d', count($comments));
+            $lines[] = sprintf('  last_comment_at: %s', $latestComment?->getCreatedAt()->format('Y-m-d H:i') ?? 'none');
+            $lines[] = sprintf('  last_comment_author: %s', $latestComment?->getAuthor()->getDisplayName() ?? 'none');
         }
 
         return implode("\n", $lines);

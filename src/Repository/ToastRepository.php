@@ -47,6 +47,30 @@ class ToastRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * @return list<Toast>
+     */
+    public function findAssignedActionableForUser(User $user, int $limit = 100): array
+    {
+        return $this->createQueryBuilder('toast')
+            ->distinct()
+            ->leftJoin('toast.workspace', 'workspace')
+            ->addSelect('workspace')
+            ->leftJoin('toast.votes', 'vote')
+            ->addSelect('vote')
+            ->leftJoin('toast.comments', 'comment')
+            ->addSelect('comment')
+            ->where('toast.owner = :user')
+            ->andWhere('toast.status IN (:actionableStatuses)')
+            ->andWhere('workspace.deletedAt IS NULL')
+            ->setParameter('user', $user)
+            ->setParameter('actionableStatuses', [Toast::STATUS_PENDING, Toast::STATUS_READY])
+            ->orderBy('toast.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function isSupportedPublicStatus(string $status): bool
     {
         return \in_array($status, [

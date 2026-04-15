@@ -87,6 +87,7 @@ This repository includes host-level scheduler assets under `ops/scheduler/`:
 Recommended installation on the VPS:
 
 1. Copy env template to `/etc/toastit/scheduler.env` and fill values.
+   - For `GOOGLE_APPLICATION_CREDENTIALS`, use a host path readable by `gcloud` (for example `/home/debian/toastit/ops/creds/recaptcha-enterprise-sa.json`), not the in-container `/run/creds/...` path.
 2. Copy unit files into `/etc/systemd/system/`.
 3. Ensure scripts are executable:
    - `chmod +x /home/debian/toastit/ops/scheduler/backup-to-gcs.sh`
