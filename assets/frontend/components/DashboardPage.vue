@@ -228,6 +228,22 @@ const workspaceSecondaryMeta = (workspace) => {
   return `${memberLabel} - ${workspaceOpenToastLabel(workspace)} - ${ownerLabel}`;
 };
 
+const workspaceModeLabel = (workspace) => {
+  if (workspace?.isInboxWorkspace) {
+    return 'Inbox';
+  }
+
+  return workspace?.isSoloWorkspace ? 'Personal' : 'Team';
+};
+
+const workspaceModeBadgeClass = (workspace) => {
+  if (workspace?.isInboxWorkspace) {
+    return 'bg-sky-100 text-sky-700';
+  }
+
+  return workspace?.isSoloWorkspace ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700';
+};
+
 const openHome = () => {
   window.location.href = '/app';
 };
@@ -297,6 +313,7 @@ onUnmounted(() => {
         <div class="sticky top-0 z-20 -mx-6 mb-5 flex flex-col gap-4 bg-white/95 px-6 py-2 backdrop-blur lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-0 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 class="text-2xl font-semibold tracking-tight text-stone-950">Focus now.</h2>
+            <p class="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-stone-500">Personal + Team execution</p>
           </div>
         </div>
 
@@ -373,6 +390,12 @@ onUnmounted(() => {
               <p class="text-sm font-semibold leading-5 text-stone-950 line-clamp-2">
                 {{ workspace.name }}
               </p>
+              <span
+                class="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]"
+                :class="workspaceModeBadgeClass(workspace)"
+              >
+                {{ workspaceModeLabel(workspace) }}
+              </span>
               <p class="mt-1 text-xs leading-5 text-stone-500 line-clamp-2">
                 {{ workspaceSecondaryMeta(workspace) }}
               </p>

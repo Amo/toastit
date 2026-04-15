@@ -79,6 +79,22 @@ const isWorkspaceActive = (workspace) => {
   return currentWorkspaceId.value === workspace?.id;
 };
 
+const workspaceModeLabel = (workspace) => {
+  if (workspace?.isInboxWorkspace) {
+    return 'Inbox';
+  }
+
+  return workspace?.isSoloWorkspace ? 'Personal' : 'Team';
+};
+
+const workspaceModeBadgeClass = (workspace) => {
+  if (workspace?.isInboxWorkspace) {
+    return 'bg-sky-100 text-sky-700';
+  }
+
+  return workspace?.isSoloWorkspace ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700';
+};
+
 const syncMobilePlatform = () => {
   const mobileQuery = typeof route.query.mobile === 'string' ? route.query.mobile.toLowerCase() : '';
   if (['1', 'true', 'on'].includes(mobileQuery)) {
@@ -418,7 +434,15 @@ watch(() => route.fullPath, () => {
                     class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
                     :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
                   >
-                    <span class="truncate">{{ workspace.name }}</span>
+                    <span class="flex min-w-0 items-center gap-2">
+                      <span class="truncate">{{ workspace.name }}</span>
+                      <span
+                        class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]"
+                        :class="workspaceModeBadgeClass(workspace)"
+                      >
+                        {{ workspaceModeLabel(workspace) }}
+                      </span>
+                    </span>
                     <span class="inline-flex items-center gap-1">
                       <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
                         {{ workspace.openItemCount ?? 0 }}
@@ -564,7 +588,15 @@ watch(() => route.fullPath, () => {
                     class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
                     :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
                   >
-                    <span class="truncate">{{ workspace.name }}</span>
+                    <span class="flex min-w-0 items-center gap-2">
+                      <span class="truncate">{{ workspace.name }}</span>
+                      <span
+                        class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]"
+                        :class="workspaceModeBadgeClass(workspace)"
+                      >
+                        {{ workspaceModeLabel(workspace) }}
+                      </span>
+                    </span>
                     <span class="inline-flex items-center gap-1">
                       <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
                         {{ workspace.openItemCount ?? 0 }}
