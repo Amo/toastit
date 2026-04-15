@@ -20,6 +20,10 @@ const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
 const isMobileViewport = ref(false);
 const isSnoozingActionId = ref(null);
+const reminderCadence = ref('daily');
+const isSendingDigest = ref(false);
+const digestNotice = ref('');
+const digestError = ref('');
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
@@ -314,6 +318,67 @@ const openHome = () => {
   window.location.href = '/app';
 };
 
+const quickAddAverageCaptureSeconds = computed(() => {
+  try {
+    const durations = JSON.parse(window.localStorage.getItem('toastit:quick-add-capture-durations-ms') ?? '[]');
+    if (!Array.isArray(durations) || durations.length === 0) {
+      return null;
+    }
+
+    const values = durations
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value >= 0);
+    if (values.length === 0) {
+      return null;
+    }
+
+    const averageMs = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return Math.round(averageMs / 1000);
+  } catch {
+    return null;
+  }
+});
+
+const personalRetentionKpis = computed(() => {
+  const summary = payload.value?.myActions?.summary ?? {};
+  const workspaces = Array.isArray(payload.value?.workspaces) ? payload.value.workspaces : [];
+  const resolvedCount = workspaces.reduce((total, workspace) => total + Number(workspace?.resolvedItemCount ?? 0), 0);
+
+  return {
+    activeAssigned: Number(summary.assignedCount ?? 0),
+    late: Number(summary.lateCount ?? 0),
+    dueSoon: Number(summary.dueSoonCount ?? 0),
+    resolved: Number.isFinite(resolvedCount) ? resolvedCount : 0,
+    avgCaptureSeconds: quickAddAverageCaptureSeconds.value,
+  };
+});
+
+const saveReminderCadence = (cadence) => {
+  reminderCadence.value = cadence;
+  try {
+    window.localStorage.setItem('toastit:personal-reminder-cadence', cadence);
+  } catch {
+    // Ignore storage failures.
+  }
+};
+
+const sendDigestNow = async () => {
+  isSendingDigest.value = true;
+  digestNotice.value = '';
+  digestError.value = '';
+  const { ok } = await workspacesApi.sendWeeklySummary();
+  isSendingDigest.value = false;
+
+  if (!ok) {
+    digestError.value = 'Unable to send digest right now.';
+    return;
+  }
+
+  digestNotice.value = reminderCadence.value === 'daily'
+    ? 'Daily digest request sent.'
+    : 'Digest request sent.';
+};
+
 const syncViewport = () => {
   isMobileViewport.value = window.innerWidth < 1024;
 };
@@ -359,6 +424,14 @@ const handleDashboardKeydown = (event) => {
 
 onMounted(() => {
   syncViewport();
+  try {
+    const storedCadence = window.localStorage.getItem('toastit:personal-reminder-cadence');
+    if (storedCadence === 'daily' || storedCadence === 'weekly' || storedCadence === 'off') {
+      reminderCadence.value = storedCadence;
+    }
+  } catch {
+    // Ignore storage failures.
+  }
   fetchDashboard();
   window.addEventListener('keydown', handleDashboardKeydown);
   window.addEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
@@ -375,6 +448,71 @@ onUnmounted(() => {
 
 <template>
   <section class="space-y-6">
+    <div class="tw-toastit-card p-6">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div class="space-y-3">
+          <h2 class="text-xl font-semibold tracking-tight text-stone-950">Personal retention loop.</h2>
+          <p class="text-sm text-stone-600">Keep momentum with digest nudges, lightweight reminders, and clear progress feedback.</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+              :class="reminderCadence === 'daily' ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+              @click="saveReminderCadence('daily')"
+            >
+              Daily reminders
+            </button>
+            <button
+              type="button"
+              class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+              :class="reminderCadence === 'weekly' ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+              @click="saveReminderCadence('weekly')"
+            >
+              Weekly reminders
+            </button>
+            <button
+              type="button"
+              class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+              :class="reminderCadence === 'off' ? 'border-stone-300 bg-stone-200 text-stone-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+              @click="saveReminderCadence('off')"
+            >
+              Reminders off
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              class="rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60"
+              :disabled="isSendingDigest || reminderCadence === 'off'"
+              @click="sendDigestNow"
+            >
+              {{ isSendingDigest ? 'Sending…' : 'Send action digest now' }}
+            </button>
+            <p v-if="digestNotice" class="text-xs font-medium text-emerald-700">{{ digestNotice }}</p>
+            <p v-if="digestError" class="text-xs font-medium text-rose-700">{{ digestError }}</p>
+          </div>
+        </div>
+        <div class="grid w-full gap-2 text-sm sm:grid-cols-2 lg:max-w-md">
+          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Active assigned</p>
+            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.activeAssigned }}</p>
+          </div>
+          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Completed</p>
+            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.resolved }}</p>
+          </div>
+          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">At risk</p>
+            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.late + personalRetentionKpis.dueSoon }}</p>
+          </div>
+          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Avg capture</p>
+            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.avgCaptureSeconds !== null ? `${personalRetentionKpis.avgCaptureSeconds}s` : 'n/a' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="!isMobileViewport || mobileSection === 'toasts'" class="tw-toastit-card p-6">
         <div class="sticky top-0 z-20 -mx-6 mb-5 flex flex-col gap-4 bg-white/95 px-6 py-2 backdrop-blur lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-0 lg:flex-row lg:items-center lg:justify-between">
           <div>
