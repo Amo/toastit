@@ -16,7 +16,6 @@ const props = defineProps({
 
 const route = useRoute();
 const router = useRouter();
-const touchStart = ref(null);
 const workspacePickerOpen = ref(false);
 const workspaceCreateFlowActive = ref(false);
 
@@ -195,62 +194,6 @@ const navigateToTab = (tabKey) => {
   router.push(tab.to);
 };
 
-const shouldIgnoreSwipe = (event) => {
-  if (!(event.target instanceof HTMLElement)) {
-    return false;
-  }
-
-  return !!event.target.closest('input, textarea, select, button, a, [role="button"], [data-no-swipe]');
-};
-
-const handleTouchStart = (event) => {
-  if (shouldIgnoreSwipe(event)) {
-    touchStart.value = null;
-    return;
-  }
-
-  const [touch] = event.changedTouches;
-  if (!touch) {
-    return;
-  }
-
-  touchStart.value = { x: touch.clientX, y: touch.clientY };
-};
-
-const handleTouchEnd = (event) => {
-  if (!touchStart.value || shouldIgnoreSwipe(event)) {
-    return;
-  }
-
-  const [touch] = event.changedTouches;
-  if (!touch) {
-    touchStart.value = null;
-    return;
-  }
-
-  const dx = touch.clientX - touchStart.value.x;
-  const dy = touch.clientY - touchStart.value.y;
-  touchStart.value = null;
-
-  if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.2) {
-    return;
-  }
-
-  const swipeOrder = ['toasts', 'workspaces', 'profile'];
-  const currentIndex = swipeOrder.indexOf(activeTabKey.value);
-  if (currentIndex < 0) {
-    return;
-  }
-
-  const direction = dx < 0 ? 1 : -1;
-  const targetKey = swipeOrder[currentIndex + direction];
-  if (!targetKey) {
-    return;
-  }
-
-  navigateToTab(targetKey);
-};
-
 onMounted(() => {
   window.addEventListener('toastit:create-workspace-flow-state', syncWorkspaceCreateFlowState);
 });
@@ -267,8 +210,6 @@ onUnmounted(() => {
       <section
         :key="route.fullPath"
         class="tw-mobile-app-shell__content"
-        @touchstart.passive="handleTouchStart"
-        @touchend.passive="handleTouchEnd"
       >
         <button
           v-if="showFloatingCreateButton"

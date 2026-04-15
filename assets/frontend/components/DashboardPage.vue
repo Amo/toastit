@@ -20,10 +20,17 @@ const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
 const isMobileViewport = ref(false);
 const isSnoozingActionId = ref(null);
-const reminderCadence = ref('daily');
-const isSendingDigest = ref(false);
-const digestNotice = ref('');
-const digestError = ref('');
+const MY_DAY_SWIPE_ACTION_SLOT_WIDTH = 56;
+const myDaySwipe = ref({
+  activeActionId: null,
+  revealById: {},
+  startX: 0,
+  startY: 0,
+  startReveal: 0,
+  isDragging: false,
+  suppressTapForId: null,
+});
+const myDaySwipeActionsWidthById = ref({});
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
@@ -137,40 +144,7 @@ const actionDateStatus = (action) => {
 };
 
 const myDayActions = computed(() => {
-  const actions = Array.isArray(payload.value?.myActions?.actions) ? payload.value.myActions.actions : [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sevenDaysFromNow = new Date(today);
-  sevenDaysFromNow.setDate(today.getDate() + 7);
-
-  const withWeight = actions.map((action) => {
-    const dueOn = typeof action?.dueOn === 'string' ? action.dueOn : '';
-    const dueAt = dueOn ? new Date(`${dueOn}T00:00:00`) : null;
-    let weight = 4;
-    if (action?.isBoosted) {
-      weight = 0;
-    } else if (dueAt && !Number.isNaN(dueAt.getTime()) && dueAt < today) {
-      weight = 1;
-    } else if (dueAt && !Number.isNaN(dueAt.getTime()) && dueAt <= sevenDaysFromNow) {
-      weight = 2;
-    } else if (!dueAt) {
-      weight = 3;
-    }
-
-    return { action, weight };
-  });
-
-  withWeight.sort((left, right) => {
-    if (left.weight !== right.weight) {
-      return left.weight - right.weight;
-    }
-
-    const leftDue = left.action?.dueOn ? new Date(`${left.action.dueOn}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
-    const rightDue = right.action?.dueOn ? new Date(`${right.action.dueOn}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
-    return leftDue - rightDue;
-  });
-
-  return withWeight.map((entry) => entry.action);
+  return Array.isArray(payload.value?.myActions?.actions) ? payload.value.myActions.actions : [];
 });
 
 const formatDateInput = (value) => {
@@ -180,6 +154,95 @@ const formatDateInput = (value) => {
   return `${year}-${month}-${day}`;
 };
 
+const formatDateDisplay = (value) => {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    return 'No due date';
+  }
+
+  const locale = typeof window !== 'undefined' && window.navigator?.language
+    ? window.navigator.language
+    : 'en-US';
+
+  return new Intl.DateTimeFormat(locale, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(value);
+};
+
+const refreshMyActionsSummary = () => {
+  const actions = myDayActions.value;
+  const workspaceIds = new Set();
+  let lateCount = 0;
+  let dueSoonCount = 0;
+
+  for (const action of actions) {
+    const workspaceId = Number(action?.workspace?.id ?? 0);
+    if (Number.isFinite(workspaceId) && workspaceId > 0) {
+      workspaceIds.add(workspaceId);
+    }
+
+    const status = actionDateStatus(action);
+    if (status === 'late') {
+      lateCount += 1;
+    } else if (status === 'due-soon') {
+      dueSoonCount += 1;
+    }
+  }
+
+  if (!payload.value?.myActions?.summary) {
+    return;
+  }
+
+  payload.value.myActions.summary.assignedCount = actions.length;
+  payload.value.myActions.summary.lateCount = lateCount;
+  payload.value.myActions.summary.dueSoonCount = dueSoonCount;
+  payload.value.myActions.summary.workspaceCount = workspaceIds.size;
+};
+
+const mutateMyAction = (actionId, updater) => {
+  const actions = Array.isArray(payload.value?.myActions?.actions) ? payload.value.myActions.actions : null;
+  if (!actions) {
+    return null;
+  }
+
+  const target = actions.find((candidate) => Number(candidate?.id) === Number(actionId));
+  if (!target) {
+    return null;
+  }
+
+  updater(target);
+  return target;
+};
+
+const removeMyAction = (actionId) => {
+  const actions = Array.isArray(payload.value?.myActions?.actions) ? payload.value.myActions.actions : null;
+  if (!actions) {
+    return;
+  }
+
+  const index = actions.findIndex((candidate) => Number(candidate?.id) === Number(actionId));
+  if (index < 0) {
+    return;
+  }
+
+  actions.splice(index, 1);
+  closeMyDaySwipe(actionId);
+  refreshMyActionsSummary();
+};
+
+const applyDueState = (action, dueOn) => {
+  const dueAt = typeof dueOn === 'string' && dueOn !== '' ? new Date(`${dueOn}T00:00:00`) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysFromNow = new Date(today);
+  sevenDaysFromNow.setDate(today.getDate() + 7);
+
+  action.dueOn = dueOn;
+  action.isLate = !!(dueAt && !Number.isNaN(dueAt.getTime()) && dueAt < today);
+  action.isDueSoon = !!(dueAt && !Number.isNaN(dueAt.getTime()) && !action.isLate && dueAt <= sevenDaysFromNow);
+};
+
 const snoozeAction = async (action) => {
   const actionId = Number(action?.id ?? 0);
   if (!Number.isFinite(actionId) || actionId <= 0) {
@@ -187,18 +250,259 @@ const snoozeAction = async (action) => {
   }
 
   isSnoozingActionId.value = actionId;
-  const nextDueAt = new Date();
+  const parsedDueAt = typeof action?.dueOn === 'string' ? new Date(`${action.dueOn}T00:00:00`) : null;
+  const nextDueAt = parsedDueAt && !Number.isNaN(parsedDueAt.getTime())
+    ? new Date(parsedDueAt)
+    : new Date();
   nextDueAt.setDate(nextDueAt.getDate() + 1);
+  const nextDueOn = formatDateInput(nextDueAt);
 
-  await workspacesApi.updateToast(actionId, {
+  const { ok } = await workspacesApi.updateToast(actionId, {
     title: action?.title ?? '',
     description: action?.description ?? '',
     ownerId: action?.owner?.id ? String(action.owner.id) : '',
-    dueOn: formatDateInput(nextDueAt),
+    dueOn: nextDueOn,
   });
 
   isSnoozingActionId.value = null;
-  await fetchDashboard();
+  if (!ok) {
+    return;
+  }
+
+  mutateMyAction(actionId, (target) => {
+    applyDueState(target, nextDueOn);
+    target.dueOnDisplay = formatDateDisplay(nextDueAt);
+  });
+  refreshMyActionsSummary();
+};
+
+const toggleVoteAction = async (action) => {
+  const actionId = Number(action?.id ?? 0);
+  if (!Number.isFinite(actionId) || actionId <= 0) {
+    return;
+  }
+
+  const previousVoted = !!action.currentUserHasVoted;
+  const previousVoteCount = Number(action.voteCount ?? 0);
+  const nextVoted = !previousVoted;
+  const nextVoteCount = Math.max(0, previousVoteCount + (nextVoted ? 1 : -1));
+
+  mutateMyAction(actionId, (target) => {
+    target.currentUserHasVoted = nextVoted;
+    target.voteCount = nextVoteCount;
+  });
+
+  const response = await workspacesApi.toggleVote(actionId);
+  if (!response.ok) {
+    mutateMyAction(actionId, (target) => {
+      target.currentUserHasVoted = previousVoted;
+      target.voteCount = previousVoteCount;
+    });
+  }
+};
+
+const toggleBoostAction = async (action) => {
+  const actionId = Number(action?.id ?? 0);
+  if (!Number.isFinite(actionId) || actionId <= 0) {
+    return;
+  }
+
+  const previousBoosted = !!action.isBoosted;
+  mutateMyAction(actionId, (target) => {
+    target.isBoosted = !previousBoosted;
+  });
+
+  const response = await workspacesApi.toggleBoost(actionId);
+  if (!response.ok) {
+    mutateMyAction(actionId, (target) => {
+      target.isBoosted = previousBoosted;
+    });
+  }
+  refreshMyActionsSummary();
+};
+
+const markDoneAction = async (action) => {
+  const actionId = Number(action?.id ?? 0);
+  if (!Number.isFinite(actionId) || actionId <= 0) {
+    return;
+  }
+  const { ok } = await workspacesApi.setReady(actionId, true);
+  if (!ok) {
+    return;
+  }
+
+  mutateMyAction(actionId, (target) => {
+    target.status = 'ready';
+  });
+};
+
+const deleteAction = async (action) => {
+  const actionId = Number(action?.id ?? 0);
+  if (!Number.isFinite(actionId) || actionId <= 0) {
+    return;
+  }
+
+  const response = await workspacesApi.toggleVeto(actionId);
+  if (!response.ok) {
+    return;
+  }
+
+  removeMyAction(actionId);
+};
+
+const myDaySwipeActionCount = (action) => {
+  let count = 1; // Snooze
+  if (action?.currentUserCanVote) {
+    count += 1;
+  }
+  if (action?.currentUserCanBoost) {
+    count += 1;
+  }
+  if (action?.currentUserCanMarkReady) {
+    count += 1;
+  }
+  if (action?.currentUserCanDelete) {
+    count += 1;
+  }
+
+  return count;
+};
+
+const myDaySwipeActionsWidth = (actionId) => {
+  const measuredWidth = Number(myDaySwipeActionsWidthById.value?.[actionId] ?? 0);
+  if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+    return measuredWidth;
+  }
+
+  const action = myDayActions.value.find((candidate) => Number(candidate?.id) === Number(actionId));
+  if (!action) {
+    return MY_DAY_SWIPE_ACTION_SLOT_WIDTH;
+  }
+
+  return myDaySwipeActionCount(action) * MY_DAY_SWIPE_ACTION_SLOT_WIDTH;
+};
+
+const registerMyDaySwipeActionsRef = (actionId, element) => {
+  const normalizedId = Number(actionId ?? 0);
+  if (!Number.isFinite(normalizedId) || normalizedId <= 0) {
+    return;
+  }
+
+  if (!(element instanceof HTMLElement)) {
+    delete myDaySwipeActionsWidthById.value[normalizedId];
+    return;
+  }
+
+  myDaySwipeActionsWidthById.value[normalizedId] = Math.round(element.getBoundingClientRect().width);
+};
+
+const getMyDayReveal = (actionId) => {
+  const value = Number(myDaySwipe.value.revealById?.[actionId] ?? 0);
+  if (!Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+
+  return Math.min(myDaySwipeActionsWidth(actionId), value);
+};
+
+const myDaySwipeStyle = (actionId) => ({
+  transform: `translateX(-${getMyDayReveal(actionId)}px)`,
+});
+
+const closeMyDaySwipe = (actionId = null) => {
+  if (actionId !== null) {
+    myDaySwipe.value.revealById[actionId] = 0;
+    if (myDaySwipe.value.activeActionId === actionId) {
+      myDaySwipe.value.activeActionId = null;
+    }
+    return;
+  }
+
+  const activeActionId = myDaySwipe.value.activeActionId;
+  if (activeActionId !== null) {
+    myDaySwipe.value.revealById[activeActionId] = 0;
+  }
+  myDaySwipe.value.activeActionId = null;
+};
+
+const handleMyDayTouchStart = (actionId, event) => {
+  const touch = event.touches?.[0];
+  if (!touch) {
+    return;
+  }
+
+  if (myDaySwipe.value.activeActionId !== null && myDaySwipe.value.activeActionId !== actionId) {
+    closeMyDaySwipe();
+  }
+
+  myDaySwipe.value.activeActionId = actionId;
+  myDaySwipe.value.startX = touch.clientX;
+  myDaySwipe.value.startY = touch.clientY;
+  myDaySwipe.value.startReveal = getMyDayReveal(actionId);
+  myDaySwipe.value.isDragging = false;
+};
+
+const handleMyDayTouchMove = (actionId, event) => {
+  const touch = event.touches?.[0];
+  if (!touch || myDaySwipe.value.activeActionId !== actionId) {
+    return;
+  }
+
+  const deltaX = touch.clientX - myDaySwipe.value.startX;
+  const deltaY = touch.clientY - myDaySwipe.value.startY;
+  if (!myDaySwipe.value.isDragging) {
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      return;
+    }
+    if (Math.abs(deltaX) < 8) {
+      return;
+    }
+    myDaySwipe.value.isDragging = true;
+  }
+
+  if (event.cancelable) {
+    event.preventDefault();
+  }
+
+  const nextReveal = myDaySwipe.value.startReveal - deltaX;
+  myDaySwipe.value.revealById[actionId] = Math.min(
+    myDaySwipeActionsWidth(actionId),
+    Math.max(0, nextReveal),
+  );
+};
+
+const handleMyDayTouchEnd = (actionId) => {
+  if (myDaySwipe.value.activeActionId !== actionId) {
+    return;
+  }
+
+  const reveal = getMyDayReveal(actionId);
+  const width = myDaySwipeActionsWidth(actionId);
+  const shouldStayOpen = reveal >= width * 0.38;
+  myDaySwipe.value.revealById[actionId] = shouldStayOpen ? width : 0;
+  myDaySwipe.value.suppressTapForId = myDaySwipe.value.isDragging ? actionId : null;
+  myDaySwipe.value.activeActionId = shouldStayOpen ? actionId : null;
+  myDaySwipe.value.isDragging = false;
+};
+
+const handleMyDayRowTap = (actionId) => {
+  if (myDaySwipe.value.suppressTapForId === actionId) {
+    myDaySwipe.value.suppressTapForId = null;
+    return;
+  }
+
+  const reveal = getMyDayReveal(actionId);
+  if (reveal > 0) {
+    closeMyDaySwipe(actionId);
+    return;
+  }
+
+  openToast(actionId);
+};
+
+const executeMyDayAction = async (actionId, callback) => {
+  await callback();
+  closeMyDaySwipe(actionId);
 };
 
 const actionBorderStyle = (action) => {
@@ -210,7 +514,7 @@ const actionBorderStyle = (action) => {
   } else if (status === 'late') {
     borderLeftColor = 'rgb(239 68 68)';
   } else if (status === 'due-soon') {
-    borderLeftColor = 'rgb(250 204 21)';
+    borderLeftColor = 'rgba(59, 130, 246, 0.62)';
   }
 
   return {
@@ -318,67 +622,6 @@ const openHome = () => {
   window.location.href = '/app';
 };
 
-const quickAddAverageCaptureSeconds = computed(() => {
-  try {
-    const durations = JSON.parse(window.localStorage.getItem('toastit:quick-add-capture-durations-ms') ?? '[]');
-    if (!Array.isArray(durations) || durations.length === 0) {
-      return null;
-    }
-
-    const values = durations
-      .map((value) => Number(value))
-      .filter((value) => Number.isFinite(value) && value >= 0);
-    if (values.length === 0) {
-      return null;
-    }
-
-    const averageMs = values.reduce((sum, value) => sum + value, 0) / values.length;
-    return Math.round(averageMs / 1000);
-  } catch {
-    return null;
-  }
-});
-
-const personalRetentionKpis = computed(() => {
-  const summary = payload.value?.myActions?.summary ?? {};
-  const workspaces = Array.isArray(payload.value?.workspaces) ? payload.value.workspaces : [];
-  const resolvedCount = workspaces.reduce((total, workspace) => total + Number(workspace?.resolvedItemCount ?? 0), 0);
-
-  return {
-    activeAssigned: Number(summary.assignedCount ?? 0),
-    late: Number(summary.lateCount ?? 0),
-    dueSoon: Number(summary.dueSoonCount ?? 0),
-    resolved: Number.isFinite(resolvedCount) ? resolvedCount : 0,
-    avgCaptureSeconds: quickAddAverageCaptureSeconds.value,
-  };
-});
-
-const saveReminderCadence = (cadence) => {
-  reminderCadence.value = cadence;
-  try {
-    window.localStorage.setItem('toastit:personal-reminder-cadence', cadence);
-  } catch {
-    // Ignore storage failures.
-  }
-};
-
-const sendDigestNow = async () => {
-  isSendingDigest.value = true;
-  digestNotice.value = '';
-  digestError.value = '';
-  const { ok } = await workspacesApi.sendWeeklySummary();
-  isSendingDigest.value = false;
-
-  if (!ok) {
-    digestError.value = 'Unable to send digest right now.';
-    return;
-  }
-
-  digestNotice.value = reminderCadence.value === 'daily'
-    ? 'Daily digest request sent.'
-    : 'Digest request sent.';
-};
-
 const syncViewport = () => {
   isMobileViewport.value = window.innerWidth < 1024;
 };
@@ -424,14 +667,6 @@ const handleDashboardKeydown = (event) => {
 
 onMounted(() => {
   syncViewport();
-  try {
-    const storedCadence = window.localStorage.getItem('toastit:personal-reminder-cadence');
-    if (storedCadence === 'daily' || storedCadence === 'weekly' || storedCadence === 'off') {
-      reminderCadence.value = storedCadence;
-    }
-  } catch {
-    // Ignore storage failures.
-  }
   fetchDashboard();
   window.addEventListener('keydown', handleDashboardKeydown);
   window.addEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
@@ -448,71 +683,6 @@ onUnmounted(() => {
 
 <template>
   <section class="space-y-6">
-    <div class="tw-toastit-card p-6">
-      <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div class="space-y-3">
-          <h2 class="text-xl font-semibold tracking-tight text-stone-950">Personal retention loop.</h2>
-          <p class="text-sm text-stone-600">Keep momentum with digest nudges, lightweight reminders, and clear progress feedback.</p>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
-              :class="reminderCadence === 'daily' ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
-              @click="saveReminderCadence('daily')"
-            >
-              Daily reminders
-            </button>
-            <button
-              type="button"
-              class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
-              :class="reminderCadence === 'weekly' ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
-              @click="saveReminderCadence('weekly')"
-            >
-              Weekly reminders
-            </button>
-            <button
-              type="button"
-              class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
-              :class="reminderCadence === 'off' ? 'border-stone-300 bg-stone-200 text-stone-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
-              @click="saveReminderCadence('off')"
-            >
-              Reminders off
-            </button>
-          </div>
-          <div class="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              class="rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60"
-              :disabled="isSendingDigest || reminderCadence === 'off'"
-              @click="sendDigestNow"
-            >
-              {{ isSendingDigest ? 'Sending…' : 'Send action digest now' }}
-            </button>
-            <p v-if="digestNotice" class="text-xs font-medium text-emerald-700">{{ digestNotice }}</p>
-            <p v-if="digestError" class="text-xs font-medium text-rose-700">{{ digestError }}</p>
-          </div>
-        </div>
-        <div class="grid w-full gap-2 text-sm sm:grid-cols-2 lg:max-w-md">
-          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Active assigned</p>
-            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.activeAssigned }}</p>
-          </div>
-          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Completed</p>
-            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.resolved }}</p>
-          </div>
-          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">At risk</p>
-            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.late + personalRetentionKpis.dueSoon }}</p>
-          </div>
-          <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-            <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Avg capture</p>
-            <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.avgCaptureSeconds !== null ? `${personalRetentionKpis.avgCaptureSeconds}s` : 'n/a' }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div v-if="!isMobileViewport || mobileSection === 'toasts'" class="tw-toastit-card p-6">
         <div class="sticky top-0 z-20 -mx-6 mb-5 flex flex-col gap-4 bg-white/95 px-6 py-2 backdrop-blur lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-0 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -528,10 +698,67 @@ onUnmounted(() => {
             <div
               v-for="action in myDayActions"
               :key="action.id"
-              class="cursor-pointer space-y-2 px-4 py-1 transition hover:bg-stone-50"
-              :style="actionBorderStyle(action)"
+              class="relative overflow-hidden"
             >
-              <button type="button" class="block w-full text-left" @click="openToast(action.id)">
+              <div
+                :ref="(el) => registerMyDaySwipeActionsRef(action.id, el)"
+                class="absolute inset-y-0 right-0 z-0 flex items-stretch rounded-l-2xl border-y border-stone-200 bg-stone-100"
+              >
+                <button
+                  v-if="action.currentUserCanVote"
+                  type="button"
+                  class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
+                  :class="action.currentUserHasVoted ? 'bg-amber-200 text-black hover:bg-amber-300' : 'bg-white text-amber-300 hover:bg-amber-50'"
+                  @click.stop="executeMyDayAction(action.id, () => toggleVoteAction(action))"
+                >
+                  <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
+                </button>
+                <button
+                  v-if="action.currentUserCanBoost"
+                  type="button"
+                  class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
+                  :class="action.isBoosted ? 'bg-slate-400 text-black hover:bg-slate-300' : 'bg-white text-slate-700 hover:bg-slate-50'"
+                  @click.stop="executeMyDayAction(action.id, () => toggleBoostAction(action))"
+                >
+                  <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
+                </button>
+                <button
+                  v-if="action.currentUserCanMarkReady"
+                  type="button"
+                  class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
+                  :class="action.status === 'ready' ? 'bg-emerald-500 text-black hover:bg-emerald-400' : 'bg-white text-emerald-700 hover:bg-emerald-50'"
+                  @click.stop="executeMyDayAction(action.id, () => markDoneAction(action))"
+                >
+                  <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
+                </button>
+                <button
+                  v-if="action.currentUserCanDelete"
+                  type="button"
+                  class="inline-grid w-14 place-items-center border-l border-stone-200 bg-white text-red-700 transition hover:bg-red-50"
+                  @click.stop="executeMyDayAction(action.id, () => deleteAction(action))"
+                >
+                  <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  class="inline-grid w-14 place-items-center border-l border-stone-200 bg-white text-blue-600 transition hover:bg-blue-50"
+                  :disabled="isSnoozingActionId === action.id"
+                  @click.stop="executeMyDayAction(action.id, () => snoozeAction(action))"
+                >
+                  <i v-if="isSnoozingActionId !== action.id" class="fa-solid fa-clock text-sm" aria-hidden="true"></i>
+                  <i v-else class="fa-solid fa-spinner animate-spin text-sm" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div
+                class="relative z-10 cursor-pointer space-y-2 px-4 py-1 transition-all duration-150 hover:bg-stone-50"
+                :class="getMyDayReveal(action.id) > 0 ? 'bg-stone-50' : 'bg-white'"
+                :style="[actionBorderStyle(action), myDaySwipeStyle(action.id)]"
+                @touchstart="handleMyDayTouchStart(action.id, $event)"
+                @touchmove="handleMyDayTouchMove(action.id, $event)"
+                @touchend="handleMyDayTouchEnd(action.id)"
+                @touchcancel="handleMyDayTouchEnd(action.id)"
+                @click="handleMyDayRowTap(action.id)"
+              >
                 <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
                   {{ action.title }}
                 </p>
@@ -539,16 +766,6 @@ onUnmounted(() => {
                   <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
                   {{ action.workspace.name }} • {{ action.dueOnDisplay || 'No due date' }}
                 </p>
-              </button>
-              <div class="pt-1">
-                <button
-                  type="button"
-                  class="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
-                  :disabled="isSnoozingActionId === action.id"
-                  @click="snoozeAction(action)"
-                >
-                  {{ isSnoozingActionId === action.id ? 'Snoozing…' : 'Snooze +1d' }}
-                </button>
               </div>
             </div>
           </div>

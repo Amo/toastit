@@ -76,7 +76,7 @@ const isToastCurationGenerating = ref(false);
 const toastCurationApplyingIndex = ref(-1);
 const toastCurationActionStatuses = ref({});
 const isToastDraftRefining = ref(false);
-const TOAST_DRAFT_REFINE_TIMEOUT_MS = 30_000;
+const TOAST_DRAFT_REFINE_TIMEOUT_MS = 45_000;
 const QUICK_ADD_CAPTURE_TIMER_KEY = 'toastit:quick-add-start-ms';
 const toastDraftRefinementBackup = ref(null);
 let toastDraftRefinementRequestId = 0;
@@ -99,6 +99,16 @@ const mobileActionBarDocked = ref(false);
 const mobileActionBarScrollFrame = ref(0);
 const isMobileCommentModalOpen = ref(false);
 const mobileVetoConfirmToastId = ref(null);
+const MOBILE_AGENDA_SWIPE_ACTION_SLOT_WIDTH = 56;
+const mobileAgendaSwipe = ref({
+  activeItemId: null,
+  revealById: {},
+  startX: 0,
+  startY: 0,
+  startReveal: 0,
+  isDragging: false,
+  suppressTapForId: null,
+});
 let archivedToastObserver = null;
 let inboxAddressCopiedTimeout = null;
 const apiClient = new ToastitApiClient(props.accessToken, {
@@ -629,7 +639,7 @@ const workspaceMobileItemBorderStyle = (item) => {
   } else if (dateStatus === 'late') {
     borderLeftColor = 'rgb(239 68 68)';
   } else if (dateStatus === 'due-soon') {
-    borderLeftColor = 'rgb(250 204 21)';
+    borderLeftColor = 'rgba(59, 130, 246, 0.62)';
   }
 
   return {
@@ -904,7 +914,7 @@ const refineToastDraft = async (draftSnapshot = null, options = {}) => {
     timeoutHandle = window.setTimeout(() => {
       resolve({
         ok: false,
-        data: { message: 'AI rewrite timed out after 30 seconds. Please try again.' },
+        data: { message: 'AI rewrite timed out after 45 seconds. Please try again.' },
       });
     }, TOAST_DRAFT_REFINE_TIMEOUT_MS);
   });
@@ -1738,6 +1748,138 @@ const toggleVeto = async (itemId) => {
   await fetchWorkspace();
 };
 
+const mobileAgendaSwipeActionCount = (item) => {
+  if (!item) {
+    return 1;
+  }
+
+  let count = 0;
+  if (!isSoloWorkspace.value) {
+    count += 1; // Vote
+  }
+  if (workspace.value?.currentUserIsOwner && !isToastingMode.value && !isSoloWorkspace.value) {
+    count += 1; // Boost
+  }
+  if (item.currentUserCanMarkReady) {
+    count += 1; // Ready
+  }
+  if (workspace.value?.currentUserIsOwner && !isToastingMode.value) {
+    count += 1; // Delete
+  }
+
+  return Math.max(1, count);
+};
+
+const mobileAgendaSwipeActionsWidth = (itemId) => {
+  const item = displayedAgendaItems.value.find((candidate) => candidate.id === itemId);
+  return mobileAgendaSwipeActionCount(item) * MOBILE_AGENDA_SWIPE_ACTION_SLOT_WIDTH;
+};
+
+const getMobileAgendaReveal = (itemId) => {
+  const value = Number(mobileAgendaSwipe.value.revealById?.[itemId] ?? 0);
+  if (!Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+
+  return Math.min(mobileAgendaSwipeActionsWidth(itemId), value);
+};
+
+const workspaceMobileSwipeStyle = (itemId) => ({
+  transform: `translateX(-${getMobileAgendaReveal(itemId)}px)`,
+});
+
+const closeMobileAgendaSwipe = (itemId = null) => {
+  if (itemId !== null) {
+    mobileAgendaSwipe.value.revealById[itemId] = 0;
+    if (mobileAgendaSwipe.value.activeItemId === itemId) {
+      mobileAgendaSwipe.value.activeItemId = null;
+    }
+    return;
+  }
+
+  const activeItemId = mobileAgendaSwipe.value.activeItemId;
+  if (activeItemId !== null) {
+    mobileAgendaSwipe.value.revealById[activeItemId] = 0;
+  }
+  mobileAgendaSwipe.value.activeItemId = null;
+};
+
+const handleMobileAgendaTouchStart = (itemId, event) => {
+  const touch = event.touches?.[0];
+  if (!touch) {
+    return;
+  }
+
+  if (mobileAgendaSwipe.value.activeItemId !== null && mobileAgendaSwipe.value.activeItemId !== itemId) {
+    closeMobileAgendaSwipe();
+  }
+
+  mobileAgendaSwipe.value.activeItemId = itemId;
+  mobileAgendaSwipe.value.startX = touch.clientX;
+  mobileAgendaSwipe.value.startY = touch.clientY;
+  mobileAgendaSwipe.value.startReveal = getMobileAgendaReveal(itemId);
+  mobileAgendaSwipe.value.isDragging = false;
+};
+
+const handleMobileAgendaTouchMove = (itemId, event) => {
+  const touch = event.touches?.[0];
+  if (!touch || mobileAgendaSwipe.value.activeItemId !== itemId) {
+    return;
+  }
+
+  const deltaX = touch.clientX - mobileAgendaSwipe.value.startX;
+  const deltaY = touch.clientY - mobileAgendaSwipe.value.startY;
+  if (!mobileAgendaSwipe.value.isDragging) {
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      return;
+    }
+    if (Math.abs(deltaX) < 8) {
+      return;
+    }
+    mobileAgendaSwipe.value.isDragging = true;
+  }
+
+  const nextReveal = mobileAgendaSwipe.value.startReveal - deltaX;
+  mobileAgendaSwipe.value.revealById[itemId] = Math.min(
+    mobileAgendaSwipeActionsWidth(itemId),
+    Math.max(0, nextReveal),
+  );
+};
+
+const handleMobileAgendaTouchEnd = (itemId) => {
+  if (mobileAgendaSwipe.value.activeItemId !== itemId) {
+    return;
+  }
+
+  const reveal = getMobileAgendaReveal(itemId);
+  const width = mobileAgendaSwipeActionsWidth(itemId);
+  const shouldStayOpen = reveal >= width * 0.38;
+  mobileAgendaSwipe.value.revealById[itemId] = shouldStayOpen ? width : 0;
+  mobileAgendaSwipe.value.suppressTapForId = mobileAgendaSwipe.value.isDragging ? itemId : null;
+  mobileAgendaSwipe.value.activeItemId = shouldStayOpen ? itemId : null;
+  mobileAgendaSwipe.value.isDragging = false;
+};
+
+const handleMobileAgendaRowTap = (itemId) => {
+  if (mobileAgendaSwipe.value.suppressTapForId === itemId) {
+    mobileAgendaSwipe.value.suppressTapForId = null;
+    return;
+  }
+
+  const reveal = getMobileAgendaReveal(itemId);
+  if (reveal > 0) {
+    closeMobileAgendaSwipe(itemId);
+    return;
+  }
+
+  openToastPermalink(itemId);
+};
+
+const executeMobileAgendaAction = async (itemId, callback) => {
+  await callback();
+  closeMobileAgendaSwipe(itemId);
+};
+
 const requestMobileToastVeto = async (itemId) => {
   const target = [
     ...agendaItems.value,
@@ -2087,6 +2229,7 @@ onUnmounted(() => {
   }
   disconnectArchivedToastObserver();
   revokeWorkspaceBackgroundObjectUrl();
+  closeMobileAgendaSwipe();
 });
 
 watch(() => props.apiUrl, fetchWorkspace);
@@ -2265,29 +2408,70 @@ watch(isMobileViewport, (isMobile) => {
                 <div
                   v-for="item in displayedAgendaItems"
                   :key="item.id"
-                  class="cursor-pointer space-y-2 px-4 py-1 transition hover:bg-stone-50"
-                  :style="workspaceMobileItemBorderStyle(item)"
-                  @click="openToastPermalink(item.id)"
+                  class="relative overflow-hidden"
                 >
-                  <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
-                    {{ item.title }}
-                  </p>
-                  <div class="flex items-center justify-between gap-3">
-                    <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
-                      <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
-                      {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
-                    </p>
+                  <div class="absolute inset-y-0 right-0 z-0 flex items-stretch rounded-l-2xl border-y border-stone-200 bg-stone-100">
                     <button
                       v-if="!isSoloWorkspace"
                       type="button"
-                      class="inline-grid h-8 min-w-8 place-items-center rounded-full border px-1.5 text-xs font-semibold transition"
-                      :class="item.currentUserHasVoted ? 'border-amber-300 bg-amber-200 text-amber-900' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+                      class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
+                      :class="item.currentUserHasVoted ? 'bg-amber-200 text-black hover:bg-amber-300' : 'bg-white text-amber-300 hover:bg-amber-50'"
                       :disabled="isToastingMode"
                       title="Vote"
-                      @click.stop="toggleVote(item.id)"
+                      @click.stop="executeMobileAgendaAction(item.id, () => toggleVote(item.id))"
                     >
-                      {{ item.voteCount }}
+                      <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
                     </button>
+                    <button
+                      v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace"
+                      type="button"
+                      class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
+                      :class="item.isBoosted ? 'bg-slate-400 text-black hover:bg-slate-300' : 'bg-white text-slate-700 hover:bg-slate-50'"
+                      title="Boost"
+                      @click.stop="executeMobileAgendaAction(item.id, () => toggleBoost(item.id))"
+                    >
+                      <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      v-if="item.currentUserCanMarkReady"
+                      type="button"
+                      class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
+                      :class="item.status === 'ready' ? 'bg-emerald-500 text-black hover:bg-emerald-400' : 'bg-white text-emerald-700 hover:bg-emerald-50'"
+                      :disabled="isToastingMode"
+                      title="Toggle ready"
+                      @click.stop="executeMobileAgendaAction(item.id, () => setReady(item.id, item.status !== 'ready'))"
+                    >
+                      <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      v-if="workspace.currentUserIsOwner && !isToastingMode"
+                      type="button"
+                      class="inline-grid w-14 place-items-center border-l border-stone-200 bg-white text-red-700 transition hover:bg-red-50"
+                      title="Decline toast"
+                      @click.stop="executeMobileAgendaAction(item.id, () => toggleVeto(item.id))"
+                    >
+                      <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  <div
+                    class="relative z-10 cursor-pointer space-y-2 px-4 py-1 transition-all duration-150 hover:bg-stone-50"
+                    :class="getMobileAgendaReveal(item.id) > 0 ? 'bg-stone-50' : 'bg-white'"
+                    :style="[workspaceMobileItemBorderStyle(item), workspaceMobileSwipeStyle(item.id)]"
+                    @touchstart="handleMobileAgendaTouchStart(item.id, $event)"
+                    @touchmove="handleMobileAgendaTouchMove(item.id, $event)"
+                    @touchend="handleMobileAgendaTouchEnd(item.id)"
+                    @touchcancel="handleMobileAgendaTouchEnd(item.id)"
+                    @click="handleMobileAgendaRowTap(item.id)"
+                  >
+                    <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
+                      {{ item.title }}
+                    </p>
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
+                        <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
+                        {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

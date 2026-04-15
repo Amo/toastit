@@ -67,15 +67,26 @@ final class MyActionsPayloadBuilder
 
     private function buildActionPayload(Toast $action, \DateTimeImmutable $today, User $user): array
     {
+        $workspace = $action->getWorkspace();
         $dueAt = $action->getDueAt();
         $isLate = null !== $dueAt && $dueAt < $today;
         $isDueSoon = null !== $dueAt && !$isLate && $dueAt <= $today->modify('+7 days');
+        $isWorkspaceOwner = $workspace->isOwnedBy($user);
+        $currentUserHasVoted = false;
+        foreach ($action->getVotes() as $vote) {
+            if ($vote->getUser()->getId() === $user->getId()) {
+                $currentUserHasVoted = true;
+                break;
+            }
+        }
 
         return [
             'id' => $action->getId(),
             'title' => $action->getTitle(),
             'description' => $action->getDescription(),
+            'status' => $action->getStatus(),
             'voteCount' => $action->getVoteCount(),
+            'currentUserHasVoted' => $currentUserHasVoted,
             'isBoosted' => $action->isBoosted(),
             'isLate' => $isLate,
             'isDueSoon' => $isDueSoon,
@@ -84,11 +95,17 @@ final class MyActionsPayloadBuilder
             'createdAt' => $action->getCreatedAt()->format(\DateTimeInterface::ATOM),
             'createdAtDisplay' => $this->userDateTimeFormatter->formatDateTime($action->getCreatedAt(), $user),
             'commentsCount' => $action->getComments()->count(),
+            'currentUserCanVote' => $action->isNew(),
+            'currentUserCanBoost' => $isWorkspaceOwner && !$action->isToasted(),
+            'currentUserCanDelete' => $isWorkspaceOwner && !$action->isToasted(),
+            'currentUserCanMarkReady' => !$workspace->isSoloWorkspace()
+                && $action->isNew()
+                && ($action->getOwner()?->getId()) === $user->getId(),
             'workspace' => [
-                'id' => $action->getWorkspace()->getId(),
-                'name' => $action->getWorkspace()->getName(),
-                'isSoloWorkspace' => $action->getWorkspace()->isSoloWorkspace(),
-                'isInboxWorkspace' => $action->getWorkspace()->isInboxWorkspace(),
+                'id' => $workspace->getId(),
+                'name' => $workspace->getName(),
+                'isSoloWorkspace' => $workspace->isSoloWorkspace(),
+                'isInboxWorkspace' => $workspace->isInboxWorkspace(),
             ],
             'author' => [
                 'id' => $action->getAuthor()->getId(),

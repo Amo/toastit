@@ -30,6 +30,7 @@ const MOBILE_SHELL_OVERRIDE_KEY = 'toastit.mobileShellOverride';
 const profileSections = [
   { key: 'infos', label: 'Infos' },
   { key: 'preferences', label: 'Preferences' },
+  { key: 'retention', label: 'Digest & Stats' },
   { key: 'api', label: 'API tokens' },
   { key: 'trash', label: 'Trash' },
   { key: 'account', label: 'Account' },

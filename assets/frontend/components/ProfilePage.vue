@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { authState, authStore } from '../authStore';
 import { ProfileApi } from '../api/profile';
+import { WorkspacesApi } from '../api/workspaces';
 import AvatarBadge from './AvatarBadge.vue';
 import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
@@ -48,6 +49,15 @@ const newPersonalTokenName = ref('');
 const newPersonalTokenExpiresAt = ref('');
 const newlyCreatedPersonalToken = ref('');
 const isCopyingPersonalToken = ref(false);
+const reminderCadence = ref('daily');
+const isSendingRetentionDigest = ref(false);
+const retentionDigestNotice = ref('');
+const retentionDigestError = ref('');
+const retentionSummary = ref({
+  myActions: { summary: { assignedCount: 0, lateCount: 0, dueSoonCount: 0, workspaceCount: 0 }, actions: [] },
+  workspaces: [],
+});
+const isLoadingRetentionSummary = ref(false);
 const profile = ref({
   displayName: '',
   firstName: '',
@@ -72,11 +82,13 @@ const apiClient = new ToastitApiClient(props.accessToken, {
 const route = useRoute();
 const router = useRouter();
 const profileApi = new ProfileApi(apiClient);
+const workspacesApi = new WorkspacesApi(apiClient);
 const MIN_AVATAR_SIZE = 64;
 const MAX_AVATAR_SIZE = 256;
 const profileSections = [
   { key: 'infos', label: 'Infos' },
   { key: 'preferences', label: 'Preferences' },
+  { key: 'retention', label: 'Digest & Stats' },
   { key: 'api', label: 'API tokens' },
   { key: 'trash', label: 'Trash' },
   { key: 'account', label: 'Account' },
@@ -89,6 +101,7 @@ const normalizeProfileSection = (value) => (
 const profileMenuItems = [
   { label: 'Infos', to: '/app/profile?section=infos' },
   { label: 'Preferences', to: '/app/profile?section=preferences' },
+  { label: 'Digest & Stats', to: '/app/profile?section=retention' },
   { label: 'API tokens', to: '/app/profile?section=api' },
   { label: 'Trash', to: '/app/profile?section=trash' },
   { label: 'Account', to: '/app/profile?section=account' },
@@ -169,6 +182,10 @@ const currentProfileSectionDescription = computed(() => {
     return 'Create and revoke personal access tokens for the public API.';
   }
 
+  if (currentProfileSection.value === 'retention') {
+    return 'Configure digest cadence and review your personal execution indicators.';
+  }
+
   if (currentProfileSection.value === 'account') {
     return 'Manage irreversible account-level actions.';
   }
@@ -196,6 +213,41 @@ const inboundRewordLanguageBadgeLabel = computed(() => {
   }
 
   return `Forced: ${inboundRewordLanguageLabel.value}`;
+});
+
+const quickAddAverageCaptureSeconds = computed(() => {
+  try {
+    const durations = JSON.parse(window.localStorage.getItem('toastit:quick-add-capture-durations-ms') ?? '[]');
+    if (!Array.isArray(durations) || durations.length === 0) {
+      return null;
+    }
+
+    const values = durations
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value >= 0);
+    if (values.length === 0) {
+      return null;
+    }
+
+    const averageMs = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return Math.round(averageMs / 1000);
+  } catch {
+    return null;
+  }
+});
+
+const personalRetentionKpis = computed(() => {
+  const summary = retentionSummary.value?.myActions?.summary ?? {};
+  const workspaces = Array.isArray(retentionSummary.value?.workspaces) ? retentionSummary.value.workspaces : [];
+  const resolvedCount = workspaces.reduce((total, workspace) => total + Number(workspace?.resolvedItemCount ?? 0), 0);
+
+  return {
+    activeAssigned: Number(summary.assignedCount ?? 0),
+    late: Number(summary.lateCount ?? 0),
+    dueSoon: Number(summary.dueSoonCount ?? 0),
+    resolved: Number.isFinite(resolvedCount) ? resolvedCount : 0,
+    avgCaptureSeconds: quickAddAverageCaptureSeconds.value,
+  };
 });
 
 let preferencesSaveTimer = null;
@@ -408,6 +460,20 @@ const fetchPersonalTokens = async () => {
   personalTokens.value = data.tokens;
 };
 
+const loadRetentionSummary = async () => {
+  isLoadingRetentionSummary.value = true;
+  const { ok, data } = await workspacesApi.getDashboard('/api/dashboard');
+  if (ok && data) {
+    retentionSummary.value = data;
+  } else {
+    retentionSummary.value = {
+      myActions: { summary: { assignedCount: 0, lateCount: 0, dueSoonCount: 0, workspaceCount: 0 }, actions: [] },
+      workspaces: [],
+    };
+  }
+  isLoadingRetentionSummary.value = false;
+};
+
 const fetchProfile = async () => {
   isLoading.value = true;
   const { ok, data } = await profileApi.getProfile(props.apiUrl);
@@ -609,9 +675,44 @@ const copyNewPersonalToken = async () => {
   }
 };
 
+const saveReminderCadence = (cadence) => {
+  reminderCadence.value = cadence;
+  try {
+    window.localStorage.setItem('toastit:personal-reminder-cadence', cadence);
+  } catch {
+    // Ignore storage failures.
+  }
+};
+
+const sendRetentionDigestNow = async () => {
+  isSendingRetentionDigest.value = true;
+  retentionDigestNotice.value = '';
+  retentionDigestError.value = '';
+  const { ok } = await workspacesApi.sendWeeklySummary();
+  isSendingRetentionDigest.value = false;
+
+  if (!ok) {
+    retentionDigestError.value = 'Unable to send digest right now.';
+    return;
+  }
+
+  retentionDigestNotice.value = reminderCadence.value === 'daily'
+    ? 'Daily digest request sent.'
+    : 'Digest request sent.';
+};
+
 onMounted(() => {
   syncViewport();
   fetchProfile();
+  loadRetentionSummary();
+  try {
+    const storedCadence = window.localStorage.getItem('toastit:personal-reminder-cadence');
+    if (storedCadence === 'daily' || storedCadence === 'weekly' || storedCadence === 'off') {
+      reminderCadence.value = storedCadence;
+    }
+  } catch {
+    // Ignore storage failures.
+  }
   window.addEventListener('resize', syncViewport);
 });
 onUnmounted(() => {
@@ -863,6 +964,75 @@ onUnmounted(() => {
                     </option>
                   </select>
                 </label>
+              </div>
+            </div>
+          </template>
+
+          <template v-if="currentProfileSection === 'retention'">
+            <div :class="isMobileViewport ? 'space-y-4 border-b border-stone-200 bg-white px-4 py-4' : 'space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
+              <div>
+                <h3 class="text-base font-semibold text-stone-950">Digest & Stats</h3>
+                <p class="mt-1 text-sm text-stone-600">Configure reminder cadence and track your personal execution indicators.</p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                  :class="reminderCadence === 'daily' ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+                  @click="saveReminderCadence('daily')"
+                >
+                  Daily reminders
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                  :class="reminderCadence === 'weekly' ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+                  @click="saveReminderCadence('weekly')"
+                >
+                  Weekly reminders
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                  :class="reminderCadence === 'off' ? 'border-stone-300 bg-stone-200 text-stone-800' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'"
+                  @click="saveReminderCadence('off')"
+                >
+                  Reminders off
+                </button>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  class="rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60"
+                  :disabled="isSendingRetentionDigest || reminderCadence === 'off'"
+                  @click="sendRetentionDigestNow"
+                >
+                  {{ isSendingRetentionDigest ? 'Sending…' : 'Send action digest now' }}
+                </button>
+                <p v-if="retentionDigestNotice" class="text-xs font-medium text-emerald-700">{{ retentionDigestNotice }}</p>
+                <p v-if="retentionDigestError" class="text-xs font-medium text-rose-700">{{ retentionDigestError }}</p>
+              </div>
+
+              <EmptyState v-if="isLoadingRetentionSummary" message="Loading retention indicators..." />
+              <div v-else class="grid gap-2 text-sm sm:grid-cols-2">
+                <div class="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                  <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Active assigned</p>
+                  <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.activeAssigned }}</p>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                  <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Completed</p>
+                  <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.resolved }}</p>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                  <p class="text-xs uppercase tracking-[0.12em] text-stone-500">At risk</p>
+                  <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.late + personalRetentionKpis.dueSoon }}</p>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                  <p class="text-xs uppercase tracking-[0.12em] text-stone-500">Avg capture</p>
+                  <p class="mt-1 text-xl font-semibold text-stone-950">{{ personalRetentionKpis.avgCaptureSeconds !== null ? `${personalRetentionKpis.avgCaptureSeconds}s` : 'n/a' }}</p>
+                </div>
               </div>
             </div>
           </template>
