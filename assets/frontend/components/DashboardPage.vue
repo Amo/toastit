@@ -19,6 +19,7 @@ const creatingWorkspace = ref(false);
 const workspaceName = ref('');
 const isCreateWorkspaceModalOpen = ref(false);
 const isMobileViewport = ref(false);
+const isSnoozingActionId = ref(null);
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
@@ -129,6 +130,71 @@ const actionDateStatus = (action) => {
   }
 
   return 'on-track';
+};
+
+const myDayActions = computed(() => {
+  const actions = Array.isArray(payload.value?.myActions?.actions) ? payload.value.myActions.actions : [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysFromNow = new Date(today);
+  sevenDaysFromNow.setDate(today.getDate() + 7);
+
+  const withWeight = actions.map((action) => {
+    const dueOn = typeof action?.dueOn === 'string' ? action.dueOn : '';
+    const dueAt = dueOn ? new Date(`${dueOn}T00:00:00`) : null;
+    let weight = 4;
+    if (action?.isBoosted) {
+      weight = 0;
+    } else if (dueAt && !Number.isNaN(dueAt.getTime()) && dueAt < today) {
+      weight = 1;
+    } else if (dueAt && !Number.isNaN(dueAt.getTime()) && dueAt <= sevenDaysFromNow) {
+      weight = 2;
+    } else if (!dueAt) {
+      weight = 3;
+    }
+
+    return { action, weight };
+  });
+
+  withWeight.sort((left, right) => {
+    if (left.weight !== right.weight) {
+      return left.weight - right.weight;
+    }
+
+    const leftDue = left.action?.dueOn ? new Date(`${left.action.dueOn}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
+    const rightDue = right.action?.dueOn ? new Date(`${right.action.dueOn}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
+    return leftDue - rightDue;
+  });
+
+  return withWeight.map((entry) => entry.action);
+});
+
+const formatDateInput = (value) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const snoozeAction = async (action) => {
+  const actionId = Number(action?.id ?? 0);
+  if (!Number.isFinite(actionId) || actionId <= 0) {
+    return;
+  }
+
+  isSnoozingActionId.value = actionId;
+  const nextDueAt = new Date();
+  nextDueAt.setDate(nextDueAt.getDate() + 1);
+
+  await workspacesApi.updateToast(actionId, {
+    title: action?.title ?? '',
+    description: action?.description ?? '',
+    ownerId: action?.owner?.id ? String(action.owner.id) : '',
+    dueOn: formatDateInput(nextDueAt),
+  });
+
+  isSnoozingActionId.value = null;
+  await fetchDashboard();
 };
 
 const actionBorderStyle = (action) => {
@@ -312,29 +378,40 @@ onUnmounted(() => {
     <div v-if="!isMobileViewport || mobileSection === 'toasts'" class="tw-toastit-card p-6">
         <div class="sticky top-0 z-20 -mx-6 mb-5 flex flex-col gap-4 bg-white/95 px-6 py-2 backdrop-blur lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-0 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 class="text-2xl font-semibold tracking-tight text-stone-950">Focus now.</h2>
+            <h2 class="text-2xl font-semibold tracking-tight text-stone-950">My Day.</h2>
             <p class="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-stone-500">Personal + Team execution</p>
           </div>
         </div>
 
         <EmptyState v-if="isLoading" message="Loading..." />
-        <EmptyState v-else-if="!(payload.myActions?.actions?.length ?? 0)" message="No assigned actions right now." />
+        <EmptyState v-else-if="!(myDayActions.length ?? 0)" message="No assigned actions right now." />
         <div v-else class="overflow-hidden -mx-6 lg:mx-0">
           <div class="space-y-3 bg-white py-4 lg:hidden">
             <div
-              v-for="action in payload.myActions.actions"
+              v-for="action in myDayActions"
               :key="action.id"
               class="cursor-pointer space-y-2 px-4 py-1 transition hover:bg-stone-50"
               :style="actionBorderStyle(action)"
-              @click="openToast(action.id)"
             >
-              <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
-                {{ action.title }}
-              </p>
-              <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
-                <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
-                {{ action.workspace.name }} • {{ action.dueOnDisplay || 'No due date' }}
-              </p>
+              <button type="button" class="block w-full text-left" @click="openToast(action.id)">
+                <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
+                  {{ action.title }}
+                </p>
+                <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
+                  <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
+                  {{ action.workspace.name }} • {{ action.dueOnDisplay || 'No due date' }}
+                </p>
+              </button>
+              <div class="pt-1">
+                <button
+                  type="button"
+                  class="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+                  :disabled="isSnoozingActionId === action.id"
+                  @click="snoozeAction(action)"
+                >
+                  {{ isSnoozingActionId === action.id ? 'Snoozing…' : 'Snooze +1d' }}
+                </button>
+              </div>
             </div>
           </div>
           <table class="hidden min-w-full divide-y divide-stone-200 bg-white text-sm lg:table">
@@ -346,20 +423,31 @@ onUnmounted(() => {
             </thead>
             <tbody class="divide-y divide-stone-100">
               <tr
-                v-for="action in payload.myActions.actions"
+                v-for="action in myDayActions"
                 :key="action.id"
-                class="cursor-pointer transition hover:bg-stone-50"
-                @click="openToast(action.id)"
+                class="transition hover:bg-stone-50"
               >
-                <td class="px-4 py-3" :style="actionBorderStyle(action)">
-                  <p class="block w-full truncate text-left font-medium text-stone-900">
-                    {{ action.title }}
-                  </p>
-                  <p class="mt-1 truncate text-xs text-stone-600">
-                    <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
-                    {{ action.workspace.name }}
-                    <span class="xl:hidden"> • {{ action.dueOnDisplay || 'No due date' }}</span>
-                  </p>
+                <td class="px-4 py-3 align-top" :style="actionBorderStyle(action)">
+                  <button type="button" class="block w-full text-left" @click="openToast(action.id)">
+                    <p class="block w-full truncate text-left font-medium text-stone-900">
+                      {{ action.title }}
+                    </p>
+                    <p class="mt-1 truncate text-xs text-stone-600">
+                      <i v-if="action.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
+                      {{ action.workspace.name }}
+                      <span class="xl:hidden"> • {{ action.dueOnDisplay || 'No due date' }}</span>
+                    </p>
+                  </button>
+                  <div class="mt-2">
+                    <button
+                      type="button"
+                      class="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+                      :disabled="isSnoozingActionId === action.id"
+                      @click="snoozeAction(action)"
+                    >
+                      {{ isSnoozingActionId === action.id ? 'Snoozing…' : 'Snooze +1d' }}
+                    </button>
+                  </div>
                 </td>
                 <td class="hidden px-4 py-3 text-stone-700 xl:table-cell">{{ action.dueOnDisplay || 'No due date' }}</td>
               </tr>
