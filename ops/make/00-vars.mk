@@ -16,6 +16,11 @@ ENV_PASSPHRASE ?=
 DEPLOY_TAG ?=
 ENV_PATH ?= ops/env/$(ENV_FILE)
 REMOTE_GIT_PULL ?= 0
+LOCAL_HTTPS_HOST ?= toastit.test
+LOCAL_HTTPS_API_HOST ?= api.toastit.test
+LOCAL_HTTPS_PORT ?= 443
+LOCAL_HTTPS_CERT_FILE ?= .certs/toastit.test.pem
+LOCAL_HTTPS_KEY_FILE ?= .certs/toastit.test-key.pem
 
 OPENSSL_PASS_ARGS :=
 ifneq ($(strip $(ENV_PASSPHRASE)),)

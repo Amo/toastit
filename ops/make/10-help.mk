@@ -14,6 +14,10 @@ help:
 	@echo "  make migrate"
 	@echo "  make build"
 	@echo "  make dev"
+	@echo "  make dev-https-toastit-test"
+	@echo "    - sets /etc/hosts for toastit.test + api.toastit.test"
+	@echo "    - installs mkcert local CA and generates .certs/*"
+	@echo "    - runs HTTPS proxy on https://toastit.test -> http://127.0.0.1:$${APP_PORT:-80}"
 	@echo "  make test"
 	@echo "  make mail TO='toast+...@inbound.toastit.local'"
 	@echo

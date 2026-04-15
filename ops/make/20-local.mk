@@ -1,4 +1,5 @@
 .PHONY: bash up down logs migrate build dev test test-db-prepare mail
+.PHONY: https-setup-toastit-test https-proxy-toastit-test dev-https-toastit-test
 .PHONY: logs-prod bash-prod
 
 bash:
@@ -33,6 +34,29 @@ test: test-db-prepare
 mail:
 	@test -n "$(TO)" || (echo "Usage: make mail TO='toast+...@inbound.toastit.local' SUBJECT='Hello'" && exit 1)
 	@TO="$(TO)" SUBJECT="$(SUBJECT)" BODY="$(BODY)" $(DOCKER_COMPOSE) exec -T -e TO -e SUBJECT -e BODY inbound-smtp python -c "import os,smtplib; from email.message import EmailMessage; m=EmailMessage(); m['From']='Prototype Sender <sender@example.com>'; m['To']=os.environ['TO']; m['Subject']=os.environ.get('SUBJECT') or 'Toastit inbound prototype'; m.set_content(os.environ.get('BODY') or ''); smtp=smtplib.SMTP('127.0.0.1',2525); smtp.send_message(m); smtp.quit()"
+
+https-setup-toastit-test:
+	@command -v mkcert >/dev/null 2>&1 || (echo "mkcert not found. Install with: brew install mkcert nss" && exit 1)
+	@echo "Configuring /etc/hosts for $(LOCAL_HTTPS_HOST) and $(LOCAL_HTTPS_API_HOST)..."
+	@sudo sh -c "grep -qE '(^|[[:space:]])$(LOCAL_HTTPS_HOST)([[:space:]]|$$)' /etc/hosts && grep -qE '(^|[[:space:]])$(LOCAL_HTTPS_API_HOST)([[:space:]]|$$)' /etc/hosts || echo '127.0.0.1 $(LOCAL_HTTPS_HOST) $(LOCAL_HTTPS_API_HOST)' >> /etc/hosts"
+	@echo "Installing mkcert local CA (required once)..."
+	@mkcert -install
+	@mkdir -p .certs
+	@mkcert -key-file $(LOCAL_HTTPS_KEY_FILE) -cert-file $(LOCAL_HTTPS_CERT_FILE) $(LOCAL_HTTPS_HOST) $(LOCAL_HTTPS_API_HOST) localhost 127.0.0.1 ::1
+	@echo "TLS cert generated at $(LOCAL_HTTPS_CERT_FILE)"
+
+https-proxy-toastit-test:
+	@test -f "$(LOCAL_HTTPS_CERT_FILE)" || (echo "Missing cert file $(LOCAL_HTTPS_CERT_FILE). Run: make https-setup-toastit-test" && exit 1)
+	@test -f "$(LOCAL_HTTPS_KEY_FILE)" || (echo "Missing key file $(LOCAL_HTTPS_KEY_FILE). Run: make https-setup-toastit-test" && exit 1)
+	@echo "Starting HTTPS proxy on https://$(LOCAL_HTTPS_HOST):$(LOCAL_HTTPS_PORT) -> http://127.0.0.1:$${APP_PORT:-80}"
+	@if [ "$(LOCAL_HTTPS_PORT)" -lt 1024 ]; then \
+		echo "Port $(LOCAL_HTTPS_PORT) requires elevated privileges."; \
+		sudo npx --yes local-ssl-proxy --source $(LOCAL_HTTPS_PORT) --target $${APP_PORT:-80} --cert $(LOCAL_HTTPS_CERT_FILE) --key $(LOCAL_HTTPS_KEY_FILE); \
+	else \
+		npx --yes local-ssl-proxy --source $(LOCAL_HTTPS_PORT) --target $${APP_PORT:-80} --cert $(LOCAL_HTTPS_CERT_FILE) --key $(LOCAL_HTTPS_KEY_FILE); \
+	fi
+
+dev-https-toastit-test: https-setup-toastit-test https-proxy-toastit-test
 
 logs-prod:
 	@set -eu; \
