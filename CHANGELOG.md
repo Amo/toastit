@@ -1,3 +1,6 @@
+## 1.4.1 (April 15, 2026)
+  - TECH: updated env
+
 ## 1.4.0 (April 15, 2026)
 - NEW: personal productivity and capture flow upgrades
   - Added a richer My Day experience with focus queue interactions and snooze resurfacing.
