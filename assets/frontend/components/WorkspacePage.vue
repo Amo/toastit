@@ -737,15 +737,73 @@ const removeMember = async (memberId) => {
   await fetchWorkspace();
 };
 
+const buildFallbackToastTitle = (description) => {
+  const normalized = String(description ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  if (normalized.length <= 72) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 69)}...`;
+};
+
+const refineCreatedToastInBackground = async (workspaceId, toastId, draftSnapshot) => {
+  const snapshotTitle = String(draftSnapshot?.title ?? '').trim();
+  const snapshotDescription = String(draftSnapshot?.description ?? '').trim();
+  if (!workspaceId || !toastId || (!snapshotTitle && !snapshotDescription)) {
+    return;
+  }
+
+  const { ok, data } = await workspacesApi.refineToastDraft(workspaceId, {
+    title: snapshotTitle,
+    description: snapshotDescription,
+  });
+
+  if (!ok || !data?.ok || !data?.draft) {
+    return;
+  }
+
+  const refinedTitle = String(data.draft.title ?? '').trim();
+  const refinedDescription = String(data.draft.description ?? '').trim();
+  if (!refinedTitle) {
+    return;
+  }
+
+  const updatePayload = {
+    title: refinedTitle,
+    description: refinedDescription || snapshotDescription,
+    ownerId: data.draft.ownerId ? String(data.draft.ownerId) : '',
+    dueOn: data.draft.dueOn ?? '',
+  };
+
+  await workspacesApi.updateToast(toastId, updatePayload);
+};
+
 const createItem = async () => {
   if (!workspace.value) return;
 
   const isEditingToast = !!editingToastId.value;
+  let shouldRefineAfterCreateInBackground = false;
+  let draftSnapshotForBackgroundRefine = null;
   if (!isEditingToast && isMobileViewport.value && !itemForm.value.title.trim() && itemForm.value.description.trim()) {
-    const refined = await refineToastDraft(null, { forceApply: true });
-    if (!refined) {
-      return;
-    }
+    shouldRefineAfterCreateInBackground = true;
+    draftSnapshotForBackgroundRefine = {
+      title: itemForm.value.title ?? '',
+      description: itemForm.value.description ?? '',
+      ownerId: itemForm.value.ownerId ?? '',
+      dueOn: itemForm.value.dueOn ?? '',
+    };
+
+    itemForm.value = {
+      ...itemForm.value,
+      title: buildFallbackToastTitle(itemForm.value.description),
+    };
   }
 
   if (!itemForm.value.title.trim()) return;
@@ -761,9 +819,13 @@ const createItem = async () => {
   resetItemForm();
   isCreateToastModalOpen.value = false;
   editingToastId.value = null;
+  const createdItemId = Number(data?.itemId ?? 0);
+
+  if (shouldRefineAfterCreateInBackground && Number.isFinite(createdItemId) && createdItemId > 0 && draftSnapshotForBackgroundRefine) {
+    void refineCreatedToastInBackground(workspace.value.id, createdItemId, draftSnapshotForBackgroundRefine);
+  }
 
   if (props.createOnlyMode && !isEditingToast) {
-    const createdItemId = Number(data?.itemId ?? 0);
     if (Number.isFinite(createdItemId) && createdItemId > 0) {
       openToastWithReturnTo(createdItemId, workspaceUrl.value);
       return;
