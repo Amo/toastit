@@ -1,3 +1,24 @@
+## 1.4.0 (April 15, 2026)
+- NEW: personal productivity and capture flow upgrades
+  - Added a richer My Day experience with focus queue interactions and snooze resurfacing.
+  - Added a global quick-add flow with capture timestamp tracking.
+  - Added speech-to-text capture via a microphone action.
+  - Improved My Actions interactions and responsiveness on dashboard and mobile flows.
+- NEW: clearer personal vs team boundaries
+  - Made personal versus team modes explicit in the UI.
+  - Added explicit private/shared boundaries when moving toasts.
+  - Added a personal retention digest with progress KPIs.
+- NEW: daily operations and automation support
+  - Added a daily collaboration digest command and scheduler backup assets.
+  - Tightened digest targeting to active users with at least one login.
+- FIX: reliability and performance hardening
+  - Fixed async mobile toast creation to return immediately.
+  - Hardened workspace summary handling and increased xAI timeout tolerance.
+- TECH: deployment and infra documentation improvements
+  - Added local HTTPS workflow helpers for development.
+  - Added a production hardening compose override.
+  - Added/updated VPS runbooks for scheduler tasks, infra cleanup, and DB migration.
+
 ## 1.3.0 (April 14, 2026)
 - NEW: smoother workspace and toast creation flow
   - Split workspace status filtering into two dedicated views: `New` and `Ready` (#181)
