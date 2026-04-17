@@ -167,8 +167,7 @@ const assigneeFilterOptions = computed(() => {
 });
 
 const statusFilterOptions = computed(() => [
-  { value: 'pending', label: `New (${displayedPendingAgendaItems.value.length})` },
-  { value: 'ready', label: `Ready (${displayedReadyAgendaItems.value.length})` },
+  { value: 'pending', label: `New + Ready (${displayedPendingAgendaItems.value.length})` },
   { value: 'discarded', label: `Declined (${displayedVetoedItems.value.length})` },
   { value: 'resolved', label: `Toasted (${displayedResolvedItems.value.length})` },
 ]);
@@ -183,7 +182,7 @@ const selectedAssigneeFilterLabel = computed(() => (
 
 const resolveToastFilter = (value) => {
   const normalizedValue = typeof value === 'string' ? value : '';
-  if (normalizedValue === 'active') {
+  if (normalizedValue === 'active' || normalizedValue === 'ready') {
     return 'pending';
   }
 
@@ -324,14 +323,12 @@ const matchesAssignmentFilter = (item) => {
   return String(item.owner?.id ?? '') === currentAssigneeFilter.value;
 };
 const displayedPendingAgendaItems = computed(() => (
-  agendaItems.value.filter((item) => item.status !== 'ready').filter(matchesAssignmentFilter)
+  agendaItems.value.filter(matchesAssignmentFilter)
 ));
 const displayedReadyAgendaItems = computed(() => (
   agendaItems.value.filter((item) => item.status === 'ready').filter(matchesAssignmentFilter)
 ));
-const displayedAgendaItems = computed(() => (
-  currentToastFilter.value === 'ready' ? displayedReadyAgendaItems.value : displayedPendingAgendaItems.value
-));
+const displayedAgendaItems = computed(() => displayedPendingAgendaItems.value);
 const displayedVetoedItems = computed(() => vetoedItems.value.filter(matchesAssignmentFilter));
 const displayedResolvedItems = computed(() => resolvedItems.value.filter(matchesAssignmentFilter));
 const visibleVetoedItems = computed(() => displayedVetoedItems.value.slice(0, vetoedVisibleCount.value));
@@ -649,6 +646,32 @@ const workspaceMobileItemBorderStyle = (item) => {
   };
 };
 
+const agendaItemRowClass = (item) => (
+  item?.status === 'ready'
+    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+    : 'hover:bg-stone-50'
+);
+
+const agendaItemTitleClass = (item) => (
+  item?.status === 'ready' ? 'text-white' : 'text-stone-900'
+);
+
+const agendaItemMetaClass = (item) => (
+  item?.status === 'ready' ? 'text-emerald-50' : 'text-stone-700'
+);
+
+const agendaItemMobileCardClass = (item) => (
+  item?.status === 'ready' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-white hover:bg-stone-50'
+);
+
+const agendaItemMobileTitleClass = (item) => (
+  item?.status === 'ready' ? 'text-white' : 'text-stone-900'
+);
+
+const agendaItemMobileMetaClass = (item) => (
+  item?.status === 'ready' ? 'text-emerald-50' : 'text-stone-600'
+);
+
 
 const resetItemForm = () => {
   itemForm.value = {
@@ -668,17 +691,6 @@ const openTopActiveToast = () => {
   }
 
   openToastModal(firstItem);
-};
-
-const openNextActiveToastAtIndex = (index) => {
-  const nextItem = agendaItems.value[index] ?? null;
-
-  if (!nextItem) {
-    selectedToastModalId.value = null;
-    return;
-  }
-
-  openToastModal(nextItem);
 };
 
 const fetchWorkspace = async () => {
@@ -2086,7 +2098,6 @@ const removeFollowUpDraft = (itemId, index) => {
 const saveDiscussion = async () => {
   if (!selectedToastModal.value) return;
   isSaving.value = true;
-  const currentToastIndex = agendaItems.value.findIndex((item) => item.id === selectedToastModal.value.id);
 
   const { ok } = await workspacesApi.saveDiscussion(selectedToastModal.value.id, {
     discussionNotes: selectedToastModal.value.discussionNotes,
@@ -2102,7 +2113,8 @@ const saveDiscussion = async () => {
   }
 
   await fetchWorkspace();
-  openNextActiveToastAtIndex(currentToastIndex >= 0 ? currentToastIndex : 0);
+  currentToastFilter.value = 'pending';
+  closeToastModal();
   isSaving.value = false;
 };
 
@@ -2400,10 +2412,10 @@ watch(isMobileViewport, (isMobile) => {
             </div>
 
             <EmptyState
-              v-if="(currentToastFilter === 'pending' || currentToastFilter === 'ready') && !displayedAgendaItems.length"
-              :message="currentToastFilter === 'ready' ? 'No ready toasts.' : 'No new toasts.'"
+              v-if="currentToastFilter === 'pending' && !displayedAgendaItems.length"
+              message="No open toasts."
             />
-            <div v-else-if="currentToastFilter === 'pending' || currentToastFilter === 'ready'" class="overflow-hidden -mx-6 lg:mx-0">
+            <div v-else-if="currentToastFilter === 'pending'" class="overflow-hidden -mx-6 lg:mx-0">
               <div class="space-y-3 bg-white py-4 lg:hidden">
                 <div
                   v-for="item in displayedAgendaItems"
@@ -2454,8 +2466,8 @@ watch(isMobileViewport, (isMobile) => {
                     </button>
                   </div>
                   <div
-                    class="relative z-10 cursor-pointer space-y-2 px-4 py-1 transition-all duration-150 hover:bg-stone-50"
-                    :class="getMobileAgendaReveal(item.id) > 0 ? 'bg-stone-50' : 'bg-white'"
+                    class="relative z-10 cursor-pointer space-y-2 px-4 py-1 transition-all duration-150"
+                    :class="agendaItemMobileCardClass(item)"
                     :style="[workspaceMobileItemBorderStyle(item), workspaceMobileSwipeStyle(item.id)]"
                     @touchstart="handleMobileAgendaTouchStart(item.id, $event)"
                     @touchmove="handleMobileAgendaTouchMove(item.id, $event)"
@@ -2463,12 +2475,12 @@ watch(isMobileViewport, (isMobile) => {
                     @touchcancel="handleMobileAgendaTouchEnd(item.id)"
                     @click="handleMobileAgendaRowTap(item.id)"
                   >
-                    <p class="block w-full text-left text-sm font-medium leading-5 text-stone-900 line-clamp-2">
+                    <p class="block w-full text-left text-sm font-medium leading-5 line-clamp-2" :class="agendaItemMobileTitleClass(item)">
                       {{ item.title }}
                     </p>
                     <div class="flex items-center justify-between gap-3">
-                      <p class="min-w-0 truncate text-xs leading-5 text-stone-600">
-                        <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
+                      <p class="min-w-0 truncate text-xs leading-5" :class="agendaItemMobileMetaClass(item)">
+                        <i v-if="item.isBoosted" class="fa-solid fa-star mr-1" :class="item.status === 'ready' ? 'text-white/80' : 'text-slate-400'" aria-hidden="true"></i>
                         {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
                       </p>
                     </div>
@@ -2490,25 +2502,26 @@ watch(isMobileViewport, (isMobile) => {
                   <tr
                     v-for="item in displayedAgendaItems"
                     :key="item.id"
-                    class="cursor-pointer transition hover:bg-stone-50"
+                    class="cursor-pointer transition-colors"
+                    :class="agendaItemRowClass(item)"
                     @click="openToastPermalink(item.id)"
                   >
                     <td class="px-4 py-3">
-                      <span class="text-left font-medium text-stone-900">
+                      <span class="text-left font-medium" :class="agendaItemTitleClass(item)">
                         {{ item.title }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-stone-700">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
-                    <td class="px-4 py-3 text-stone-700">{{ item.dueOnDisplay ?? 'No due date' }}</td>
+                    <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
+                    <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.dueOnDisplay ?? 'No due date' }}</td>
                     <td class="px-4 py-3">
                       <span
                         class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
-                        :class="item.status === 'ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-700'"
+                        :class="item.status === 'ready' ? 'bg-white/15 text-white ring-1 ring-inset ring-white/20' : 'bg-stone-100 text-stone-700'"
                       >
-                        {{ item.status === 'ready' ? 'Ready' : 'In progress' }}
+                        {{ item.status === 'ready' ? 'Ready' : 'New' }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-stone-700">{{ item.comments?.length ?? 0 }}</td>
+                    <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.comments?.length ?? 0 }}</td>
                     <td class="px-4 py-3">
                       <div class="flex items-center justify-end gap-2.5">
                         <button
@@ -2757,6 +2770,15 @@ watch(isMobileViewport, (isMobile) => {
             :style="{ bottom: 'calc(5.9rem + env(safe-area-inset-bottom) + 0.75rem)' }"
           >
             <div class="flex items-stretch divide-x divide-stone-200/80">
+              <button
+                v-if="isToastingMode && isActiveToast(selectedToastModal)"
+                type="button"
+                class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center bg-amber-200 px-3.5 py-2.5 text-amber-900 transition hover:bg-amber-300"
+                @click="openCreateToastModal"
+              >
+                <i class="fa-solid fa-plus text-sm" aria-hidden="true"></i>
+                <span class="sr-only">New toast</span>
+              </button>
               <button
                 v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
                 type="button"
@@ -3063,6 +3085,15 @@ watch(isMobileViewport, (isMobile) => {
           </ModalHeader>
           <div class="mt-4 border-t border-stone-100 px-6 pb-4 pt-4">
             <div class="flex flex-wrap items-center gap-2">
+              <button
+                v-if="isToastingMode && isActiveToast(selectedToastModal)"
+                type="button"
+                class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-amber-200 px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
+                @click="openCreateToastModal"
+              >
+                <i class="fa-solid fa-plus text-sm" aria-hidden="true"></i>
+                <span>New toast</span>
+              </button>
               <div class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200">
                 <button
                   v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
