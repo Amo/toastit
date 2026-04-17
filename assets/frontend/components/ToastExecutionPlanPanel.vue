@@ -18,11 +18,11 @@ const actions = computed(() => props.draft?.actions ?? []);
 </script>
 
 <template>
-  <section class="space-y-5">
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5">
+  <section class="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-stone-200 bg-white p-4">
       <div class="space-y-1">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Execution plan</p>
-        <p class="text-sm font-medium text-stone-700">Use xAI to turn the saved decision notes into actionable follow-up toasts.</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">AI execution plan</p>
+        <p class="text-sm font-medium text-stone-700">Generate proposed follow-ups from the saved decision notes, then apply them one by one.</p>
       </div>
       <button
         type="button"
@@ -42,8 +42,8 @@ const actions = computed(() => props.draft?.actions ?? []);
       {{ noticeMessage }}
     </div>
 
-    <div v-if="draft" class="space-y-5">
-      <section class="rounded-[1.5rem] border border-stone-200 bg-white p-5">
+    <div v-if="draft" class="space-y-4">
+      <section class="rounded-[1.25rem] border border-stone-200 bg-white p-4">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Plan summary</p>
         <div class="mt-3 tw-markdown text-stone-800" v-html="renderToastDescription(draft.summary)"></div>
       </section>
@@ -57,10 +57,13 @@ const actions = computed(() => props.draft?.actions ?? []);
           <article
             v-for="(action, index) in actions"
             :key="`${action.title}-${index}`"
-            class="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+            class="rounded-[1.25rem] border border-stone-200 bg-white p-4"
           >
             <div class="space-y-3">
               <div class="flex flex-wrap items-center gap-3">
+                <span class="inline-grid h-8 min-w-8 place-items-center rounded-2xl bg-stone-100 px-2 text-xs font-semibold text-stone-700">
+                  {{ index + 1 }}
+                </span>
                 <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-700">Create follow-up</span>
                 <span v-if="participantsLookup[action.ownerId]" class="text-sm text-stone-600">Owner · {{ participantsLookup[action.ownerId] }}</span>
                 <span v-else-if="action.ownerId === null || action.ownerId === undefined" class="text-sm text-stone-400">Owner · Unassigned</span>

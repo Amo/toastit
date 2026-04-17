@@ -24,7 +24,6 @@ const keyboardShortcutsOpen = ref(false);
 const mobileNavOpen = ref(false);
 const contentRef = ref(null);
 const isMobilePlatform = ref(false);
-const isLandscapeViewport = ref(false);
 const slots = useSlots();
 const navigationWorkspaces = ref([]);
 const MOBILE_SHELL_OVERRIDE_KEY = 'toastit.mobileShellOverride';
@@ -97,8 +96,6 @@ const workspaceModeBadgeClass = (workspace) => {
   return workspace?.isSoloWorkspace ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700';
 };
 
-const shouldBlockLandscape = computed(() => props.showAppNavigation && isMobilePlatform.value && isLandscapeViewport.value);
-
 const syncMobilePlatform = () => {
   const mobileQuery = typeof route.query.mobile === 'string' ? route.query.mobile.toLowerCase() : '';
   if (['1', 'true', 'on'].includes(mobileQuery)) {
@@ -121,7 +118,6 @@ const syncMobilePlatform = () => {
     || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
 
   isMobilePlatform.value = userAgentDataMobile || mobileUa || ipadOs || (touchDevice && window.innerWidth <= 1024);
-  isLandscapeViewport.value = window.innerWidth > window.innerHeight;
 };
 
 const isTypingTarget = (target) => {
@@ -372,7 +368,6 @@ watch(() => route.fullPath, () => {
                 <div class="space-y-2">
                   <a v-if="user?.isRoot" href="/admin" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Overview</a>
                   <a v-if="user?.isRoot || user?.isRoute" href="/admin/users" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Users</a>
-                  <a v-if="user?.isRoot" href="/admin/prompts" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Prompts</a>
                   <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
                   <button v-if="authState.impersonationContext?.user" class="flex w-full items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100" type="button" @click="stopImpersonation">Stop impersonation</button>
                   <button class="flex w-full items-center justify-center rounded-2xl bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-300" type="button" @click="logout">
@@ -389,7 +384,6 @@ watch(() => route.fullPath, () => {
               </div>
               <a v-if="user?.isRoot" href="/admin" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Overview</a>
               <a v-if="user?.isRoot || user?.isRoute" href="/admin/users" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Users</a>
-              <a v-if="user?.isRoot" href="/admin/prompts" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Prompts</a>
               <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
               <button v-if="authState.impersonationContext?.user" class="w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700" type="button" @click="stopImpersonation">Stop impersonation</button>
               <button class="w-full rounded-2xl bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-900" type="button" @click="logout">Sign out</button>
@@ -460,18 +454,6 @@ watch(() => route.fullPath, () => {
     </ModalDialog>
 
     <main :class="showAppNavigation && !mobileAppModeActive ? 'py-0 lg:py-6' : 'py-0'">
-      <div
-        v-if="shouldBlockLandscape"
-        class="fixed inset-0 z-[120] flex flex-col items-center justify-center gap-4 bg-stone-950 px-6 text-center text-white"
-      >
-        <div class="inline-grid h-16 w-16 place-items-center rounded-3xl bg-white/10">
-          <i class="fa-solid fa-mobile-screen-button text-2xl" aria-hidden="true"></i>
-        </div>
-        <div class="space-y-2">
-          <p class="text-lg font-semibold">Portrait only</p>
-          <p class="text-sm leading-6 text-white/80">Rotate your phone back to portrait to continue using Toastit.</p>
-        </div>
-      </div>
       <template v-if="showAppNavigation && !mobileAppModeActive">
         <div class="px-0 lg:px-6">
           <div class="mb-0 flex items-center justify-between rounded-none border border-stone-200 bg-white px-4 py-3 lg:hidden">
@@ -498,7 +480,7 @@ watch(() => route.fullPath, () => {
                 <a
                   :href="dashboardUrl"
                   class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
-                  :class="currentSection === 'workspace' ? 'bg-amber-100 text-amber-900' : 'text-stone-700 hover:bg-stone-100'"
+                  :class="currentSection === 'workspace' ? 'bg-amber-100 text-amber-900 shadow-[inset_0_0_0_1px_rgba(217,119,6,0.16)]' : 'text-stone-700 hover:bg-stone-50 hover:text-stone-950 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.9)]'"
                 >
                   <span class="inline-flex items-center gap-3">
                     <i class="fa-solid fa-table-columns w-4 text-center" aria-hidden="true"></i>
@@ -519,7 +501,7 @@ watch(() => route.fullPath, () => {
                     :key="workspace.id"
                     :href="workspaceHref(workspace)"
                     class="rounded-xl px-3 py-2 text-sm transition"
-                    :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                    :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.3)]' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.85)]'"
                   >
                     <div class="min-w-0">
                       <p class="truncate">{{ workspace.name }}</p>
@@ -545,7 +527,7 @@ watch(() => route.fullPath, () => {
                 <a
                   href="/app/inbox"
                   class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
-                  :class="currentSection === 'inbox' ? 'bg-amber-100 text-amber-900' : 'text-stone-700 hover:bg-stone-100'"
+                  :class="currentSection === 'inbox' ? 'bg-amber-100 text-amber-900 shadow-[inset_0_0_0_1px_rgba(217,119,6,0.16)]' : 'text-stone-700 hover:bg-stone-50 hover:text-stone-950 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.9)]'"
                 >
                   <span class="inline-flex items-center gap-3">
                     <i class="fa-solid fa-inbox w-4 text-center" aria-hidden="true"></i>
@@ -561,7 +543,7 @@ watch(() => route.fullPath, () => {
                 <a
                   :href="profileUrl"
                   class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
-                  :class="currentSection === 'profile' ? 'bg-stone-100 text-stone-900' : 'text-stone-700 hover:bg-stone-100'"
+                  :class="currentSection === 'profile' ? 'bg-stone-100 text-stone-900 shadow-[inset_0_0_0_1px_rgba(214,211,209,0.8)]' : 'text-stone-700 hover:bg-stone-50 hover:text-stone-950 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.9)]'"
                 >
                   <i class="fa-solid fa-user w-4 text-center" aria-hidden="true"></i>
                   <span>My profile</span>
@@ -572,7 +554,7 @@ watch(() => route.fullPath, () => {
                     :key="section.key"
                     :href="profileSectionHref(section.key)"
                     class="flex items-center rounded-xl px-3 py-2 text-sm transition"
-                    :class="currentProfileSection === section.key ? 'bg-stone-100 font-semibold text-stone-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
+                    :class="currentProfileSection === section.key ? 'bg-stone-100 font-semibold text-stone-900 shadow-[inset_0_0_0_1px_rgba(214,211,209,0.75)]' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.8)]'"
                   >
                     <span class="truncate">{{ section.label }}</span>
                   </a>
@@ -580,7 +562,7 @@ watch(() => route.fullPath, () => {
                 <a
                   v-if="user?.isRoot"
                   href="/admin"
-                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                  class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 hover:text-stone-950 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.9)]"
                 >
                   <i class="fa-solid fa-shield-halved w-4 text-center" aria-hidden="true"></i>
                   <span>Admin</span>

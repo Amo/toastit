@@ -516,6 +516,54 @@ final class WorkspaceFlowTest extends WebTestCase
         self::assertStringContainsString('Prepared for owner review', $workspacePayload['agendaItems'][0]['comments'][0]['content']);
     }
 
+    public function testOwnerCanToggleReadyStateDuringLiveToastingMode(): void
+    {
+        $client = static::createClient();
+        $ownerEmail = sprintf('ready-owner-%s@example.com', time());
+        $memberEmail = sprintf('ready-member-%s@example.com', time());
+        $this->loginWithMagicLink($client, $ownerEmail);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => 'Ready board']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($client)['workspaceId'];
+
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/invite', $workspaceId), ['email' => $memberEmail]);
+        self::assertResponseIsSuccessful();
+
+        $memberUserId = $this->findUserIdByEmail($memberEmail);
+        $title = sprintf('Ready source %s', microtime(true));
+
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/items', $workspaceId), [
+            'title' => $title,
+            'description' => 'Allow ready toggling during toasting mode.',
+            'ownerId' => $memberUserId,
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $toastId = $this->findToastIdByTitle($title);
+
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/meeting/start', $workspaceId));
+        self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('POST', sprintf('/api/items/%d/ready', $toastId), [
+            'ready' => true,
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('POST', sprintf('/api/items/%d/ready', $toastId), [
+            'ready' => false,
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
+        self::assertResponseIsSuccessful();
+        $payload = $this->decodeJsonResponse($client);
+
+        self::assertSame('pending', $payload['agendaItems'][0]['status']);
+        self::assertTrue($payload['agendaItems'][0]['currentUserCanMarkReady']);
+    }
+
     public function testOwnerCanSaveDecisionNotesGenerateExecutionPlanAndApplyFollowUpsOneByOne(): void
     {
         $client = static::createClient();

@@ -56,10 +56,6 @@ const openUsers = () => {
   window.location.href = '/admin/users';
 };
 
-const openPrompts = () => {
-  window.location.href = '/admin/prompts';
-};
-
 const syncViewport = () => {
   isMobileViewport.value = window.innerWidth < 1024;
 };
@@ -106,9 +102,8 @@ onUnmounted(() => {
       :stats="statCards.map((item) => ({ label: `${item.value} ${item.label}`, className: 'bg-stone-100 text-stone-600 uppercase tracking-[0.18em] text-xs font-semibold' }))"
       :actions="[
         { id: 'users', label: 'User list', icon: 'fa-solid fa-users', theme: 'secondary' },
-        { id: 'prompts', label: 'Prompts', icon: 'fa-solid fa-file-code', theme: 'secondary' },
       ]"
-      @action="(id) => { if (id === 'users') openUsers(); else if (id === 'prompts') openPrompts(); }"
+      @action="(id) => { if (id === 'users') openUsers(); }"
     />
 
     <div :class="isMobileViewport ? 'tw-toastit-card rounded-none border-x-0 p-4' : 'tw-toastit-card p-6'">

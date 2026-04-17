@@ -27,7 +27,6 @@ const api = new ToastitApiClient(props.accessToken, {
 
 const canManageAdvancedAi = computed(() => currentUser.value?.isRoot === true);
 const canOpenOverview = computed(() => currentUser.value?.isRoot === true);
-const canOpenPrompts = computed(() => currentUser.value?.isRoot === true);
 
 const roleBadges = (user) => {
   const badges = [];
@@ -115,10 +114,6 @@ const openOverview = () => {
   window.location.href = '/admin';
 };
 
-const openPrompts = () => {
-  window.location.href = '/admin/prompts';
-};
-
 const syncViewport = () => {
   isMobileViewport.value = window.innerWidth < 1024;
 };
@@ -168,9 +163,8 @@ onUnmounted(() => {
       ]"
       :actions="[
         ...(canOpenOverview ? [{ id: 'overview', label: 'Overview', icon: 'fa-solid fa-chart-column', theme: 'secondary' }] : []),
-        ...(canOpenPrompts ? [{ id: 'prompts', label: 'Prompts', icon: 'fa-solid fa-file-code', theme: 'secondary' }] : []),
       ]"
-      @action="(id) => { if (id === 'overview') openOverview(); else if (id === 'prompts') openPrompts(); }"
+      @action="(id) => { if (id === 'overview') openOverview(); }"
     />
 
     <div :class="isMobileViewport ? 'tw-toastit-card rounded-none border-x-0 p-4' : 'tw-toastit-card overflow-hidden p-6'">

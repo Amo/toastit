@@ -2,16 +2,12 @@
 
 namespace App\Ai;
 
-use App\Repository\AiPromptRepository;
-use App\Repository\AiPromptVersionRepository;
 use Twig\Environment;
 use Twig\Error\Error;
 
 class AiPromptTemplateService
 {
     public function __construct(
-        private readonly AiPromptRepository $promptRepository,
-        private readonly AiPromptVersionRepository $promptVersionRepository,
         private readonly AiPromptFileStore $promptFileStore,
         private readonly Environment $twig,
     ) {
@@ -27,10 +23,7 @@ class AiPromptTemplateService
             return $filePrompt;
         }
 
-        $latestVersion = $this->resolveLatestVersion($code);
-        $templateSource = $latestVersion?->getSystemPrompt() ?: $fallbackPrompt;
-
-        return $this->renderTemplate($templateSource, $variables, $fallbackPrompt);
+        return $this->renderTemplate($fallbackPrompt, $variables, $fallbackPrompt);
     }
 
     /**
@@ -43,10 +36,7 @@ class AiPromptTemplateService
             return $filePrompt;
         }
 
-        $latestVersion = $this->resolveLatestVersion($code);
-        $templateSource = $latestVersion?->getUserPromptTemplate() ?: $fallbackTemplate;
-
-        return $this->renderTemplate($templateSource, $variables, $fallbackTemplate);
+        return $this->renderTemplate($fallbackTemplate, $variables, $fallbackTemplate);
     }
 
     /**
@@ -69,16 +59,5 @@ class AiPromptTemplateService
         } catch (Error) {
             return '' !== $templateSource ? $templateSource : $fallbackPrompt;
         }
-    }
-
-    private function resolveLatestVersion(string $code): ?\App\Entity\AiPromptVersion
-    {
-        $prompt = $this->promptRepository->findOneByCode($code);
-
-        if (null === $prompt) {
-            return null;
-        }
-
-        return $this->promptVersionRepository->findLatestForPrompt($prompt);
     }
 }

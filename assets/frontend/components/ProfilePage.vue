@@ -110,7 +110,6 @@ const profileMenuItems = [
 const adminMenuItems = [
   { label: 'Statistics', to: '/admin' },
   { label: 'Users', to: '/admin/users' },
-  { label: 'Prompts', to: '/admin/prompts' },
 ];
 
 const shouldForceProfileMenuFromQuery = computed(() => {

@@ -187,7 +187,7 @@ final class WorkspacePayloadBuilder
             'currentUserCanEdit' => $item->isNew() && ($workspace->isOwnedBy($currentUser) || $item->getAuthor()->getId() === $currentUser->getId()),
             'currentUserCanMarkReady' => !$workspace->isSoloWorkspace()
                 && $item->isNew()
-                && ($item->getOwner()?->getId() === $currentUser->getId()),
+                && ($workspace->isOwnedBy($currentUser) || ($item->getOwner()?->getId() === $currentUser->getId())),
             'ownerName' => $item->getOwner()?->getDisplayName() ?? ($item->getOwner()?->getId() ? ($inviteeNames[$item->getOwner()->getId()] ?? null) : null),
         ];
     }

@@ -294,7 +294,7 @@ onUnmounted(() => {
       </div>
       <div v-if="isRefining" class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
         <i class="fa-solid fa-wand-sparkles tw-ai-pending" aria-hidden="true"></i>
-        <span>AI is improving your draft in background…</span>
+        <span>AI is refining the toast before save…</span>
       </div>
       <div v-if="speechError" class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-800">
         <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>

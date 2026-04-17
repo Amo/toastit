@@ -77,8 +77,10 @@ final class ToastingSessionSummaryBuilder
             '- If a next step has no owner, place it under an "Unassigned" group.',
             '- Use comments as supporting context, concerns, or rationale, but do not present them as decisions unless the rest of the data clearly confirms that.',
             '- Use the toast status and discussion legend above when inferring what happened during the session.',
+            '- In the section "Suggestions", include still-open pending or ready toasts plus attention points that should be handled before the next session.',
             '- Suggest practical meeting/process improvements based only on the provided context.',
-            '- If data is missing, say so explicitly instead of inventing it.',
+            '- Do not mention session duration, missing context, or missing notes unless that absence directly blocks a factual statement.',
+            '- If data is missing, keep the wording concrete and non-speculative instead of inventing details.',
         ];
 
         return [

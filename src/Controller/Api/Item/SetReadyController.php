@@ -33,7 +33,7 @@ final class SetReadyController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'toast_not_editable'], 400);
         }
 
-        if (($item->getOwner()?->getId()) !== $currentUser->getId()) {
+        if (!$workspace->isOwnedBy($currentUser) && ($item->getOwner()?->getId()) !== $currentUser->getId()) {
             return $this->json(['ok' => false, 'error' => 'only_assignee_can_mark_ready'], 403);
         }
 

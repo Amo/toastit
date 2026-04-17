@@ -124,6 +124,7 @@ const workspace = computed(() => payload.value?.workspace ?? null);
 const currentUser = computed(() => payload.value?.currentUser ?? null);
 const standaloneMode = computed(() => null !== props.standaloneToastId && '' !== String(props.standaloneToastId));
 const useDedicatedMobileToastView = computed(() => standaloneMode.value && isMobileViewport.value);
+const showDesktopInlineToastPanel = computed(() => standaloneMode.value && !isMobileViewport.value);
 const TOAST_RETURN_TO_STORAGE_KEY = 'toastit:toast-return-to';
 const otherWorkspaces = computed(() => payload.value?.otherWorkspaces ?? []);
 const selectedTargetWorkspace = computed(() => {
@@ -584,6 +585,22 @@ const displayToastStatus = (item) => {
 
 const isActiveToast = (item) => item?.status === 'pending' || item?.status === 'ready';
 
+const toastStatusBadgeClass = (item) => {
+  if (item?.status === 'discarded') {
+    return 'border-stone-200 bg-stone-100';
+  }
+
+  if (item?.status === 'toasted') {
+    return 'border-amber-200 bg-amber-100';
+  }
+
+  if (item?.status === 'ready') {
+    return 'border-emerald-200 bg-emerald-100';
+  }
+
+  return 'border-amber-200 bg-amber-50';
+};
+
 const toastStatusTone = (item) => {
   if (item.status === 'discarded') {
     return 'text-stone-400';
@@ -648,31 +665,12 @@ const workspaceMobileItemBorderStyle = (item) => {
   };
 };
 
-const agendaItemRowClass = (item) => (
-  item?.status === 'ready'
-    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-    : 'hover:bg-stone-50'
-);
-
-const agendaItemTitleClass = (item) => (
-  item?.status === 'ready' ? 'text-white' : 'text-stone-900'
-);
-
-const agendaItemMetaClass = (item) => (
-  item?.status === 'ready' ? 'text-emerald-50' : 'text-stone-700'
-);
-
-const agendaItemMobileCardClass = (item) => (
-  item?.status === 'ready' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-white hover:bg-stone-50'
-);
-
-const agendaItemMobileTitleClass = (item) => (
-  item?.status === 'ready' ? 'text-white' : 'text-stone-900'
-);
-
-const agendaItemMobileMetaClass = (item) => (
-  item?.status === 'ready' ? 'text-emerald-50' : 'text-stone-600'
-);
+const agendaItemRowClass = () => 'hover:bg-stone-50';
+const agendaItemTitleClass = () => 'text-stone-900';
+const agendaItemMetaClass = () => 'text-stone-700';
+const agendaItemMobileCardClass = () => 'bg-white hover:bg-stone-50';
+const agendaItemMobileTitleClass = () => 'text-stone-900';
+const agendaItemMobileMetaClass = () => 'text-stone-600';
 
 
 const resetItemForm = () => {
@@ -770,73 +768,24 @@ const removeMember = async (memberId) => {
   await fetchWorkspace();
 };
 
-const buildFallbackToastTitle = (description) => {
-  const normalized = String(description ?? '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!normalized) {
-    return '';
-  }
-
-  if (normalized.length <= 72) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, 69)}...`;
-};
-
-const refineCreatedToastInBackground = async (workspaceId, toastId, draftSnapshot) => {
-  const snapshotTitle = String(draftSnapshot?.title ?? '').trim();
-  const snapshotDescription = String(draftSnapshot?.description ?? '').trim();
-  if (!workspaceId || !toastId || (!snapshotTitle && !snapshotDescription)) {
-    return;
-  }
-
-  const { ok, data } = await workspacesApi.refineToastDraft(workspaceId, {
-    title: snapshotTitle,
-    description: snapshotDescription,
-  });
-
-  if (!ok || !data?.ok || !data?.draft) {
-    return;
-  }
-
-  const refinedTitle = String(data.draft.title ?? '').trim();
-  const refinedDescription = String(data.draft.description ?? '').trim();
-  if (!refinedTitle) {
-    return;
-  }
-
-  const updatePayload = {
-    title: refinedTitle,
-    description: refinedDescription || snapshotDescription,
-    ownerId: data.draft.ownerId ? String(data.draft.ownerId) : '',
-    dueOn: data.draft.dueOn ?? '',
-  };
-
-  await workspacesApi.updateToast(toastId, updatePayload);
-};
-
 const createItem = async () => {
   if (!workspace.value) return;
 
   const isEditingToast = !!editingToastId.value;
-  let shouldRefineAfterCreateInBackground = false;
-  let draftSnapshotForBackgroundRefine = null;
-  if (!isEditingToast && isMobileViewport.value && !itemForm.value.title.trim() && itemForm.value.description.trim()) {
-    shouldRefineAfterCreateInBackground = true;
-    draftSnapshotForBackgroundRefine = {
+  const hasDraftInput = itemForm.value.title.trim() || itemForm.value.description.trim();
+  if (!hasDraftInput) return;
+
+  if (!isEditingToast) {
+    const refined = await refineToastDraft({
       title: itemForm.value.title ?? '',
       description: itemForm.value.description ?? '',
       ownerId: itemForm.value.ownerId ?? '',
       dueOn: itemForm.value.dueOn ?? '',
-    };
+    }, { forceApply: true });
 
-    itemForm.value = {
-      ...itemForm.value,
-      title: buildFallbackToastTitle(itemForm.value.description),
-    };
+    if (!refined) {
+      return;
+    }
   }
 
   if (!itemForm.value.title.trim()) return;
@@ -853,10 +802,6 @@ const createItem = async () => {
   isCreateToastModalOpen.value = false;
   editingToastId.value = null;
   const createdItemId = Number(data?.itemId ?? 0);
-
-  if (shouldRefineAfterCreateInBackground && Number.isFinite(createdItemId) && createdItemId > 0 && draftSnapshotForBackgroundRefine) {
-    void refineCreatedToastInBackground(workspace.value.id, createdItemId, draftSnapshotForBackgroundRefine);
-  }
 
   if (!isEditingToast && Number.isFinite(createdItemId) && createdItemId > 0) {
     try {
@@ -1114,12 +1059,7 @@ const saveDecisionNotes = async () => {
     return;
   }
 
-  const currentToastId = selectedToastModal.value.id;
-  await fetchWorkspace();
-  selectedToastModalId.value = currentToastId;
-  if (selectedToastModal.value) {
-    selectedToastModalCleanState.value = serializeToastModalState(selectedToastModal.value);
-  }
+  selectedToastModalCleanState.value = serializeToastModalState(selectedToastModal.value);
   isSaving.value = false;
 };
 
@@ -1436,6 +1376,11 @@ const triggerToastModalNavigationBlockedFeedback = () => {
 triggerToastModalNavigationBlockedFeedback.timeoutId = 0;
 
 const openToastModal = (item) => {
+  if (!isMobileViewport.value && !standaloneMode.value) {
+    openToastWithReturnTo(item.id, route.fullPath);
+    return;
+  }
+
   selectedToastModalId.value = item.id;
   selectedTargetWorkspaceId.value = otherWorkspaces.value[0]?.id ? String(otherWorkspaces.value[0].id) : '';
   selectedToastModalCleanState.value = serializeToastModalState(item);
@@ -1792,6 +1737,28 @@ const toggleVeto = async (itemId) => {
   await fetchWorkspace();
 };
 
+const updateLocalToast = (itemId, updater) => {
+  if (!payload.value) {
+    return null;
+  }
+
+  let updatedItem = null;
+  const apply = (items = []) => items.map((item) => {
+    if (item.id !== itemId) {
+      return item;
+    }
+
+    updatedItem = updater(item);
+    return updatedItem;
+  });
+
+  payload.value.agendaItems = apply(payload.value.agendaItems);
+  payload.value.vetoedItems = apply(payload.value.vetoedItems);
+  payload.value.resolvedItems = apply(payload.value.resolvedItems);
+
+  return updatedItem;
+};
+
 const mobileAgendaSwipeActionCount = (item) => {
   if (!item) {
     return 1;
@@ -1965,14 +1932,45 @@ const toastItem = async (itemId) => {
 };
 
 const setReady = async (itemId, ready) => {
+  const currentItem = [
+    ...agendaItems.value,
+    ...vetoedItems.value,
+    ...resolvedItems.value,
+  ].find((candidate) => candidate.id === itemId);
+  if (!currentItem) {
+    return;
+  }
+
+  const previousStatus = currentItem.status;
+  const previousStatusChangedAt = currentItem.statusChangedAt ?? null;
+  const previousStatusChangedAtDisplay = currentItem.statusChangedAtDisplay ?? null;
+  const nowIso = new Date().toISOString();
+
+  const applyReadyState = (status) => updateLocalToast(itemId, (item) => ({
+    ...item,
+    status,
+    statusChangedAt: nowIso,
+    statusChangedAtDisplay: item.statusChangedAtDisplay ?? item.dueOnDisplay ?? 'Updated now',
+  }));
+
+  applyReadyState(ready ? 'ready' : 'pending');
+
   const { ok } = await workspacesApi.setReady(itemId, ready);
 
   if (!ok) {
+    updateLocalToast(itemId, (item) => ({
+      ...item,
+      status: previousStatus,
+      statusChangedAt: previousStatusChangedAt,
+      statusChangedAtDisplay: previousStatusChangedAtDisplay,
+    }));
     errorMessage.value = ready ? 'Unable to mark this toast as ready.' : 'Unable to mark this toast as in progress.';
     return;
   }
 
-  await fetchWorkspace();
+  if (selectedToastModal.value?.id === itemId) {
+    selectedToastModalCleanState.value = serializeToastModalState(selectedToastModal.value);
+  }
 };
 
 const resolveWorkspacePrivacyLabel = (candidateWorkspace) => (
@@ -2484,7 +2482,6 @@ watch(isMobileViewport, (isMobile) => {
                       type="button"
                       class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
                       :class="item.status === 'ready' ? 'bg-emerald-500 text-black hover:bg-emerald-400' : 'bg-white text-emerald-700 hover:bg-emerald-50'"
-                      :disabled="isToastingMode"
                       title="Toggle ready"
                       @click.stop="executeMobileAgendaAction(item.id, () => setReady(item.id, item.status !== 'ready'))"
                     >
@@ -2519,12 +2516,19 @@ watch(isMobileViewport, (isMobile) => {
                     @touchcancel="handleMobileAgendaTouchEnd(item.id)"
                     @click="handleMobileAgendaRowTap(item.id)"
                   >
+                    <div class="flex items-center justify-between gap-3">
+                      <ToastStatusBadge
+                        :label="item.status === 'ready' ? 'Ready' : 'New'"
+                        :tone-class="toastStatusTone(item)"
+                        :badge-class="toastStatusBadgeClass(item)"
+                      />
+                    </div>
                     <p class="block w-full text-left text-sm font-medium leading-5 line-clamp-2" :class="agendaItemMobileTitleClass(item)">
                       {{ item.title }}
                     </p>
                     <div class="flex items-center justify-between gap-3">
                       <p class="min-w-0 truncate text-xs leading-5" :class="agendaItemMobileMetaClass(item)">
-                        <i v-if="item.isBoosted" class="fa-solid fa-star mr-1" :class="item.status === 'ready' ? 'text-white/80' : 'text-slate-400'" aria-hidden="true"></i>
+                        <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
                         {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
                       </p>
                     </div>
@@ -2558,12 +2562,11 @@ watch(isMobileViewport, (isMobile) => {
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.dueOnDisplay ?? 'No due date' }}</td>
                     <td class="px-4 py-3">
-                      <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
-                        :class="item.status === 'ready' ? 'bg-white/15 text-white ring-1 ring-inset ring-white/20' : 'bg-stone-100 text-stone-700'"
-                      >
-                        {{ item.status === 'ready' ? 'Ready' : 'New' }}
-                      </span>
+                      <ToastStatusBadge
+                        :label="item.status === 'ready' ? 'Ready' : 'New'"
+                        :tone-class="toastStatusTone(item)"
+                        :badge-class="toastStatusBadgeClass(item)"
+                      />
                     </td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.comments?.length ?? 0 }}</td>
                     <td class="px-4 py-3">
@@ -2584,7 +2587,6 @@ watch(isMobileViewport, (isMobile) => {
                           type="button"
                           class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
                           :class="item.status === 'ready' ? 'border-emerald-300 bg-emerald-100 text-emerald-700' : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'"
-                          :disabled="isToastingMode"
                           title="Toggle ready"
                           @click.stop="setReady(item.id, item.status !== 'ready')"
                         >
@@ -2784,6 +2786,7 @@ watch(isMobileViewport, (isMobile) => {
                 <ToastStatusBadge
                   :label="displayToastStatus(selectedToastModal)"
                   :tone-class="toastStatusTone(selectedToastModal)"
+                  :badge-class="toastStatusBadgeClass(selectedToastModal)"
                 />
               </div>
 
@@ -2849,7 +2852,6 @@ watch(isMobileViewport, (isMobile) => {
                 type="button"
                 class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center px-3.5 py-2.5 transition"
                 :class="selectedToastModal.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-transparent text-emerald-800'"
-                :disabled="isToastingMode"
                 @click="setReady(selectedToastModal.id, selectedToastModal.status !== 'ready')"
               >
                 <i :class="selectedToastModal.status === 'ready' ? 'fa-solid fa-rotate-left text-sm' : 'fa-solid fa-check text-sm'" aria-hidden="true"></i>
@@ -3124,11 +3126,20 @@ watch(isMobileViewport, (isMobile) => {
         @update:description="itemForm.description = $event"
       />
 
-      <ModalDialog v-if="selectedToastModal && !useDedicatedMobileToastView" max-width-class="max-w-4xl" @close="closeToastModal">
+      <ModalDialog
+        v-if="selectedToastModal && !useDedicatedMobileToastView"
+        max-width-class="max-w-4xl"
+        :desktop-inline="showDesktopInlineToastPanel"
+        @close="closeToastModal"
+      >
         <div class="relative border-b border-stone-100">
           <ModalHeader eyebrow="Toast details" :title="selectedToastModal.title" @close="closeToastModal">
             <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
-              <ToastStatusBadge :label="displayToastStatus(selectedToastModal)" :tone-class="toastStatusTone(selectedToastModal)" />
+              <ToastStatusBadge
+                :label="displayToastStatus(selectedToastModal)"
+                :tone-class="toastStatusTone(selectedToastModal)"
+                :badge-class="toastStatusBadgeClass(selectedToastModal)"
+              />
               <span class="inline-flex items-center gap-2">
                 <i class="fa-regular fa-user" aria-hidden="true"></i>
                 <span>{{ selectedToastModal.author.displayName }}</span>
@@ -3181,7 +3192,6 @@ watch(isMobileViewport, (isMobile) => {
                   type="button"
                   class="inline-flex min-h-11 items-center justify-center gap-2 border-r border-stone-200 px-4 text-sm font-semibold transition"
                   :class="selectedToastModal.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
-                  :disabled="isToastingMode"
                   @click="setReady(selectedToastModal.id, selectedToastModal.status !== 'ready')"
                 >
                   <i :class="selectedToastModal.status === 'ready' ? 'fa-solid fa-rotate-left text-sm' : 'fa-solid fa-check text-sm'" aria-hidden="true"></i>
@@ -3271,29 +3281,31 @@ watch(isMobileViewport, (isMobile) => {
                   />
                 </label>
 
-                <FollowUpEditor
-                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
-                  :participants="participants"
-                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
-                  :can-generate="!!selectedToastModal.discussionNotes?.trim() && !isDecisionNotesDirty"
-                  :is-generating="isExecutionPlanGenerating"
-                  @add="addFollowUpDraft(selectedToastModal.id)"
-                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
-                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
-                  @generate="generateExecutionPlan"
-                />
+                <div class="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                  <FollowUpEditor
+                    :follow-ups="ensureDraftFollowUps(selectedToastModal)"
+                    :participants="participants"
+                    :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
+                    :can-generate="!!selectedToastModal.discussionNotes?.trim() && !isDecisionNotesDirty"
+                    :is-generating="isExecutionPlanGenerating"
+                    @add="addFollowUpDraft(selectedToastModal.id)"
+                    @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
+                    @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
+                    @generate="generateExecutionPlan"
+                  />
 
-                <ToastExecutionPlanPanel
-                  :draft="executionPlanDraft"
-                  :participants-lookup="participantsLookup"
-                  :is-generating="isExecutionPlanGenerating"
-                  :applying-index="executionPlanApplyingIndex"
-                  :action-statuses="executionPlanActionStatuses"
-                  :error-message="executionPlanError"
-                  :notice-message="executionPlanNotice"
-                  @generate="generateExecutionPlan"
-                  @apply-item="applyExecutionPlanAction"
-                />
+                  <ToastExecutionPlanPanel
+                    :draft="executionPlanDraft"
+                    :participants-lookup="participantsLookup"
+                    :is-generating="isExecutionPlanGenerating"
+                    :applying-index="executionPlanApplyingIndex"
+                    :action-statuses="executionPlanActionStatuses"
+                    :error-message="executionPlanError"
+                    :notice-message="executionPlanNotice"
+                    @generate="generateExecutionPlan"
+                    @apply-item="applyExecutionPlanAction"
+                  />
+                </div>
 
                 <div class="flex flex-wrap justify-end gap-3">
                   <button

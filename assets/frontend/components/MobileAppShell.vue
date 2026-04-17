@@ -46,7 +46,7 @@ const tabs = computed(() => [
 const activeTabKey = computed(() => {
   const name = String(route.name ?? '');
 
-  if (name === 'profile' || ['admin-dashboard', 'admin-users', 'admin-prompts'].includes(name)) {
+  if (name === 'profile' || ['admin-dashboard', 'admin-users'].includes(name)) {
     return 'profile';
   }
 
