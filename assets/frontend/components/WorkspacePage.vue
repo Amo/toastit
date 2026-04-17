@@ -683,6 +683,7 @@ const resetItemForm = () => {
     description: '',
     ownerId: currentUser.value?.id ? String(currentUser.value.id) : '',
     dueOn: defaultDueDateForPreset(workspace.value?.defaultDuePreset ?? 'next_week'),
+    aiRefinementPending: false,
   };
 };
 
@@ -1319,6 +1320,7 @@ const openEditToastModal = async (item) => {
     description: item.description ?? '',
     ownerId: item.owner?.id ? String(item.owner.id) : '',
     dueOn: item.dueOn ?? '',
+    aiRefinementPending: !!item.aiRefinementPending,
   };
   toastDraftRefinementBackup.value = null;
   isCreateToastModalOpen.value = true;
@@ -3583,6 +3585,8 @@ watch(isMobileViewport, (isMobile) => {
         :action-label="editingToastId ? 'Save changes' : 'Create toast'"
         :is-refining="isToastDraftRefining"
         :can-undo-refinement="!!toastDraftRefinementBackup"
+        :is-editing="!!editingToastId"
+        :ai-refinement-pending="!!itemForm.aiRefinementPending"
         @close="closeCreateToastModal"
         @create="createItem"
         @refine="refineToastDraft"

@@ -13,6 +13,8 @@ const props = defineProps({
   actionLabel: { type: String, default: 'Create toast' },
   isRefining: { type: Boolean, default: false },
   canUndoRefinement: { type: Boolean, default: false },
+  isEditing: { type: Boolean, default: false },
+  aiRefinementPending: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description']);
@@ -193,18 +195,71 @@ onUnmounted(() => {
 
     <div class="relative space-y-4 overflow-y-auto px-6 py-6" @keydown="$emit('title-keydown', $event)">
       <template v-if="isMobileViewport">
-        <label class="grid gap-2 text-sm font-medium text-stone-700">
-          <span>Toast</span>
-          <textarea
-            ref="descriptionInput"
-            class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
-            :value="itemForm.description"
-            autofocus
-            placeholder="Describe what needs to be done..."
-            @input="$emit('update:description', $event.target.value)"
-            @keydown="$emit('title-input', $event)"
-          />
-        </label>
+        <template v-if="isEditing">
+          <label class="grid gap-2 text-sm font-medium text-stone-700">
+            <span>Title</span>
+            <textarea
+              ref="titleInput"
+              class="min-h-12 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
+              :value="itemForm.title"
+              rows="1"
+              autofocus
+              placeholder="Toast title"
+              @input="handleTitleInput"
+              @keydown="$emit('title-input', $event)"
+            />
+          </label>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              v-if="aiRefinementPending"
+              class="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-sky-700"
+            >
+              IA pending
+            </span>
+          </div>
+
+          <div class="grid gap-4">
+            <label class="grid gap-2 text-sm font-medium text-stone-700">
+              <span>Assignee</span>
+              <select class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.ownerId" @change="$emit('update:ownerId', $event.target.value)">
+                <option value="">Unassigned</option>
+                <option v-for="invitee in participants" :key="invitee.id" :value="String(invitee.id)">{{ invitee.displayName }}</option>
+              </select>
+            </label>
+            <DatePickerField
+              :model-value="itemForm.dueOn"
+              label="Date"
+              @update:model-value="$emit('update:dueOn', $event)"
+            />
+          </div>
+
+          <label class="grid gap-2 text-sm font-medium text-stone-700">
+            <span>Details</span>
+            <textarea
+              ref="descriptionInput"
+              class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
+              :value="itemForm.description"
+              placeholder="Describe what needs to be done..."
+              @input="$emit('update:description', $event.target.value)"
+            />
+          </label>
+        </template>
+        <template v-else>
+          <label class="grid gap-2 text-sm font-medium text-stone-700">
+            <span>Toast</span>
+            <textarea
+              ref="descriptionInput"
+              class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
+              :value="itemForm.description"
+              autofocus
+              placeholder="Describe what needs to be done..."
+              @input="$emit('update:description', $event.target.value)"
+              @keydown="$emit('title-input', $event)"
+            />
+          </label>
+        </template>
+
         <div class="flex items-center justify-end">
           <button
             v-if="isSpeechSupported"
