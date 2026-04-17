@@ -127,7 +127,7 @@ final class XaiTextServiceTest extends TestCase
             }),
             'test-key',
             'https://api.x.ai/v1',
-            'grok-4-1-fast-reasoning',
+            'grok-4-1-fast-non-reasoning',
             30,
             'grok-4.20-reasoning',
         );
