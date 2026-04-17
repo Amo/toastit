@@ -8,6 +8,7 @@ import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
 import CommentThread from './CommentThread.vue';
 import CompactDropdown from './CompactDropdown.vue';
+import DecisionNotesEditor from './DecisionNotesEditor.vue';
 import EmptyState from './EmptyState.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
 import FollowUpEditor from './FollowUpEditor.vue';
@@ -64,6 +65,8 @@ const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', isS
 const executionPlanError = ref('');
 const executionPlanNotice = ref('');
 const isExecutionPlanGenerating = ref(false);
+const decisionNotesAutosaveState = ref('idle');
+const decisionNotesAutosaveError = ref('');
 const isToastCurationOpen = ref(false);
 const toastCurationDraft = ref(null);
 const toastCurationError = ref('');
@@ -108,6 +111,9 @@ const mobileAgendaSwipe = ref({
 });
 let archivedToastObserver = null;
 let inboxAddressCopiedTimeout = null;
+let decisionNotesAutosaveTimeout = null;
+let decisionNotesAutosaveStateTimeout = null;
+let decisionNotesAutosaveRequestId = 0;
 const apiClient = new ToastitApiClient(props.accessToken, {
   onUnauthorized: () => {
     window.location.href = '/';
@@ -1361,6 +1367,17 @@ const selectedToastModalInitialState = computed(() => {
   return JSON.parse(selectedToastModalCleanState.value);
 });
 
+const syncSelectedToastModalCleanState = (patch = {}) => {
+  const currentState = selectedToastModalInitialState.value;
+
+  selectedToastModalCleanState.value = JSON.stringify({
+    discussionNotes: currentState.discussionNotes ?? '',
+    draftFollowUps: currentState.draftFollowUps ?? [],
+    commentDraft: currentState.commentDraft ?? '',
+    ...patch,
+  });
+};
+
 const isDecisionNotesDirty = computed(() => {
   if (!selectedToastModal.value || !isToastingMode.value) {
     return false;
@@ -1396,6 +1413,7 @@ const triggerToastModalNavigationBlockedFeedback = () => {
 triggerToastModalNavigationBlockedFeedback.timeoutId = 0;
 
 const openToastModal = (item) => {
+  resetDecisionNotesAutosaveState();
   selectedToastModalId.value = item.id;
   selectedTargetWorkspaceId.value = otherWorkspaces.value[0]?.id ? String(otherWorkspaces.value[0].id) : '';
   selectedToastModalCleanState.value = serializeToastModalState(item);
@@ -1409,6 +1427,7 @@ const openToastModal = (item) => {
 const closeToastModal = () => {
   closeMoveCopyToastModal();
   closeMobileVetoConfirmModal();
+  resetDecisionNotesAutosaveState();
 
   if (standaloneMode.value) {
     router.push(resolveToastReturnToPath());
@@ -1437,6 +1456,7 @@ const openToastById = (toastId) => {
 
   if (item) {
     if (standaloneMode.value) {
+      resetDecisionNotesAutosaveState();
       openToastWithReturnTo(toastId);
       selectedToastModalId.value = toastId;
       selectedToastModalCleanState.value = serializeToastModalState(item);
@@ -1523,6 +1543,88 @@ const autosizeTextarea = (element) => {
 
   element.style.height = '0px';
   element.style.height = `${element.scrollHeight}px`;
+};
+
+const resetDecisionNotesAutosaveState = () => {
+  if (decisionNotesAutosaveTimeout) {
+    window.clearTimeout(decisionNotesAutosaveTimeout);
+    decisionNotesAutosaveTimeout = null;
+  }
+
+  if (decisionNotesAutosaveStateTimeout) {
+    window.clearTimeout(decisionNotesAutosaveStateTimeout);
+    decisionNotesAutosaveStateTimeout = null;
+  }
+
+  decisionNotesAutosaveRequestId += 1;
+  decisionNotesAutosaveState.value = 'idle';
+  decisionNotesAutosaveError.value = '';
+};
+
+const persistDecisionNotesAutosave = async (itemId, requestId) => {
+  const currentItem = [
+    ...agendaItems.value,
+    ...vetoedItems.value,
+    ...resolvedItems.value,
+  ].find((candidate) => candidate.id === itemId);
+
+  if (!currentItem || requestId !== decisionNotesAutosaveRequestId) {
+    return;
+  }
+
+  decisionNotesAutosaveState.value = 'saving';
+  decisionNotesAutosaveError.value = '';
+
+  const discussionNotes = currentItem.discussionNotes ?? '';
+  const { ok, data } = await workspacesApi.saveDecisionNotes(itemId, {
+    discussionNotes,
+    ownerId: currentItem.owner?.id ?? null,
+    dueOn: currentItem.dueOn ?? null,
+  });
+
+  if (requestId !== decisionNotesAutosaveRequestId) {
+    return;
+  }
+
+  if (!ok || !data?.ok) {
+    decisionNotesAutosaveState.value = 'error';
+    decisionNotesAutosaveError.value = data?.message ?? 'Unable to autosave decision notes.';
+    return;
+  }
+
+  syncSelectedToastModalCleanState({ discussionNotes });
+  decisionNotesAutosaveState.value = 'saved';
+  decisionNotesAutosaveStateTimeout = window.setTimeout(() => {
+    if (decisionNotesAutosaveState.value === 'saved') {
+      decisionNotesAutosaveState.value = 'idle';
+    }
+  }, 1400);
+};
+
+const scheduleDecisionNotesAutosave = (itemId) => {
+  if (decisionNotesAutosaveTimeout) {
+    window.clearTimeout(decisionNotesAutosaveTimeout);
+  }
+
+  if (decisionNotesAutosaveStateTimeout) {
+    window.clearTimeout(decisionNotesAutosaveStateTimeout);
+    decisionNotesAutosaveStateTimeout = null;
+  }
+
+  decisionNotesAutosaveState.value = 'idle';
+  decisionNotesAutosaveError.value = '';
+  decisionNotesAutosaveRequestId += 1;
+  const requestId = decisionNotesAutosaveRequestId;
+
+  decisionNotesAutosaveTimeout = window.setTimeout(() => {
+    decisionNotesAutosaveTimeout = null;
+    persistDecisionNotesAutosave(itemId, requestId);
+  }, 500);
+};
+
+const updateDecisionNotes = (itemId, value) => {
+  updateItemField(itemId, 'discussionNotes', value);
+  scheduleDecisionNotesAutosave(itemId);
 };
 
 const updateCommentDraft = (itemId, value) => {
@@ -2303,6 +2405,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  resetDecisionNotesAutosaveState();
   if (inboxAddressCopiedTimeout) {
     clearTimeout(inboxAddressCopiedTimeout);
   }
@@ -2807,15 +2910,13 @@ watch(isMobileViewport, (isMobile) => {
                             </div>
 
                             <div v-if="workspace.currentUserIsOwner && isToastingMode && isActiveToast(selectedToastModal)" class="space-y-4">
-                              <label class="grid gap-2 text-sm font-medium text-stone-700">
-                                <span>Decision notes</span>
-                                <textarea
-                                  class="min-h-28 rounded-2xl border bg-white px-4 py-3 text-sm transition"
-                                  :class="toastModalNavigationBlocked && isDecisionNotesDirty ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'"
-                                  :value="selectedToastModal.discussionNotes ?? ''"
-                                  @input="updateItemField(selectedToastModal.id, 'discussionNotes', $event.target.value)"
-                                />
-                              </label>
+                              <DecisionNotesEditor
+                                :model-value="selectedToastModal.discussionNotes ?? ''"
+                                :blocked="toastModalNavigationBlocked && isDecisionNotesDirty"
+                                :save-state="decisionNotesAutosaveState"
+                                :save-error="decisionNotesAutosaveError"
+                                @update:model-value="updateDecisionNotes(selectedToastModal.id, $event)"
+                              />
 
                               <FollowUpEditor
                                 :follow-ups="ensureDraftFollowUps(selectedToastModal)"
@@ -3569,15 +3670,13 @@ watch(isMobileViewport, (isMobile) => {
               </div>
 
               <div v-if="workspace.currentUserIsOwner && isToastingMode && isActiveToast(selectedToastModal)" class="space-y-4">
-                <label class="grid gap-2 text-sm font-medium text-stone-700">
-                  <span>Decision notes</span>
-                  <textarea
-                    class="min-h-28 rounded-2xl border bg-white px-4 py-3 text-sm transition"
-                    :class="toastModalNavigationBlocked && isDecisionNotesDirty ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'"
-                    :value="selectedToastModal.discussionNotes ?? ''"
-                    @input="updateItemField(selectedToastModal.id, 'discussionNotes', $event.target.value)"
-                  />
-                </label>
+                <DecisionNotesEditor
+                  :model-value="selectedToastModal.discussionNotes ?? ''"
+                  :blocked="toastModalNavigationBlocked && isDecisionNotesDirty"
+                  :save-state="decisionNotesAutosaveState"
+                  :save-error="decisionNotesAutosaveError"
+                  @update:model-value="updateDecisionNotes(selectedToastModal.id, $event)"
+                />
 
                 <FollowUpEditor
                   :follow-ups="ensureDraftFollowUps(selectedToastModal)"
