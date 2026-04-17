@@ -13,8 +13,13 @@ final class AppUrlGenerator
 
     public function spaPath(string $path = ''): string
     {
+        $normalizedPath = ltrim($path, '/');
+        if (!str_starts_with($normalizedPath, 'app/')) {
+            $normalizedPath = sprintf('app/%s', $normalizedPath);
+        }
+
         return $this->urlGenerator->generate('app_spa', [
-            'path' => ltrim($path, '/'),
+            'path' => $normalizedPath,
         ], UrlGeneratorInterface::ABSOLUTE_URL);
     }
 }

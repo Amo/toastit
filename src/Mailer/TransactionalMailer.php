@@ -357,13 +357,13 @@ final class TransactionalMailer
             return $value;
         }
         $value = (string) preg_replace_callback(
-            '/\]\((\/app\/[^)\s]+)\)/',
+            '/\]\(((?:\/app)?\/(?:toasts|workspaces)\/[^)\s]+)\)/',
             fn (array $matches): string => sprintf('](%s)', $this->absoluteAppPath($matches[1])),
             $value,
         );
 
         return (string) preg_replace_callback(
-            '/href=(["\'])(\/app\/[^"\']+)\1/',
+            '/href=(["\'])(((?:\/app)?\/(?:toasts|workspaces)\/[^"\']+))\1/',
             fn (array $matches): string => sprintf('href=%s%s%s', $matches[1], $this->absoluteAppPath($matches[2]), $matches[1]),
             $value,
         );
@@ -372,12 +372,12 @@ final class TransactionalMailer
     private function absoluteAppPath(string $path): string
     {
         $normalizedPath = ltrim($path, '/');
-        if (str_starts_with($normalizedPath, 'app/')) {
-            $normalizedPath = substr($normalizedPath, 4);
+        if (!str_starts_with($normalizedPath, 'app/')) {
+            $normalizedPath = sprintf('app/%s', $normalizedPath);
         }
 
         return $this->urlGenerator->generate('app_spa', [
-            'path' => ltrim($normalizedPath, '/'),
+            'path' => $normalizedPath,
         ], UrlGeneratorInterface::ABSOLUTE_URL);
     }
 

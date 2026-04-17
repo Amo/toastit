@@ -34,7 +34,7 @@ final class TransactionalMailerTest extends TestCase
         $urlGenerator
             ->expects(self::atLeastOnce())
             ->method('generate')
-            ->with('app_spa', ['path' => 'toasts/243'], UrlGeneratorInterface::ABSOLUTE_URL)
+            ->with('app_spa', ['path' => 'app/toasts/243'], UrlGeneratorInterface::ABSOLUTE_URL)
             ->willReturn('https://toastit.test/app/toasts/243');
 
         $mailer = new TransactionalMailer(
@@ -49,6 +49,43 @@ final class TransactionalMailerTest extends TestCase
         $mailer->sendTodoDigest(
             $user,
             "## Top actions\n\n- Review [#243](/app/toasts/243)",
+        );
+    }
+
+    public function testSendTodoDigestPrefixesRelativeToastLinksWithAppSegment(): void
+    {
+        $user = (new User())->setEmail('owner@example.com')->setFirstName('Owner');
+
+        $mailerTransport = $this->createMock(MailerInterface::class);
+        $mailerTransport
+            ->expects(self::once())
+            ->method('send')
+            ->with(self::callback(function (Email $email): bool {
+                self::assertStringContainsString('https://toastit.test/app/toasts/83', $email->getHtmlBody() ?? '');
+                self::assertStringContainsString('https://toastit.test/app/toasts/83', $email->getTextBody() ?? '');
+
+                return true;
+            }));
+
+        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $urlGenerator
+            ->expects(self::atLeastOnce())
+            ->method('generate')
+            ->with('app_spa', ['path' => 'app/toasts/83'], UrlGeneratorInterface::ABSOLUTE_URL)
+            ->willReturn('https://toastit.test/app/toasts/83');
+
+        $mailer = new TransactionalMailer(
+            $mailerTransport,
+            new Environment(new FilesystemLoader(dirname(__DIR__, 2).'/templates')),
+            new CommonMarkConverter(),
+            new UserDateTimeFormatter(),
+            'hello@toastit.test',
+            $urlGenerator,
+        );
+
+        $mailer->sendTodoDigest(
+            $user,
+            "## Top actions\n\n- Review [#83](/toasts/83)",
         );
     }
 }
