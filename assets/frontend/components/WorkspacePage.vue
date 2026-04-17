@@ -3397,7 +3397,7 @@ watch(isMobileViewport, (isMobile) => {
                 <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-600">{{ selectedToastModal.comments?.length ?? 0 }}</span>
               </div>
             </div>
-            <div class="mt-3 space-y-4">
+            <div class="mt-3 space-y-4 pb-24">
               <div v-if="commentSummaryFor(selectedToastModal.id)" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Comment summary</p>
                 <div class="mt-2 tw-markdown text-sm text-stone-800" v-html="renderToastDescription(commentSummaryFor(selectedToastModal.id))"></div>
@@ -3405,16 +3405,18 @@ watch(isMobileViewport, (isMobile) => {
               <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" mobile />
               <div
                 v-if="isActiveToast(selectedToastModal)"
-                class="sticky bottom-0 z-[97] -mx-4 border-t border-stone-200/80 bg-white/95 px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur"
+                class="fixed inset-x-0 bottom-0 z-[97] bg-gradient-to-t from-white via-white/96 to-transparent px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-6"
               >
-                <CommentComposer
-                  mobile
-                  :current-user="currentUser"
-                  :value="commentDraftFor(selectedToastModal.id)"
-                  @input="handleCommentDraftInput(selectedToastModal.id, $event)"
-                  @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
-                  @submit="createComment(selectedToastModal.id)"
-                />
+                <div class="mx-auto w-full max-w-screen-sm">
+                  <CommentComposer
+                    mobile
+                    :current-user="currentUser"
+                    :value="commentDraftFor(selectedToastModal.id)"
+                    @input="handleCommentDraftInput(selectedToastModal.id, $event)"
+                    @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
+                    @submit="createComment(selectedToastModal.id)"
+                  />
+                </div>
               </div>
             </div>
           </div>
