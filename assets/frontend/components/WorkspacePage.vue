@@ -2145,9 +2145,22 @@ const buildCrossWorkspaceConfirmation = (targetWorkspaceId, actionLabel) => {
   return `You are about to ${actionLabel} a toast from a ${sourcePrivacy} workspace to a ${targetPrivacy} workspace (${targetWorkspace.name}). Confirm?`;
 };
 
+const buildCopyToastConfirmation = (targetWorkspaceId = null) => {
+  const crossWorkspaceConfirmation = buildCrossWorkspaceConfirmation(targetWorkspaceId, 'copy');
+  if (crossWorkspaceConfirmation) {
+    return crossWorkspaceConfirmation;
+  }
+
+  if (!selectedToastModal.value) {
+    return null;
+  }
+
+  return `Create a new copy of "${selectedToastModal.value.title}"?`;
+};
+
 const copyToast = async (targetWorkspaceId = null) => {
   if (!selectedToastModal.value) return;
-  const confirmationMessage = buildCrossWorkspaceConfirmation(targetWorkspaceId, 'copy');
+  const confirmationMessage = buildCopyToastConfirmation(targetWorkspaceId);
   if (confirmationMessage && !window.confirm(confirmationMessage)) {
     return;
   }
@@ -3673,7 +3686,7 @@ watch(isMobileViewport, (isMobile) => {
                 <button
                   v-if="selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted'"
                   type="button"
-                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
+                  class="inline-grid min-h-11 min-w-12 place-items-center bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
                   title="Copy as new"
                   @click="copyToast()"
                 >
