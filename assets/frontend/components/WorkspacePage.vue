@@ -95,9 +95,11 @@ const inboxAddressCopied = ref(false);
 const inboxAddressInput = ref(null);
 const vetoedInfiniteLoader = ref(null);
 const resolvedInfiniteLoader = ref(null);
+const mobileStickyHeaderRef = ref(null);
 const mobileCommentsSectionRef = ref(null);
 const mobileCommentComposerRef = ref(null);
 const mobileKeyboardInset = ref(0);
+const mobileStickyHeaderHeight = ref(0);
 const mobileActionBarDocked = ref(false);
 const mobileActionBarScrollFrame = ref(0);
 const mobileVetoConfirmToastId = ref(null);
@@ -1731,6 +1733,16 @@ const scrollMobileCommentComposerIntoView = () => {
   });
 };
 
+const syncMobileStickyHeaderHeight = () => {
+  if (!useDedicatedMobileToastView.value) {
+    mobileStickyHeaderHeight.value = 0;
+    return;
+  }
+
+  const height = Math.round(mobileStickyHeaderRef.value?.getBoundingClientRect?.().height ?? 0);
+  mobileStickyHeaderHeight.value = height > 0 ? height : 0;
+};
+
 const syncMobileKeyboardInset = () => {
   if (!useDedicatedMobileToastView.value || typeof window === 'undefined') {
     mobileKeyboardInset.value = 0;
@@ -2544,6 +2556,7 @@ const syncMobileImmersiveState = () => {
 
 const handleViewportOrScrollForMobileActionBar = () => {
   syncViewport();
+  syncMobileStickyHeaderHeight();
   syncMobileActionBarDockState();
   syncMobileKeyboardInset();
 };
@@ -2570,6 +2583,7 @@ onMounted(() => {
   window.addEventListener('scroll', handleMobileActionBarScroll, { passive: true });
   window.visualViewport?.addEventListener('resize', syncMobileKeyboardInset);
   window.visualViewport?.addEventListener('scroll', syncMobileKeyboardInset);
+  syncMobileStickyHeaderHeight();
   syncMobileKeyboardInset();
 });
 
@@ -2603,6 +2617,11 @@ watch(() => workspace.value?.id, consumeCreateToastRouteIntent);
 watch(() => props.createOnlyMode, syncCreateOnlyMode);
 watch(() => workspace.value?.id, syncCreateOnlyMode);
 watch(() => [route.query.filter, route.query.assignee], applyFiltersFromRoute);
+watch(() => selectedToastModal.value?.title, () => nextTick(syncMobileStickyHeaderHeight));
+watch(useDedicatedMobileToastView, () => nextTick(() => {
+  syncMobileStickyHeaderHeight();
+  syncMobileKeyboardInset();
+}));
 watch(currentToastFilter, syncFiltersToRoute);
 watch(currentAssigneeFilter, syncFiltersToRoute);
 watch(currentToastFilter, () => {
@@ -3304,7 +3323,7 @@ watch(isMobileViewport, (isMobile) => {
       </template>
       <template v-else-if="useDedicatedMobileToastView">
         <div class="space-y-0 pb-28 pt-0">
-          <div class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/95 px-3 pb-3 backdrop-blur" :style="{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))' }">
+          <div ref="mobileStickyHeaderRef" class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/95 px-3 pb-3 backdrop-blur" :style="{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))' }">
             <div class="flex items-center gap-3">
               <button
                 type="button"
@@ -3368,7 +3387,9 @@ watch(isMobileViewport, (isMobile) => {
               v-show="!mobileKeyboardActive"
               class="z-[96] overflow-hidden border border-stone-200/80 bg-white/80 backdrop-blur transition-all duration-300"
               :class="mobileActionBarDocked ? 'tw-mobile-toast-actions--docked sticky left-0 right-0 w-full rounded-none border-x-0 border-t-0 shadow-sm' : 'tw-mobile-toast-actions--floating fixed right-4 rounded-2xl shadow-lg'"
-              :style="{ bottom: 'calc(5.9rem + env(safe-area-inset-bottom) + 0.75rem)' }"
+              :style="mobileActionBarDocked
+                ? { top: `${mobileStickyHeaderHeight}px` }
+                : { bottom: 'calc(5.9rem + env(safe-area-inset-bottom) + 0.75rem)' }"
           >
             <div class="flex items-stretch divide-x divide-stone-200/80">
               <button
@@ -3470,6 +3491,11 @@ watch(isMobileViewport, (isMobile) => {
                 class="fixed inset-x-0 bottom-0 z-[97] border-t border-stone-200 bg-white px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(28,25,23,0.06)]"
                 :style="{ bottom: `${mobileKeyboardInset}px` }"
               >
+                <div
+                  v-if="mobileKeyboardActive"
+                  class="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-gradient-to-t from-white via-white/95 to-transparent"
+                  aria-hidden="true"
+                ></div>
                 <div class="mx-auto w-full max-w-screen-sm">
                   <CommentComposer
                     mobile
