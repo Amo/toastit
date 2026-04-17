@@ -684,6 +684,7 @@ const resetItemForm = () => {
     ownerId: currentUser.value?.id ? String(currentUser.value.id) : '',
     dueOn: defaultDueDateForPreset(workspace.value?.defaultDuePreset ?? 'next_week'),
     aiRefinementPending: false,
+    aiImproveEnabled: false,
   };
 };
 
@@ -829,6 +830,13 @@ const createItem = async () => {
   const hasDraftInput = itemForm.value.title.trim() || itemForm.value.description.trim();
   if (!hasDraftInput) return;
 
+  const toastMutationPayload = {
+    title: itemForm.value.title ?? '',
+    description: itemForm.value.description ?? '',
+    ownerId: itemForm.value.ownerId ?? '',
+    dueOn: itemForm.value.dueOn ?? '',
+  };
+
   let shouldRefineAfterCreateInBackground = false;
   let draftSnapshotForBackgroundRefine = null;
 
@@ -849,10 +857,28 @@ const createItem = async () => {
     }
   }
 
-  if (!itemForm.value.title.trim()) return;
+  if (isEditingToast && itemForm.value.aiImproveEnabled) {
+    const refineSucceeded = await refineToastDraft({
+      title: toastMutationPayload.title,
+      description: toastMutationPayload.description,
+      ownerId: toastMutationPayload.ownerId,
+      dueOn: toastMutationPayload.dueOn,
+    }, { forceApply: true });
+
+    if (!refineSucceeded) {
+      return;
+    }
+
+    toastMutationPayload.title = itemForm.value.title ?? '';
+    toastMutationPayload.description = itemForm.value.description ?? '';
+    toastMutationPayload.ownerId = itemForm.value.ownerId ?? '';
+    toastMutationPayload.dueOn = itemForm.value.dueOn ?? '';
+  }
+
+  if (!toastMutationPayload.title.trim()) return;
   const { ok, data } = isEditingToast
-    ? await workspacesApi.updateToast(editingToastId.value, itemForm.value)
-    : await workspacesApi.createToast(workspace.value.id, itemForm.value);
+    ? await workspacesApi.updateToast(editingToastId.value, toastMutationPayload)
+    : await workspacesApi.createToast(workspace.value.id, toastMutationPayload);
 
   if (!ok) {
     errorMessage.value = editingToastId.value ? 'Unable to update toast.' : 'Unable to create toast.';
@@ -1321,6 +1347,7 @@ const openEditToastModal = async (item) => {
     ownerId: item.owner?.id ? String(item.owner.id) : '',
     dueOn: item.dueOn ?? '',
     aiRefinementPending: !!item.aiRefinementPending,
+    aiImproveEnabled: true,
   };
   toastDraftRefinementBackup.value = null;
   isCreateToastModalOpen.value = true;
@@ -3596,6 +3623,7 @@ watch(isMobileViewport, (isMobile) => {
         @update:owner-id="itemForm.ownerId = $event"
         @update:due-on="itemForm.dueOn = $event"
         @update:description="itemForm.description = $event"
+        @update:ai-improve-enabled="itemForm.aiImproveEnabled = $event"
       />
 
       <ModalDialog
