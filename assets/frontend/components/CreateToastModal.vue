@@ -118,16 +118,6 @@ onUnmounted(() => {
             </span>
           </div>
 
-          <label class="inline-flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-700">
-            <input
-              class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-400"
-              type="checkbox"
-              :checked="!!itemForm.aiImproveEnabled"
-              @change="$emit('update:aiImproveEnabled', $event.target.checked)"
-            >
-            <span>IA improve</span>
-          </label>
-
           <div class="grid gap-4">
             <label class="grid gap-2 text-sm font-medium text-stone-700">
               <span>Assignee</span>
