@@ -5,6 +5,7 @@ import { renderToastDescription } from '../utils/workspaceFormatting';
 const props = defineProps({
   draft: { type: Object, default: null },
   participantsLookup: { type: Object, default: () => ({}) },
+  canGenerate: { type: Boolean, default: false },
   isGenerating: { type: Boolean, default: false },
   applyingIndex: { type: Number, default: -1 },
   actionStatuses: { type: Object, default: () => ({}) },
@@ -22,12 +23,12 @@ const actions = computed(() => props.draft?.actions ?? []);
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-stone-200 bg-white p-4">
       <div class="space-y-1">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">AI execution plan</p>
-        <p class="text-sm font-medium text-stone-700">Generate proposed follow-ups from the saved decision notes, then apply them one by one.</p>
+        <p class="text-sm font-medium text-stone-700">Generate proposed follow-ups directly from the current decision notes, then apply the ones you want to keep.</p>
       </div>
       <button
         type="button"
         :class="['rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60', isGenerating ? 'tw-ai-pending' : '']"
-        :disabled="isGenerating"
+        :disabled="isGenerating || !canGenerate"
         @click="$emit('generate')"
       >
         {{ isGenerating ? 'Generating...' : (draft ? 'Regenerate plan' : 'Generate plan') }}

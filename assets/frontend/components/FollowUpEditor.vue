@@ -5,11 +5,9 @@ defineProps({
   followUps: { type: Array, default: () => [] },
   participants: { type: Array, default: () => [] },
   blocked: { type: Boolean, default: false },
-  canGenerate: { type: Boolean, default: false },
-  isGenerating: { type: Boolean, default: false },
 });
 
-defineEmits(['add', 'remove', 'update', 'generate']);
+defineEmits(['add', 'remove', 'update']);
 </script>
 
 <template>
@@ -20,26 +18,13 @@ defineEmits(['add', 'remove', 'update', 'generate']);
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div class="space-y-1">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Manual follow-ups</p>
-        <p class="text-sm font-medium text-stone-700">Turn the decision into concrete toasts before closing the current one.</p>
+        <p class="text-sm font-medium text-stone-700">Adjust the follow-up toasts you want to create before closing the current one.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <button
-          v-if="canGenerate"
-          type="button"
-          :class="['tw-ai-rainbow-action inline-grid h-10 w-10 place-items-center rounded-full border text-sm transition disabled:opacity-60', isGenerating ? 'tw-ai-pending' : '']"
-          :disabled="isGenerating"
-          title="Generate follow-up plan with xAI"
-          @click="$emit('generate')"
-        >
-          <i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i>
-          <span class="sr-only">Generate follow-up plan with xAI</span>
-        </button>
-        <button type="button" class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="$emit('add')">Add step</button>
-      </div>
+      <button type="button" class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="$emit('add')">Add step</button>
     </div>
 
     <div v-if="!followUps.length" class="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-6 text-sm text-stone-500">
-      No manual follow-up yet. Add one directly or generate a first draft from xAI.
+      No manual follow-up yet. Generate a draft from the decision notes, or add one directly.
     </div>
 
     <div

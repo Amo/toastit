@@ -153,8 +153,8 @@ export class WorkspacesApi {
     return this.client.postJson(`/api/items/${itemId}/decision-notes`, payload);
   }
 
-  generateExecutionPlan(itemId) {
-    return this.client.postJson(`/api/items/${itemId}/execution-plan/draft`, {});
+  generateExecutionPlan(itemId, payload = {}) {
+    return this.client.postJson(`/api/items/${itemId}/execution-plan/draft`, payload);
   }
 
   applyExecutionPlanAction(itemId, action) {

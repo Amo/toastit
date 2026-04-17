@@ -20,13 +20,13 @@ final class ToastExecutionPlanDraftService
     /**
      * @return array{summary: string, actions: list<array<string, mixed>>}
      */
-    public function generate(Toast $toast, ?User $requestedBy = null): array
+    public function generate(Toast $toast, ?User $requestedBy = null, ?string $decisionNotesOverride = null): array
     {
         $workspace = $toast->getWorkspace();
-        $decisionNotes = trim((string) $toast->getDiscussionNotes());
+        $decisionNotes = trim((string) ($decisionNotesOverride ?? $toast->getDiscussionNotes()));
 
         if ('' === $decisionNotes) {
-            throw new SessionSummaryUnavailableException('missing_decision_notes', 'Decision notes must be saved before generating an execution plan.');
+            throw new SessionSummaryUnavailableException('missing_decision_notes', 'Decision notes are required before generating an execution plan.');
         }
 
         $systemPrompt = $this->promptTemplate->resolveSystemPrompt('toast_execution_plan_system', '');
@@ -34,7 +34,7 @@ final class ToastExecutionPlanDraftService
             throw new SessionSummaryUnavailableException('invalid_execution_plan', 'No execution-plan system prompt is configured.');
         }
 
-        $promptVariables = $this->buildPromptVariables($toast);
+        $promptVariables = $this->buildPromptVariables($toast, $decisionNotes);
         $userPrompt = $this->promptTemplate->resolveUserPromptTemplate(
             'toast_execution_plan_system',
             '{{ context_text }}',
@@ -53,7 +53,7 @@ final class ToastExecutionPlanDraftService
         return $this->parseResponse($response, $toast->getId() ?? 0);
     }
 
-    private function buildPromptVariables(Toast $toast): array
+    private function buildPromptVariables(Toast $toast, string $decisionNotes): array
     {
         $workspace = $toast->getWorkspace();
         $participants = array_filter(
@@ -77,7 +77,7 @@ final class ToastExecutionPlanDraftService
             sprintf('Current dueOn: %s', $toast->getDueAt()?->format('Y-m-d') ?? 'null'),
             sprintf('Description: %s', trim((string) $toast->getDescription()) ?: '(empty)'),
             'Decision notes:',
-            trim((string) $toast->getDiscussionNotes()),
+            $decisionNotes,
             '',
             'Workspace participants:',
             ...array_map(
@@ -94,7 +94,7 @@ final class ToastExecutionPlanDraftService
                 'current_owner_id' => $toast->getOwner()?->getId(),
                 'current_due_on' => $toast->getDueAt()?->format('Y-m-d'),
                 'description' => trim((string) $toast->getDescription()) ?: '(empty)',
-                'decision_notes' => trim((string) $toast->getDiscussionNotes()),
+                'decision_notes' => $decisionNotes,
             ],
             'participants' => array_values($participantPayload),
             'context_text' => $legacyContextText,

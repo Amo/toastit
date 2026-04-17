@@ -1104,28 +1104,6 @@ const applyToastCurationAction = async ({ action, index }) => {
   toastCurationApplyingIndex.value = -1;
 };
 
-const saveDecisionNotes = async () => {
-  if (!selectedToastModal.value) return;
-
-  isSaving.value = true;
-  errorMessage.value = '';
-
-  const { ok } = await workspacesApi.saveDecisionNotes(selectedToastModal.value.id, {
-    discussionNotes: selectedToastModal.value.discussionNotes,
-    ownerId: selectedToastModal.value.owner?.id ?? null,
-    dueOn: selectedToastModal.value.dueOn,
-  });
-
-  if (!ok) {
-    errorMessage.value = 'Unable to save decision notes.';
-    isSaving.value = false;
-    return;
-  }
-
-  selectedToastModalCleanState.value = serializeToastModalState(selectedToastModal.value);
-  isSaving.value = false;
-};
-
 const generateExecutionPlan = async () => {
   if (!selectedToastModal.value) {
     return;
@@ -1137,7 +1115,9 @@ const generateExecutionPlan = async () => {
   executionPlanActionStatuses.value = {};
   executionPlanApplyingIndex.value = -1;
 
-  const { ok, data } = await workspacesApi.generateExecutionPlan(selectedToastModal.value.id);
+  const { ok, data } = await workspacesApi.generateExecutionPlan(selectedToastModal.value.id, {
+    discussionNotes: selectedToastModal.value.discussionNotes ?? '',
+  });
 
   if (!ok || !data?.ok || !data.draft) {
     executionPlanDraft.value = null;
@@ -2843,22 +2823,11 @@ watch(isMobileViewport, (isMobile) => {
                                 />
                               </label>
 
-                              <div class="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                                <FollowUpEditor
-                                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
-                                  :participants="participants"
-                                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
-                                  :can-generate="!!selectedToastModal.discussionNotes?.trim() && !isDecisionNotesDirty"
-                                  :is-generating="isExecutionPlanGenerating"
-                                  @add="addFollowUpDraft(selectedToastModal.id)"
-                                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
-                                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
-                                  @generate="generateExecutionPlan"
-                                />
-
+                              <div class="space-y-4">
                                 <ToastExecutionPlanPanel
                                   :draft="executionPlanDraft"
                                   :participants-lookup="participantsLookup"
+                                  :can-generate="!!selectedToastModal.discussionNotes?.trim()"
                                   :is-generating="isExecutionPlanGenerating"
                                   :applying-index="executionPlanApplyingIndex"
                                   :action-statuses="executionPlanActionStatuses"
@@ -2867,17 +2836,18 @@ watch(isMobileViewport, (isMobile) => {
                                   @generate="generateExecutionPlan"
                                   @apply-item="applyExecutionPlanAction"
                                 />
+
+                                <FollowUpEditor
+                                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
+                                  :participants="participants"
+                                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
+                                  @add="addFollowUpDraft(selectedToastModal.id)"
+                                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
+                                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
+                                />
                               </div>
 
                               <div class="flex flex-wrap justify-end gap-3">
-                                <button
-                                  type="button"
-                                  class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
-                                  :disabled="isSaving || !selectedToastModal.discussionNotes?.trim()"
-                                  @click="saveDecisionNotes"
-                                >
-                                  {{ isSaving ? 'Saving...' : 'Save notes' }}
-                                </button>
                                 <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isSaving" @click="saveDiscussion">
                                   {{ isSaving ? 'Saving...' : 'Toast it' }}
                                 </button>
@@ -3625,22 +3595,11 @@ watch(isMobileViewport, (isMobile) => {
                   />
                 </label>
 
-                <div class="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                  <FollowUpEditor
-                    :follow-ups="ensureDraftFollowUps(selectedToastModal)"
-                    :participants="participants"
-                    :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
-                    :can-generate="!!selectedToastModal.discussionNotes?.trim() && !isDecisionNotesDirty"
-                    :is-generating="isExecutionPlanGenerating"
-                    @add="addFollowUpDraft(selectedToastModal.id)"
-                    @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
-                    @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
-                    @generate="generateExecutionPlan"
-                  />
-
+                <div class="space-y-4">
                   <ToastExecutionPlanPanel
                     :draft="executionPlanDraft"
                     :participants-lookup="participantsLookup"
+                    :can-generate="!!selectedToastModal.discussionNotes?.trim()"
                     :is-generating="isExecutionPlanGenerating"
                     :applying-index="executionPlanApplyingIndex"
                     :action-statuses="executionPlanActionStatuses"
@@ -3649,17 +3608,18 @@ watch(isMobileViewport, (isMobile) => {
                     @generate="generateExecutionPlan"
                     @apply-item="applyExecutionPlanAction"
                   />
+
+                  <FollowUpEditor
+                    :follow-ups="ensureDraftFollowUps(selectedToastModal)"
+                    :participants="participants"
+                    :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
+                    @add="addFollowUpDraft(selectedToastModal.id)"
+                    @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
+                    @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
+                  />
                 </div>
 
                 <div class="flex flex-wrap justify-end gap-3">
-                  <button
-                    type="button"
-                    class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
-                    :disabled="isSaving || !selectedToastModal.discussionNotes?.trim()"
-                    @click="saveDecisionNotes"
-                  >
-                    {{ isSaving ? 'Saving...' : 'Save notes' }}
-                  </button>
                   <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isSaving" @click="saveDiscussion">
                     {{ isSaving ? 'Saving...' : 'Toast it' }}
                   </button>

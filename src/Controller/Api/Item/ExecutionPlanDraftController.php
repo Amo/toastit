@@ -7,6 +7,7 @@ use App\Workspace\ToastExecutionPlanDraftService;
 use App\Workspace\WorkspaceAccessService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class ExecutionPlanDraftController extends AbstractController
@@ -18,15 +19,21 @@ final class ExecutionPlanDraftController extends AbstractController
     }
 
     #[Route('/api/items/{id}/execution-plan/draft', name: 'api_item_execution_plan_draft', methods: ['POST'])]
-    public function __invoke(int $id): JsonResponse
+    public function __invoke(int $id, Request $request): JsonResponse
     {
         $item = $this->workspaceAccess->getItemOrFail($id);
         $workspace = $item->getWorkspace();
         $this->workspaceAccess->assertOwner($workspace);
         $this->workspaceAccess->assertMeetingModeActive($workspace);
+        $payload = $request->getContent() !== '' ? $request->toArray() : [];
+        $decisionNotes = trim((string) ($payload['discussionNotes'] ?? ''));
 
         try {
-            $draft = $this->executionPlanDraft->generate($item, $this->workspaceAccess->getUserOrFail());
+            $draft = $this->executionPlanDraft->generate(
+                $item,
+                $this->workspaceAccess->getUserOrFail(),
+                '' !== $decisionNotes ? $decisionNotes : null,
+            );
         } catch (SessionSummaryUnavailableException $exception) {
             $statusCode = match ($exception->getReason()) {
                 'missing_decision_notes' => 400,
