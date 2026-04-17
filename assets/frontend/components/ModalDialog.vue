@@ -5,6 +5,7 @@ const props = defineProps({
   maxWidthClass: { type: String, default: 'max-w-2xl' },
   zIndexClass: { type: String, default: 'z-[70]' },
   desktopInline: { type: Boolean, default: false },
+  backdropClosable: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['close']);
@@ -20,10 +21,18 @@ const handleWindowKeydown = (event) => {
 };
 
 const handleBackdropPointerDown = () => {
+  if (!props.backdropClosable) {
+    return;
+  }
+
   pointerStartedOnBackdrop.value = true;
 };
 
 const handleBackdropPointerUp = () => {
+  if (!props.backdropClosable) {
+    return;
+  }
+
   if (pointerStartedOnBackdrop.value) {
     emit('close');
   }

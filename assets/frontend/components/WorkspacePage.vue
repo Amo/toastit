@@ -1472,6 +1472,17 @@ const openToastPermalink = (toastId) => {
   openToastWithReturnTo(toastId);
 };
 
+const openCurrentWorkspace = () => {
+  if (!workspace.value?.id) {
+    return;
+  }
+
+  router.push({
+    name: 'workspace',
+    params: { id: workspace.value.id },
+  });
+};
+
 const openCreatedFromToast = (toastId) => {
   if (!toastId) {
     return;
@@ -3541,10 +3552,21 @@ watch(isMobileViewport, (isMobile) => {
         v-if="selectedToastModal && !useDedicatedMobileToastView && showDesktopInlineToastPanel"
         max-width-class="max-w-4xl"
         :desktop-inline="showDesktopInlineToastPanel"
+        :backdrop-closable="false"
         @close="closeToastModal"
       >
         <div class="relative border-b border-stone-100">
-          <ModalHeader eyebrow="Toast details" :title="selectedToastModal.title" @close="closeToastModal">
+          <ModalHeader :title="selectedToastModal.title" @close="closeToastModal">
+            <template #eyebrow>
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 transition hover:text-amber-700"
+                @click="openCurrentWorkspace"
+              >
+                <i class="fa-solid fa-layer-group text-[11px]" aria-hidden="true"></i>
+                <span>{{ workspace.name }}</span>
+              </button>
+            </template>
             <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
               <ToastStatusBadge
                 :label="displayToastStatus(selectedToastModal)"
