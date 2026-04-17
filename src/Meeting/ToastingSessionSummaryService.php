@@ -83,13 +83,31 @@ final class ToastingSessionSummaryService
 
     private function extractSummaryMarkdown(string $rawSummary): string
     {
-        $payload = json_decode(trim($rawSummary), true);
+        $normalized = trim($rawSummary);
+        $payload = json_decode($normalized, true);
+
+        if (!is_array($payload)) {
+            $fencedJson = $this->extractFencedJson($normalized);
+            if (null !== $fencedJson) {
+                $payload = json_decode($fencedJson, true);
+            }
+        }
+
         if (is_array($payload) && is_array($payload['result'] ?? null) && is_string($payload['result']['markdown'] ?? null)) {
             $markdown = trim($payload['result']['markdown']);
 
-            return '' !== $markdown ? $markdown : trim($rawSummary);
+            return '' !== $markdown ? $markdown : $normalized;
         }
 
-        return trim($rawSummary);
+        return $normalized;
+    }
+
+    private function extractFencedJson(string $value): ?string
+    {
+        if (1 !== preg_match('/^```(?:json)?\s*(\{.*\})\s*```$/si', trim($value), $matches)) {
+            return null;
+        }
+
+        return trim($matches[1]);
     }
 }
