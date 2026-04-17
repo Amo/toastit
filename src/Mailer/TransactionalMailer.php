@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Entity\Workspace;
 use App\Profile\UserDateTimeFormatter;
 use League\CommonMark\CommonMarkConverter;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
@@ -22,7 +23,7 @@ final class TransactionalMailer
         private readonly CommonMarkConverter $markdownConverter,
         private readonly UserDateTimeFormatter $userDateTimeFormatter,
         private readonly string $defaultFrom,
-        private readonly string $defaultUri = '',
+        private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
 
@@ -352,22 +353,32 @@ final class TransactionalMailer
 
     private function normalizeEmailMarkdownLinks(string $value): string
     {
-        if ('' === trim($value) || '' === trim($this->defaultUri)) {
+        if ('' === trim($value)) {
             return $value;
         }
-
-        $baseUri = rtrim($this->defaultUri, '/');
         $value = (string) preg_replace_callback(
             '/\]\((\/app\/[^)\s]+)\)/',
-            static fn (array $matches): string => sprintf('](%s%s)', $baseUri, $matches[1]),
+            fn (array $matches): string => sprintf('](%s)', $this->absoluteAppPath($matches[1])),
             $value,
         );
 
         return (string) preg_replace_callback(
             '/href=(["\'])(\/app\/[^"\']+)\1/',
-            static fn (array $matches): string => sprintf('href=%s%s%s%s', $matches[1], $baseUri, $matches[2], $matches[1]),
+            fn (array $matches): string => sprintf('href=%s%s%s', $matches[1], $this->absoluteAppPath($matches[2]), $matches[1]),
             $value,
         );
+    }
+
+    private function absoluteAppPath(string $path): string
+    {
+        $normalizedPath = ltrim($path, '/');
+        if (str_starts_with($normalizedPath, 'app/')) {
+            $normalizedPath = substr($normalizedPath, 4);
+        }
+
+        return $this->urlGenerator->generate('app_spa', [
+            'path' => ltrim($normalizedPath, '/'),
+        ], UrlGeneratorInterface::ABSOLUTE_URL);
     }
 
     /**

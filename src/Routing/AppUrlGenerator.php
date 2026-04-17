@@ -8,16 +8,13 @@ final class AppUrlGenerator
 {
     public function __construct(
         private readonly UrlGeneratorInterface $urlGenerator,
-        private readonly string $defaultUri,
     ) {
     }
 
     public function spaPath(string $path = ''): string
     {
-        $relativePath = $this->urlGenerator->generate('app_spa', [
+        return $this->urlGenerator->generate('app_spa', [
             'path' => ltrim($path, '/'),
-        ]);
-
-        return rtrim($this->defaultUri, '/').$relativePath;
+        ], UrlGeneratorInterface::ABSOLUTE_URL);
     }
 }
