@@ -97,6 +97,7 @@ const vetoedInfiniteLoader = ref(null);
 const resolvedInfiniteLoader = ref(null);
 const mobileCommentsSectionRef = ref(null);
 const mobileCommentComposerRef = ref(null);
+const mobileKeyboardInset = ref(0);
 const mobileActionBarDocked = ref(false);
 const mobileActionBarScrollFrame = ref(0);
 const mobileVetoConfirmToastId = ref(null);
@@ -1598,6 +1599,7 @@ const canNavigateSelectedToast = (direction) => {
 
 const commentDraftFor = (itemId) => commentDrafts.value[itemId] ?? '';
 const commentSummaryFor = (itemId) => commentSummaries.value[itemId] ?? '';
+const mobileKeyboardActive = computed(() => mobileKeyboardInset.value > 0);
 
 const formatCommentCreatedAtDisplay = (value) => {
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
@@ -1727,6 +1729,22 @@ const scrollMobileCommentComposerIntoView = () => {
   window.requestAnimationFrame(() => {
     mobileCommentComposerRef.value?.scrollIntoView({ block: 'end', behavior: 'smooth' });
   });
+};
+
+const syncMobileKeyboardInset = () => {
+  if (!useDedicatedMobileToastView.value || typeof window === 'undefined') {
+    mobileKeyboardInset.value = 0;
+    return;
+  }
+
+  const viewport = window.visualViewport;
+  if (!viewport) {
+    mobileKeyboardInset.value = 0;
+    return;
+  }
+
+  const inset = Math.max(0, Math.round(window.innerHeight - (viewport.height + viewport.offsetTop)));
+  mobileKeyboardInset.value = inset > 120 ? inset : 0;
 };
 
 const createComment = async (itemId) => {
@@ -2527,6 +2545,7 @@ const syncMobileImmersiveState = () => {
 const handleViewportOrScrollForMobileActionBar = () => {
   syncViewport();
   syncMobileActionBarDockState();
+  syncMobileKeyboardInset();
 };
 
 const handleMobileActionBarScroll = () => {
@@ -2549,6 +2568,9 @@ onMounted(() => {
   window.addEventListener('toastit:create-toast', handleExternalCreateToastRequest);
   window.addEventListener('resize', handleViewportOrScrollForMobileActionBar);
   window.addEventListener('scroll', handleMobileActionBarScroll, { passive: true });
+  window.visualViewport?.addEventListener('resize', syncMobileKeyboardInset);
+  window.visualViewport?.addEventListener('scroll', syncMobileKeyboardInset);
+  syncMobileKeyboardInset();
 });
 
 onUnmounted(() => {
@@ -2560,6 +2582,8 @@ onUnmounted(() => {
   window.removeEventListener('toastit:create-toast', handleExternalCreateToastRequest);
   window.removeEventListener('resize', handleViewportOrScrollForMobileActionBar);
   window.removeEventListener('scroll', handleMobileActionBarScroll);
+  window.visualViewport?.removeEventListener('resize', syncMobileKeyboardInset);
+  window.visualViewport?.removeEventListener('scroll', syncMobileKeyboardInset);
   if (mobileActionBarScrollFrame.value) {
     window.cancelAnimationFrame(mobileActionBarScrollFrame.value);
     mobileActionBarScrollFrame.value = 0;
@@ -3339,11 +3363,12 @@ watch(isMobileViewport, (isMobile) => {
             <EmptyState v-else message="Loading toast..." />
           </div>
 
-          <div
-            v-if="selectedToastModal"
-            class="z-[96] overflow-hidden border border-stone-200/80 bg-white/80 backdrop-blur transition-all duration-300"
-            :class="mobileActionBarDocked ? 'tw-mobile-toast-actions--docked sticky left-0 right-0 w-full rounded-none border-x-0 border-t-0 shadow-sm' : 'tw-mobile-toast-actions--floating fixed right-4 rounded-2xl shadow-lg'"
-            :style="{ bottom: 'calc(5.9rem + env(safe-area-inset-bottom) + 0.75rem)' }"
+            <div
+              v-if="selectedToastModal"
+              v-show="!mobileKeyboardActive"
+              class="z-[96] overflow-hidden border border-stone-200/80 bg-white/80 backdrop-blur transition-all duration-300"
+              :class="mobileActionBarDocked ? 'tw-mobile-toast-actions--docked sticky left-0 right-0 w-full rounded-none border-x-0 border-t-0 shadow-sm' : 'tw-mobile-toast-actions--floating fixed right-4 rounded-2xl shadow-lg'"
+              :style="{ bottom: 'calc(5.9rem + env(safe-area-inset-bottom) + 0.75rem)' }"
           >
             <div class="flex items-stretch divide-x divide-stone-200/80">
               <button
@@ -3443,6 +3468,7 @@ watch(isMobileViewport, (isMobile) => {
                 v-if="isActiveToast(selectedToastModal)"
                 ref="mobileCommentComposerRef"
                 class="fixed inset-x-0 bottom-0 z-[97] border-t border-stone-200 bg-white px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(28,25,23,0.06)]"
+                :style="{ bottom: `${mobileKeyboardInset}px` }"
               >
                 <div class="mx-auto w-full max-w-screen-sm">
                   <CommentComposer
