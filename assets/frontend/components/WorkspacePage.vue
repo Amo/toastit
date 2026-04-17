@@ -2699,10 +2699,10 @@ watch(isMobileViewport, (isMobile) => {
                       </div>
                     </td>
                   </tr>
-                  <tr v-if="showDesktopAccordionToast && selectedToastModal?.id === item.id" class="bg-stone-50/80">
+                  <tr v-if="showDesktopAccordionToast && selectedToastModal?.id === item.id" class="bg-stone-100/90">
                     <td colspan="6" class="px-0 py-0">
-                      <div class="border-t border-stone-200 bg-stone-50">
-                        <div class="relative border-b border-stone-200/80 bg-white">
+                      <div class="border-t-[10px] border-b-[10px] border-stone-300/90 bg-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),inset_0_-1px_0_rgba(255,255,255,0.85)]">
+                        <div class="relative border-b border-stone-200/80 bg-white shadow-sm">
                           <ModalHeader eyebrow="Toast details" :title="selectedToastModal.title" @close="closeToastModal">
                             <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
                               <ToastStatusBadge
@@ -2797,7 +2797,7 @@ watch(isMobileViewport, (isMobile) => {
                           </div>
                         </div>
 
-                        <div class="border-b-2 border-stone-200/90 px-6 py-6 shadow-[inset_0_-1px_0_rgba(231,229,228,0.9)]">
+                        <div class="border-b-4 border-stone-300/90 px-6 py-6 shadow-[inset_0_-1px_0_rgba(231,229,228,0.9)]">
                           <div class="space-y-6">
                             <div>
                               <div v-if="selectedToastModal.description" class="tw-markdown text-stone-700" v-html="renderToastDescription(selectedToastModal.description)"></div>
