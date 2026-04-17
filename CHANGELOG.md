@@ -1,3 +1,6 @@
+## 1.5.2 (April 17, 2026)
+  - Env update
+
 ## 1.5.1 (April 17, 2026)
   - FIX: fix profile payload and normalize grok 4.20 model alias
 
