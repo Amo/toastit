@@ -3556,7 +3556,7 @@ watch(isMobileViewport, (isMobile) => {
         @close="closeToastModal"
       >
         <div class="relative border-b border-stone-100">
-          <ModalHeader :title="selectedToastModal.title" @close="closeToastModal">
+          <ModalHeader :title="selectedToastModal.title" :show-close-button="false" @close="closeToastModal">
             <template #eyebrow>
               <button
                 type="button"

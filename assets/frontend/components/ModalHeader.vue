@@ -6,6 +6,7 @@ defineProps({
   title: { type: String, required: true },
   description: { type: String, default: '' },
   showBackButton: { type: Boolean, default: true },
+  showCloseButton: { type: Boolean, default: true },
 });
 
 defineEmits(['close']);
@@ -32,7 +33,7 @@ defineEmits(['close']);
       <p v-if="description" class="mt-2 text-sm text-stone-500">{{ description }}</p>
       <slot />
     </div>
-    <button type="button" class="absolute right-6 top-5 hidden h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800 md:inline-grid" @click="$emit('close')">
+    <button v-if="showCloseButton" type="button" class="absolute right-6 top-5 hidden h-10 w-10 place-items-center rounded-full border border-stone-200 text-stone-500 transition hover:border-stone-300 hover:text-stone-800 md:inline-grid" @click="$emit('close')">
       <i class="fa-solid fa-xmark" aria-hidden="true"></i>
       <span class="sr-only">Close modal</span>
     </button>
