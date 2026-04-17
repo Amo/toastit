@@ -1,3 +1,6 @@
+## 1.5.1 (April 17, 2026)
+  - FIX: fix profile payload and normalize grok 4.20 model alias
+
 ## 1.5.0 (April 17, 2026)
 - NEW: smoother daily toasting and workspace flow
   - Active toasts are now easier to process with a clearer `New + Ready` flow.
