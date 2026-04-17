@@ -1,3 +1,7 @@
+## 1.5.6 (April 17, 2026)
+- TECH: clearer contributor release instructions
+  - Documented that a deploy request now means the full release cycle: bump version, rewrite the changelog entry, then run the production deploy.
+
 ## 1.5.5 (April 17, 2026)
 - FIX: cleaner mobile toast layout while commenting
   - The mobile toast action bar now sits below the header instead of colliding with the back button and title.
