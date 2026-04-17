@@ -1,3 +1,24 @@
+## 1.5.3 (April 17, 2026)
+- FIX: more fluid toasting, notes, and follow-up execution
+  - Decision notes now auto-expand and auto-save while you type.
+  - AI follow-up generation is now merged into the same follow-up list, with a simpler execution flow.
+  - Follow-up drafting, session-summary parsing, and AI wording guidance were tightened for clearer outcomes.
+- FIX: cleaner standalone toast navigation and desktop detail view
+  - Desktop toast details now open inline more reliably, with stronger visual separation in the list.
+  - Standalone toast pages no longer close when clicking the background, and unnecessary close controls were removed.
+  - Parent toasts and copy actions now behave more clearly, including proper confirmation and new-tab opening where relevant.
+- FIX: improved mobile toast ergonomics
+  - Mobile toast editing now restores the full context needed to edit correctly.
+  - The comment composer is now docked to the bottom of the screen for faster commenting.
+  - Mobile toast actions and layouts were polished for easier day-to-day use.
+- FIX: more reliable toast creation, links, and AI model selection
+  - Toast creation stays non-blocking while AI refinement continues in the background.
+  - Email links now resolve to the correct in-app toast URLs.
+  - Standard and advanced xAI defaults were updated to the current non-reasoning models.
+- TECH: lighter editing and contributor experience
+  - Removed unused dictation controls from the toast form.
+  - Continued cleanup around prompt handling, routing, and local environment consistency.
+
 ## 1.5.2 (April 17, 2026)
   - Env update
 
