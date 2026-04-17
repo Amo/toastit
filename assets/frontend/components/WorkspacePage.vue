@@ -124,6 +124,7 @@ const currentUser = computed(() => payload.value?.currentUser ?? null);
 const standaloneMode = computed(() => null !== props.standaloneToastId && '' !== String(props.standaloneToastId));
 const useDedicatedMobileToastView = computed(() => standaloneMode.value && isMobileViewport.value);
 const showDesktopInlineToastPanel = computed(() => standaloneMode.value && !isMobileViewport.value);
+const showDesktopAccordionToast = computed(() => !standaloneMode.value && !isMobileViewport.value);
 const TOAST_RETURN_TO_STORAGE_KEY = 'toastit:toast-return-to';
 const otherWorkspaces = computed(() => payload.value?.otherWorkspaces ?? []);
 const selectedTargetWorkspace = computed(() => {
@@ -2636,12 +2637,11 @@ watch(isMobileViewport, (isMobile) => {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
+                  <template v-for="item in displayedAgendaItems" :key="item.id">
                   <tr
-                    v-for="item in displayedAgendaItems"
-                    :key="item.id"
                     class="cursor-pointer transition-colors"
                     :class="agendaItemRowClass(item)"
-                    @click="openToastPermalink(item.id)"
+                    @click="openToastModal(item)"
                   >
                     <td class="px-4 py-3">
                       <span class="text-left font-medium" :class="agendaItemTitleClass(item)">
@@ -2724,6 +2724,240 @@ watch(isMobileViewport, (isMobile) => {
                       </div>
                     </td>
                   </tr>
+                  <tr v-if="showDesktopAccordionToast && selectedToastModal?.id === item.id" class="bg-stone-50/80">
+                    <td colspan="6" class="px-0 py-0">
+                      <div class="border-t border-stone-200 bg-stone-50">
+                        <div class="relative border-b border-stone-200/80 bg-white">
+                          <ModalHeader eyebrow="Toast details" :title="selectedToastModal.title" @close="closeToastModal">
+                            <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
+                              <ToastStatusBadge
+                                :label="displayToastStatus(selectedToastModal)"
+                                :tone-class="toastStatusTone(selectedToastModal)"
+                                :badge-class="toastStatusBadgeClass(selectedToastModal)"
+                              />
+                              <ToastStatusBadge
+                                v-if="selectedToastModal.aiRefinementPending"
+                                label="IA pending"
+                                :tone-class="toastAiPendingToneClass"
+                                :badge-class="toastAiPendingBadgeClass"
+                              />
+                              <span class="inline-flex items-center gap-2">
+                                <i class="fa-regular fa-user" aria-hidden="true"></i>
+                                <span>{{ selectedToastModal.author.displayName }}</span>
+                              </span>
+                              <span v-if="selectedToastModal.owner" class="inline-flex items-center gap-2">
+                                <i class="fa-solid fa-user-check" aria-hidden="true"></i>
+                                <span>{{ selectedToastModal.owner.displayName }}</span>
+                              </span>
+                              <span v-if="selectedToastModal.dueOnDisplay" class="inline-flex items-center gap-2">
+                                <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+                                <span>{{ selectedToastModal.dueOnDisplay }}</span>
+                              </span>
+                            </div>
+                          </ModalHeader>
+                          <div class="mt-4 border-t border-stone-100 px-6 pb-4 pt-4">
+                            <div class="flex flex-wrap items-center gap-2">
+                              <button
+                                v-if="isToastingMode && isActiveToast(selectedToastModal)"
+                                type="button"
+                                class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-amber-200 px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
+                                @click="openCreateToastModal"
+                              >
+                                <i class="fa-solid fa-plus text-sm" aria-hidden="true"></i>
+                                <span>New toast</span>
+                              </button>
+                              <div class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200">
+                                <button
+                                  v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
+                                  type="button"
+                                  class="inline-flex min-h-11 items-center justify-center gap-2 border-r border-stone-200 px-4 text-sm font-semibold transition last:border-r-0"
+                                  :class="selectedToastModal.currentUserHasVoted ? 'bg-amber-200 text-amber-900' : 'bg-white text-stone-700 hover:bg-stone-50'"
+                                  :disabled="isToastingMode"
+                                  @click="toggleVote(selectedToastModal.id)"
+                                >
+                                  <span>{{ selectedToastModal.voteCount }}</span>
+                                  <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
+                                </button>
+                                <button
+                                  v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace && isActiveToast(selectedToastModal)"
+                                  type="button"
+                                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 px-4 transition"
+                                  :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-white text-slate-600 hover:bg-stone-50'"
+                                  @click="toggleBoost(selectedToastModal.id)"
+                                >
+                                  <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
+                                  <span class="sr-only">{{ selectedToastModal.isBoosted ? 'Remove boost' : 'Boost' }}</span>
+                                </button>
+                                <button
+                                  v-if="selectedToastModal.currentUserCanMarkReady"
+                                  type="button"
+                                  class="inline-flex min-h-11 items-center justify-center gap-2 border-r border-stone-200 px-4 text-sm font-semibold transition"
+                                  :class="selectedToastModal.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
+                                  @click="setReady(selectedToastModal.id, selectedToastModal.status !== 'ready')"
+                                >
+                                  <i :class="selectedToastModal.status === 'ready' ? 'fa-solid fa-rotate-left text-sm' : 'fa-solid fa-check text-sm'" aria-hidden="true"></i>
+                                  <span>{{ selectedToastModal.status === 'ready' ? 'Mark in progress' : 'Mark ready' }}</span>
+                                </button>
+                                <button
+                                  v-if="selectedToastModal.currentUserCanEdit && isActiveToast(selectedToastModal) && !isToastingMode"
+                                  type="button"
+                                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
+                                  @click="openEditToastModal(selectedToastModal)"
+                                >
+                                  <i class="fa-solid fa-pen text-sm" aria-hidden="true"></i>
+                                  <span class="sr-only">Edit toast</span>
+                                </button>
+                                <button
+                                  v-if="workspace.currentUserIsOwner && isActiveToast(selectedToastModal) && !isToastingMode"
+                                  type="button"
+                                  class="inline-grid min-h-11 min-w-12 place-items-center bg-white px-4 transition hover:bg-stone-50"
+                                  :class="selectedToastModal.status === 'discarded' ? 'text-red-700' : 'text-stone-600 hover:text-red-700'"
+                                  @click="toggleVeto(selectedToastModal.id)"
+                                >
+                                  <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
+                                  <span class="sr-only">{{ selectedToastModal.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="px-6 py-6">
+                          <div class="space-y-6">
+                            <div>
+                              <div v-if="selectedToastModal.description" class="tw-markdown text-stone-700" v-html="renderToastDescription(selectedToastModal.description)"></div>
+                              <p v-else class="text-lg text-stone-500">No description</p>
+                            </div>
+
+                            <div v-if="selectedToastModal.previousItem" class="rounded-2xl border border-stone-200 bg-white p-4">
+                              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Created from</p>
+                              <button type="button" class="mt-2 text-left text-sm text-stone-800 transition hover:text-amber-700" @click="openToastById(selectedToastModal.previousItem.id)">
+                                <strong>{{ selectedToastModal.previousItem.title }}</strong>
+                                <span class="font-semibold" :class="toastStatusTone(selectedToastModal.previousItem)"> · {{ relatedToastStatusLabel(selectedToastModal.previousItem) }}</span>
+                              </button>
+                            </div>
+
+                            <div v-if="workspace.currentUserIsOwner && isToastingMode && isActiveToast(selectedToastModal)" class="space-y-4">
+                              <label class="grid gap-2 text-sm font-medium text-stone-700">
+                                <span>Decision notes</span>
+                                <textarea
+                                  class="min-h-28 rounded-2xl border bg-white px-4 py-3 text-sm transition"
+                                  :class="toastModalNavigationBlocked && isDecisionNotesDirty ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'"
+                                  :value="selectedToastModal.discussionNotes ?? ''"
+                                  @input="updateItemField(selectedToastModal.id, 'discussionNotes', $event.target.value)"
+                                />
+                              </label>
+
+                              <div class="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                                <FollowUpEditor
+                                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
+                                  :participants="participants"
+                                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
+                                  :can-generate="!!selectedToastModal.discussionNotes?.trim() && !isDecisionNotesDirty"
+                                  :is-generating="isExecutionPlanGenerating"
+                                  @add="addFollowUpDraft(selectedToastModal.id)"
+                                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
+                                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
+                                  @generate="generateExecutionPlan"
+                                />
+
+                                <ToastExecutionPlanPanel
+                                  :draft="executionPlanDraft"
+                                  :participants-lookup="participantsLookup"
+                                  :is-generating="isExecutionPlanGenerating"
+                                  :applying-index="executionPlanApplyingIndex"
+                                  :action-statuses="executionPlanActionStatuses"
+                                  :error-message="executionPlanError"
+                                  :notice-message="executionPlanNotice"
+                                  @generate="generateExecutionPlan"
+                                  @apply-item="applyExecutionPlanAction"
+                                />
+                              </div>
+
+                              <div class="flex flex-wrap justify-end gap-3">
+                                <button
+                                  type="button"
+                                  class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
+                                  :disabled="isSaving || !selectedToastModal.discussionNotes?.trim()"
+                                  @click="saveDecisionNotes"
+                                >
+                                  {{ isSaving ? 'Saving...' : 'Save notes' }}
+                                </button>
+                                <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isSaving" @click="saveDiscussion">
+                                  {{ isSaving ? 'Saving...' : 'Toast it' }}
+                                </button>
+                              </div>
+                            </div>
+
+                            <section v-if="selectedToastModal.followUpItems?.length" class="space-y-3">
+                              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Follow-up toasts</p>
+                              <div class="rounded-[1.5rem] border border-stone-200 bg-white p-4">
+                                <div class="space-y-2">
+                                  <button
+                                    v-for="followUp in selectedToastModal.followUpItems"
+                                    :key="followUp.id"
+                                    type="button"
+                                    class="block w-full rounded-2xl px-3 py-3 text-left text-sm text-stone-800 transition hover:bg-stone-50 hover:text-amber-700"
+                                    @click="openToastById(followUp.id)"
+                                  >
+                                    <strong>{{ followUp.title }}</strong>
+                                    <span class="font-semibold" :class="toastStatusTone(followUp)"> · {{ relatedToastStatusLabel(followUp) }}</span>
+                                    <span v-if="followUp.ownerName"> · {{ followUp.ownerName }}</span>
+                                    <span v-if="followUp.dueOnDisplay"> · {{ followUp.dueOnDisplay }}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </section>
+
+                            <section v-if="selectedToastModal.discussionNotes && (!isToastingMode || selectedToastModal.status === 'toasted' || !workspace.currentUserIsOwner)" class="space-y-3">
+                              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Decision</p>
+                              <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4">
+                                <div class="tw-markdown text-stone-800" v-html="renderToastDescription(selectedToastModal.discussionNotes)"></div>
+                              </div>
+                            </section>
+
+                            <section class="space-y-3">
+                              <div class="flex items-center justify-between gap-4">
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Comments</p>
+                                <div class="flex items-center gap-2">
+                                  <button
+                                    v-if="(selectedToastModal.comments?.length ?? 0) > 0"
+                                    type="button"
+                                    class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
+                                    :disabled="commentSummaryLoadingById[selectedToastModal.id] === true"
+                                    @click="summarizeComments(selectedToastModal.id)"
+                                  >
+                                    <i class="fa-solid fa-wand-magic-sparkles text-[11px]" aria-hidden="true"></i>
+                                    <span>{{ commentSummaryLoadingById[selectedToastModal.id] === true ? 'Summarizing...' : 'Summarize' }}</span>
+                                  </button>
+                                  <span class="text-xs font-medium text-stone-500">{{ selectedToastModal.comments?.length ?? 0 }}</span>
+                                </div>
+                              </div>
+
+                              <div class="rounded-[1.5rem] border border-stone-200 bg-white p-4">
+                                <div v-if="commentSummaryFor(selectedToastModal.id)" class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Comment summary</p>
+                                  <div class="mt-2 tw-markdown text-sm text-stone-800" v-html="renderToastDescription(commentSummaryFor(selectedToastModal.id))"></div>
+                                </div>
+                                <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" />
+
+                                <CommentComposer
+                                  v-if="isActiveToast(selectedToastModal)"
+                                  :current-user="currentUser"
+                                  :value="commentDraftFor(selectedToastModal.id)"
+                                  :blocked="toastModalNavigationBlocked && isCommentDraftDirty"
+                                  @input="handleCommentDraftInput(selectedToastModal.id, $event)"
+                                  @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
+                                  @submit="createComment(selectedToastModal.id)"
+                                />
+                              </div>
+                            </section>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  </template>
                 </tbody>
               </table>
             </div>
@@ -3236,7 +3470,7 @@ watch(isMobileViewport, (isMobile) => {
       />
 
       <ModalDialog
-        v-if="selectedToastModal && !useDedicatedMobileToastView"
+        v-if="selectedToastModal && !useDedicatedMobileToastView && showDesktopInlineToastPanel"
         max-width-class="max-w-4xl"
         :desktop-inline="showDesktopInlineToastPanel"
         @close="closeToastModal"
