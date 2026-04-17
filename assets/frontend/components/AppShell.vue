@@ -500,7 +500,7 @@ watch(() => route.fullPath, () => {
                     v-for="workspace in listedNavigationWorkspaces"
                     :key="workspace.id"
                     :href="workspaceHref(workspace)"
-                    class="rounded-xl px-3 py-2 text-sm transition"
+                    class="block w-full rounded-xl px-3 py-2 text-sm transition"
                     :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.3)]' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.85)]'"
                   >
                     <div class="min-w-0">

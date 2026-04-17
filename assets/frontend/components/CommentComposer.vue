@@ -8,7 +8,7 @@ defineProps({
   mobile: { type: Boolean, default: false },
 });
 
-defineEmits(['input', 'keydown', 'submit']);
+defineEmits(['focus', 'input', 'keydown', 'submit']);
 </script>
 
 <template>
@@ -23,12 +23,13 @@ defineEmits(['input', 'keydown', 'submit']);
     <textarea
       class="min-h-[2.75rem] min-w-0 flex-1 resize-none overflow-hidden text-sm leading-6 transition"
       :class="[
-        mobile ? 'rounded-2xl border bg-white px-4 py-3 shadow-sm' : 'rounded-[1.4rem] border bg-white px-4 py-3',
+        mobile ? 'rounded-2xl border bg-white px-4 py-3' : 'rounded-[1.4rem] border bg-white px-4 py-3',
         blocked ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'
       ]"
       :value="value"
       rows="1"
       placeholder="Write a comment"
+      @focus="$emit('focus', $event)"
       @input="$emit('input', $event)"
       @keydown="$emit('keydown', $event)"
     ></textarea>

@@ -21,6 +21,9 @@ Hard constraints:
 - prefer concise markdown with short sections or bullets when that helps readability, but avoid boilerplate filler
 - description should make the operational objective explicit, not just restate background context
 - never invent owners/dates/facts
+- any inferred due date must stay in the future relative to today
+- if the source mentions a month, weekday, or day number without a year, choose the next future occurrence, never a past one
+- if the source mentions only a day number without a month, infer the next plausible future date from today
 - title and description must never contain template placeholders (no "{{ ... }}", "{% ... %}", or raw variable names)
 - assignee MUST be one exact participant display name copied from the participants list
 - NEVER output NONE for assignee

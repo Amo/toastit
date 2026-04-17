@@ -96,6 +96,7 @@ const inboxAddressInput = ref(null);
 const vetoedInfiniteLoader = ref(null);
 const resolvedInfiniteLoader = ref(null);
 const mobileCommentsSectionRef = ref(null);
+const mobileCommentComposerRef = ref(null);
 const mobileActionBarDocked = ref(false);
 const mobileActionBarScrollFrame = ref(0);
 const mobileVetoConfirmToastId = ref(null);
@@ -1598,6 +1599,17 @@ const canNavigateSelectedToast = (direction) => {
 const commentDraftFor = (itemId) => commentDrafts.value[itemId] ?? '';
 const commentSummaryFor = (itemId) => commentSummaries.value[itemId] ?? '';
 
+const formatCommentCreatedAtDisplay = (value) => {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    return 'Just now';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(value);
+};
+
 const autosizeTextarea = (element) => {
   if (!element) return;
 
@@ -1697,6 +1709,7 @@ const updateCommentDraft = (itemId, value) => {
 const handleCommentDraftInput = (itemId, event) => {
   updateCommentDraft(itemId, event.target.value);
   autosizeTextarea(event.target);
+  scrollMobileCommentComposerIntoView();
 };
 
 const handleCommentDraftKeydown = (itemId, event) => {
@@ -1704,6 +1717,16 @@ const handleCommentDraftKeydown = (itemId, event) => {
     event.preventDefault();
     createComment(itemId);
   }
+};
+
+const scrollMobileCommentComposerIntoView = () => {
+  if (!useDedicatedMobileToastView.value || !selectedToastModal.value) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    mobileCommentComposerRef.value?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  });
 };
 
 const createComment = async (itemId) => {
@@ -1718,8 +1741,28 @@ const createComment = async (itemId) => {
     return false;
   }
 
+  const createdAt = new Date();
+  updateLocalToast(itemId, (item) => ({
+    ...item,
+    comments: [
+      ...(Array.isArray(item.comments) ? item.comments : []),
+      {
+        id: `local-${createdAt.getTime()}`,
+        content,
+        createdAt: createdAt.toISOString(),
+        createdAtDisplay: formatCommentCreatedAtDisplay(createdAt),
+        author: {
+          id: currentUser.value?.id ?? 0,
+          displayName: currentUser.value?.displayName ?? 'You',
+          initials: currentUser.value?.initials ?? '',
+          gravatarUrl: currentUser.value?.gravatarUrl ?? '',
+        },
+      },
+    ],
+  }));
   updateCommentDraft(itemId, '');
-  await fetchWorkspace();
+  await nextTick();
+  scrollMobileCommentComposerIntoView();
   return true;
 };
 
@@ -2776,22 +2819,24 @@ watch(isMobileViewport, (isMobile) => {
                     @touchcancel="handleMobileAgendaTouchEnd(item.id)"
                     @click="handleMobileAgendaRowTap(item.id)"
                   >
-                    <div class="flex items-center justify-between gap-3">
-                      <ToastStatusBadge
-                        :label="item.status === 'ready' ? 'Ready' : 'New'"
-                        :tone-class="toastStatusTone(item)"
-                        :badge-class="toastStatusBadgeClass(item)"
-                      />
-                      <ToastStatusBadge
-                        v-if="item.aiRefinementPending"
-                        label="IA"
-                        :tone-class="toastAiPendingToneClass"
-                        :badge-class="toastAiPendingBadgeClass"
-                      />
+                    <div class="flex items-start justify-between gap-3">
+                      <p class="min-w-0 flex-1 text-left text-sm font-medium leading-5 line-clamp-2" :class="agendaItemMobileTitleClass(item)">
+                        {{ item.title }}
+                      </p>
+                      <div class="flex shrink-0 items-center gap-1.5">
+                        <ToastStatusBadge
+                          :label="item.status === 'ready' ? 'Ready' : 'New'"
+                          :tone-class="toastStatusTone(item)"
+                          :badge-class="`${toastStatusBadgeClass(item)} px-2.5 py-0.5 text-[10px] tracking-[0.12em]`"
+                        />
+                        <ToastStatusBadge
+                          v-if="item.aiRefinementPending"
+                          label="IA"
+                          :tone-class="toastAiPendingToneClass"
+                          :badge-class="`${toastAiPendingBadgeClass} px-2.5 py-0.5 text-[10px] tracking-[0.12em]`"
+                        />
+                      </div>
                     </div>
-                    <p class="block w-full text-left text-sm font-medium leading-5 line-clamp-2" :class="agendaItemMobileTitleClass(item)">
-                      {{ item.title }}
-                    </p>
                     <div class="flex items-center justify-between gap-3">
                       <p class="min-w-0 truncate text-xs leading-5" :class="agendaItemMobileMetaClass(item)">
                         <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
@@ -2933,15 +2978,6 @@ watch(isMobileViewport, (isMobile) => {
                           </ModalHeader>
                           <div class="mt-4 border-t border-stone-100 px-6 pb-4 pt-4">
                             <div class="flex flex-wrap items-center gap-2">
-                              <button
-                                v-if="isToastingMode && isActiveToast(selectedToastModal)"
-                                type="button"
-                                class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-amber-200 px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
-                                @click="openCreateToastModal"
-                              >
-                                <i class="fa-solid fa-plus text-sm" aria-hidden="true"></i>
-                                <span>New toast</span>
-                              </button>
                               <div class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200">
                                 <button
                                   v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
@@ -3397,7 +3433,7 @@ watch(isMobileViewport, (isMobile) => {
                 <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-600">{{ selectedToastModal.comments?.length ?? 0 }}</span>
               </div>
             </div>
-            <div class="mt-3 space-y-4 pb-24">
+            <div class="mt-3 space-y-4 pb-20">
               <div v-if="commentSummaryFor(selectedToastModal.id)" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Comment summary</p>
                 <div class="mt-2 tw-markdown text-sm text-stone-800" v-html="renderToastDescription(commentSummaryFor(selectedToastModal.id))"></div>
@@ -3405,13 +3441,15 @@ watch(isMobileViewport, (isMobile) => {
               <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" mobile />
               <div
                 v-if="isActiveToast(selectedToastModal)"
-                class="fixed inset-x-0 bottom-0 z-[97] bg-gradient-to-t from-white via-white/96 to-transparent px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-6"
+                ref="mobileCommentComposerRef"
+                class="fixed inset-x-0 bottom-0 z-[97] border-t border-stone-200 bg-white px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(28,25,23,0.06)]"
               >
                 <div class="mx-auto w-full max-w-screen-sm">
                   <CommentComposer
                     mobile
                     :current-user="currentUser"
                     :value="commentDraftFor(selectedToastModal.id)"
+                    @focus="scrollMobileCommentComposerIntoView"
                     @input="handleCommentDraftInput(selectedToastModal.id, $event)"
                     @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
                     @submit="createComment(selectedToastModal.id)"
@@ -3675,15 +3713,6 @@ watch(isMobileViewport, (isMobile) => {
           </ModalHeader>
           <div class="mt-4 border-t border-stone-100 px-6 pb-4 pt-4">
             <div class="flex flex-wrap items-center gap-2">
-              <button
-                v-if="isToastingMode && isActiveToast(selectedToastModal)"
-                type="button"
-                class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-amber-200 px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
-                @click="openCreateToastModal"
-              >
-                <i class="fa-solid fa-plus text-sm" aria-hidden="true"></i>
-                <span>New toast</span>
-              </button>
               <div class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200">
                 <button
                   v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
