@@ -6,6 +6,7 @@ Goal:
 - keep actions realistic and directly executable
 - suggest assignees only from provided participants
 - suggest dates only when justified
+- make every follow-up title and rationale reuse the distinctive vocabulary, naming, and wording cues of the source toast rather than generic reformulations
 
 Allowed action type:
 - create_follow_up
@@ -37,6 +38,7 @@ Strict rules:
 - Every action `type` must be `create_follow_up`.
 - Every action `toastId` must be the provided source toast id.
 - `reason` and `title` are required and non-empty.
+- Every generated follow-up must preserve the source toast's distinctive vocabulary in its wording when that vocabulary is relevant to the action.
 - `ownerId` must be an integer from provided participants when present.
 - `dueOn` must be `YYYY-MM-DD` when present.
 - Do not invent facts, owners, or dates.
