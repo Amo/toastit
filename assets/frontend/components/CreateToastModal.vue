@@ -22,11 +22,6 @@ const emit = defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-inp
 const titleInput = ref(null);
 const descriptionInput = ref(null);
 const isMobileViewport = ref(false);
-const isSpeechSupported = ref(false);
-const isRecordingSpeech = ref(false);
-const speechError = ref('');
-let speechRecognition = null;
-let speechFinalTranscript = '';
 
 const syncViewport = () => {
   isMobileViewport.value = window.innerWidth < 1024;
@@ -44,46 +39,6 @@ const resizeTitleField = (target = titleInput.value) => {
 const handleTitleInput = (event) => {
   emit('update:title', event.target.value);
   resizeTitleField(event.target);
-};
-
-const emitSpeechText = (value) => {
-  if (isMobileViewport.value) {
-    emit('update:description', value);
-    return;
-  }
-
-  emit('update:title', value);
-  nextTick(() => {
-    resizeTitleField();
-  });
-};
-
-const getCurrentSpeechTargetValue = () => (
-  isMobileViewport.value
-    ? String(descriptionInput.value?.value ?? props.itemForm?.description ?? '')
-    : String(titleInput.value?.value ?? props.itemForm?.title ?? '')
-);
-
-const stopSpeechCapture = () => {
-  if (speechRecognition && isRecordingSpeech.value) {
-    speechRecognition.stop();
-  }
-};
-
-const toggleSpeechCapture = () => {
-  if (!speechRecognition) {
-    speechError.value = 'Speech recognition is not supported in this browser.';
-    return;
-  }
-
-  if (isRecordingSpeech.value) {
-    stopSpeechCapture();
-    return;
-  }
-
-  speechError.value = '';
-  speechFinalTranscript = getCurrentSpeechTargetValue();
-  speechRecognition.start();
 };
 
 const focusTitle = async () => {
@@ -105,10 +60,7 @@ const emitRefineRequest = () => {
 };
 
 watch(() => props.open, async (isOpen) => {
-  if (!isOpen) {
-    stopSpeechCapture();
-    return;
-  }
+  if (!isOpen) return;
 
   await nextTick();
   window.setTimeout(() => {
@@ -129,63 +81,10 @@ defineExpose({
 onMounted(() => {
   syncViewport();
   window.addEventListener('resize', syncViewport);
-
-  const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!RecognitionCtor) {
-    isSpeechSupported.value = false;
-    return;
-  }
-
-  isSpeechSupported.value = true;
-  speechRecognition = new RecognitionCtor();
-  speechRecognition.continuous = true;
-  speechRecognition.interimResults = true;
-  speechRecognition.lang = navigator.language || 'en-US';
-
-  speechRecognition.onstart = () => {
-    isRecordingSpeech.value = true;
-  };
-
-  speechRecognition.onend = () => {
-    isRecordingSpeech.value = false;
-  };
-
-  speechRecognition.onerror = (event) => {
-    isRecordingSpeech.value = false;
-    speechError.value = event?.error === 'not-allowed'
-      ? 'Microphone permission denied.'
-      : 'Speech recognition failed.';
-  };
-
-  speechRecognition.onresult = (event) => {
-    const chunks = [];
-    for (let index = event.resultIndex; index < event.results.length; index += 1) {
-      const transcript = event.results[index]?.[0]?.transcript;
-      if (!transcript) {
-        continue;
-      }
-
-      chunks.push(transcript.trim());
-      if (event.results[index].isFinal) {
-        speechFinalTranscript = `${speechFinalTranscript} ${transcript.trim()}`.trim();
-      }
-    }
-
-    const interim = chunks.join(' ').trim();
-    emitSpeechText(interim ? `${speechFinalTranscript} ${interim}`.trim() : speechFinalTranscript);
-  };
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', syncViewport);
-  if (speechRecognition) {
-    speechRecognition.onstart = null;
-    speechRecognition.onend = null;
-    speechRecognition.onerror = null;
-    speechRecognition.onresult = null;
-    speechRecognition.stop();
-    speechRecognition = null;
-  }
 });
 </script>
 
@@ -270,17 +169,6 @@ onUnmounted(() => {
           </label>
         </template>
 
-        <div class="flex items-center justify-end">
-          <button
-            v-if="isSpeechSupported"
-            type="button"
-            :class="['inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition', isRecordingSpeech ? 'border-red-300 bg-red-50 text-red-700' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:text-stone-950']"
-            @click="toggleSpeechCapture"
-          >
-            <i :class="isRecordingSpeech ? 'fa-solid fa-stop' : 'fa-solid fa-microphone'" aria-hidden="true"></i>
-            <span>{{ isRecordingSpeech ? 'Stop recording' : 'Dictate' }}</span>
-          </button>
-        </div>
       </template>
       <template v-else>
         <label class="grid gap-2 text-sm font-medium text-stone-700">
@@ -296,18 +184,6 @@ onUnmounted(() => {
             @keydown="$emit('title-input', $event)"
           />
         </label>
-        <div class="flex items-center justify-end">
-          <button
-            v-if="isSpeechSupported"
-            type="button"
-            :class="['inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition', isRecordingSpeech ? 'border-red-300 bg-red-50 text-red-700' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:text-stone-950']"
-            @click="toggleSpeechCapture"
-          >
-            <i :class="isRecordingSpeech ? 'fa-solid fa-stop' : 'fa-solid fa-microphone'" aria-hidden="true"></i>
-            <span>{{ isRecordingSpeech ? 'Stop recording' : 'Dictate' }}</span>
-          </button>
-        </div>
-
         <label v-if="isEditing" class="inline-flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-700">
           <input
             class="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-400"
@@ -370,10 +246,6 @@ onUnmounted(() => {
       <div v-if="isRefining" class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
         <i class="fa-solid fa-wand-sparkles tw-ai-pending" aria-hidden="true"></i>
         <span>AI is refining the toast before save…</span>
-      </div>
-      <div v-if="speechError" class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-800">
-        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-        <span>{{ speechError }}</span>
       </div>
     </div>
   </ModalDialog>
