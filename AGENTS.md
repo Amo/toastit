@@ -7,6 +7,16 @@ This file defines the contribution rules that keep Toastit coherent over time.
 It is normative.  
 If this file conflicts with older docs, this file wins for implementation choices.
 
+## Release rule
+
+When the user asks to "deploy" or gives an equivalent deployment instruction, interpret it as the full release cycle unless they explicitly say otherwise:
+
+1. run `make bump`
+2. reword the newly generated `CHANGELOG.md` entry for end-user sharing
+3. run `make deploy`
+
+Do not treat "deploy" as only the final infrastructure push step.
+
 ## Current stack (authoritative)
 
 - Symfony 8 (`symfony/*` 8.0)
