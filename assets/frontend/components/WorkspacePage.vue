@@ -1472,6 +1472,24 @@ const openToastPermalink = (toastId) => {
   openToastWithReturnTo(toastId);
 };
 
+const openCreatedFromToast = (toastId) => {
+  if (!toastId) {
+    return;
+  }
+
+  if (isMobileViewport.value) {
+    openToastById(toastId);
+    return;
+  }
+
+  const targetUrl = router.resolve({
+    name: 'toast',
+    params: { id: toastId },
+  }).href;
+
+  window.open(targetUrl, '_blank', 'noopener');
+};
+
 const currentToastSequence = () => {
   if (!selectedToastModal.value) {
     return [];
@@ -2903,7 +2921,7 @@ watch(isMobileViewport, (isMobile) => {
 
                             <div v-if="selectedToastModal.previousItem" class="rounded-2xl border border-stone-200 bg-white p-4">
                               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Created from</p>
-                              <button type="button" class="mt-2 text-left text-sm text-stone-800 transition hover:text-amber-700" @click="openToastById(selectedToastModal.previousItem.id)">
+                              <button type="button" class="mt-2 text-left text-sm text-stone-800 transition hover:text-amber-700" @click="openCreatedFromToast(selectedToastModal.previousItem.id)">
                                 <strong>{{ selectedToastModal.previousItem.title }}</strong>
                                 <span class="font-semibold" :class="toastStatusTone(selectedToastModal.previousItem)"> · {{ relatedToastStatusLabel(selectedToastModal.previousItem) }}</span>
                               </button>
@@ -3663,7 +3681,7 @@ watch(isMobileViewport, (isMobile) => {
 
               <div v-if="selectedToastModal.previousItem" class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Created from</p>
-                <button type="button" class="mt-2 text-left text-sm text-stone-800 transition hover:text-amber-700" @click="openToastById(selectedToastModal.previousItem.id)">
+                <button type="button" class="mt-2 text-left text-sm text-stone-800 transition hover:text-amber-700" @click="openCreatedFromToast(selectedToastModal.previousItem.id)">
                   <strong>{{ selectedToastModal.previousItem.title }}</strong>
                   <span class="font-semibold" :class="toastStatusTone(selectedToastModal.previousItem)"> · {{ relatedToastStatusLabel(selectedToastModal.previousItem) }}</span>
                 </button>
