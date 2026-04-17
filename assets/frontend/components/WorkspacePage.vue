@@ -89,6 +89,8 @@ const isSessionArchiveSaving = ref(false);
 const isSessionArchiveSending = ref(false);
 const isMobileViewport = ref(false);
 const commentDrafts = ref({});
+const commentSummaries = ref({});
+const commentSummaryLoadingById = ref({});
 const workspaceBackgroundObjectUrl = ref('');
 const inboxAddressCopied = ref(false);
 const inboxAddressInput = ref(null);
@@ -1555,6 +1557,7 @@ const canNavigateSelectedToast = (direction) => {
 };
 
 const commentDraftFor = (itemId) => commentDrafts.value[itemId] ?? '';
+const commentSummaryFor = (itemId) => commentSummaries.value[itemId] ?? '';
 
 const autosizeTextarea = (element) => {
   if (!element) return;
@@ -1597,6 +1600,35 @@ const createComment = async (itemId) => {
   updateCommentDraft(itemId, '');
   await fetchWorkspace();
   return true;
+};
+
+const summarizeComments = async (itemId) => {
+  const numericItemId = Number(itemId);
+  if (!Number.isFinite(numericItemId) || numericItemId <= 0) {
+    return;
+  }
+
+  commentSummaryLoadingById.value = {
+    ...commentSummaryLoadingById.value,
+    [numericItemId]: true,
+  };
+
+  const { ok, data } = await workspacesApi.summarizeComments(numericItemId);
+
+  commentSummaryLoadingById.value = {
+    ...commentSummaryLoadingById.value,
+    [numericItemId]: false,
+  };
+
+  if (!ok || !data?.summary) {
+    errorMessage.value = 'Unable to summarize comments.';
+    return;
+  }
+
+  commentSummaries.value = {
+    ...commentSummaries.value,
+    [numericItemId]: data.summary,
+  };
 };
 
 const openMobileCommentModal = () => {
@@ -2856,9 +2888,25 @@ watch(isMobileViewport, (isMobile) => {
           <div ref="mobileCommentsSectionRef" v-if="selectedToastModal" class="tw-toastit-card rounded-none border-l-0 border-r-0 border-t-0 bg-stone-50/70 p-4">
             <div class="flex items-center justify-between">
               <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">Comments</h2>
-              <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-600">{{ selectedToastModal.comments?.length ?? 0 }}</span>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="(selectedToastModal.comments?.length ?? 0) > 0"
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
+                  :disabled="commentSummaryLoadingById[selectedToastModal.id] === true"
+                  @click="summarizeComments(selectedToastModal.id)"
+                >
+                  <i class="fa-solid fa-wand-magic-sparkles text-[11px]" aria-hidden="true"></i>
+                  <span>{{ commentSummaryLoadingById[selectedToastModal.id] === true ? 'Summarizing...' : 'Summarize' }}</span>
+                </button>
+                <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-600">{{ selectedToastModal.comments?.length ?? 0 }}</span>
+              </div>
             </div>
             <div class="mt-3 space-y-4">
+              <div v-if="commentSummaryFor(selectedToastModal.id)" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Comment summary</p>
+                <div class="mt-2 tw-markdown text-sm text-stone-800" v-html="renderToastDescription(commentSummaryFor(selectedToastModal.id))"></div>
+              </div>
               <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" mobile />
               <button
                 v-if="isActiveToast(selectedToastModal)"
@@ -3292,10 +3340,26 @@ watch(isMobileViewport, (isMobile) => {
               <section class="space-y-3">
                 <div class="flex items-center justify-between gap-4">
                   <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Comments</p>
-                  <span class="text-xs font-medium text-stone-500">{{ selectedToastModal.comments?.length ?? 0 }}</span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      v-if="(selectedToastModal.comments?.length ?? 0) > 0"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
+                      :disabled="commentSummaryLoadingById[selectedToastModal.id] === true"
+                      @click="summarizeComments(selectedToastModal.id)"
+                    >
+                      <i class="fa-solid fa-wand-magic-sparkles text-[11px]" aria-hidden="true"></i>
+                      <span>{{ commentSummaryLoadingById[selectedToastModal.id] === true ? 'Summarizing...' : 'Summarize' }}</span>
+                    </button>
+                    <span class="text-xs font-medium text-stone-500">{{ selectedToastModal.comments?.length ?? 0 }}</span>
+                  </div>
                 </div>
 
                 <div class="rounded-[1.5rem] border border-stone-200 bg-white p-4">
+                  <div v-if="commentSummaryFor(selectedToastModal.id)" class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Comment summary</p>
+                    <div class="mt-2 tw-markdown text-sm text-stone-800" v-html="renderToastDescription(commentSummaryFor(selectedToastModal.id))"></div>
+                  </div>
                   <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" />
 
                   <CommentComposer

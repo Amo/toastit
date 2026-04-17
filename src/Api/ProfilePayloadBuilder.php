@@ -20,7 +20,7 @@ final class ProfilePayloadBuilder
     }
 
     /**
-     * @return array{id: int|null, email: ?string, displayName: string, firstName: ?string, lastName: ?string, initials: string, gravatarUrl: string, inboxWorkspaceId: int|null, inboxEmailAddress: string|null, inboundAiAutoApply: array{reword: bool, assignee: bool, dueDate: bool, workspace: bool}, inboundRewordLanguage: string, inboundRewordLanguageChoices: list<array{code: string, label: string}>, timezone: string, timezoneChoices: list<array{code: string, label: string}>}
+     * @return array{id: int|null, email: ?string, displayName: string, firstName: ?string, lastName: ?string, initials: string, gravatarUrl: string, isRoot: bool, isRoute: bool, advancedAiModelEnabled: bool, inboxWorkspaceId: int|null, inboxEmailAddress: string|null, inboundAiAutoApply: array{reword: bool, assignee: bool, dueDate: bool, workspace: bool}, inboundRewordLanguage: string, inboundRewordLanguageChoices: list<array{code: string, label: string}>, timezone: string, timezoneChoices: list<array{code: string, label: string}>}
      */
     public function buildUser(User $user): array
     {
@@ -34,6 +34,9 @@ final class ProfilePayloadBuilder
             'lastName' => $user->getLastName(),
             'initials' => $user->getInitials(),
             'gravatarUrl' => $this->avatarUrl->resolve($user),
+            'isRoot' => $user->isRoot(),
+            'isRoute' => $user->isRoute(),
+            'advancedAiModelEnabled' => $user->isAdvancedAiModelEnabled(),
             'inboxWorkspaceId' => $inboxWorkspace?->getId(),
             'inboxEmailAddress' => $this->inboundEmailAddress->buildAddressForUser($user),
             'inboundAiAutoApply' => [

@@ -39,6 +39,7 @@ const tabs = computed(() => [
     label: 'Profile',
     icon: 'fa-user',
     to: props.profileUrl,
+    highlighted: props.user?.advancedAiModelEnabled === true,
   },
 ]);
 
@@ -247,6 +248,13 @@ onUnmounted(() => {
       >
         <span class="tw-mobile-app-shell__tab-icon-wrap">
           <i class="fa-solid" :class="tab.icon" aria-hidden="true"></i>
+          <span
+            v-if="tab.highlighted"
+            class="absolute -right-1 -top-1 inline-grid h-4 w-4 place-items-center rounded-full bg-amber-300 text-[9px] text-amber-950 ring-2 ring-stone-50"
+            aria-hidden="true"
+          >
+            <i class="fa-solid fa-star"></i>
+          </span>
           <span
             v-if="tab.primaryBadge !== undefined"
             class="tw-mobile-app-shell__tab-badge"

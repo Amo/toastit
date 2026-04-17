@@ -70,8 +70,9 @@ final class ToastingSessionSummaryBuilder
             '## Suggestions',
             'Requirements:',
             '- Capture every explicit decision grounded in the provided data.',
-            '- In the section "Next steps by member", group action items and responsibilities by owner.',
-            '- For each member, merge follow-ups and responsibilities into one concise next-step list.',
+            '- In the section "Next steps by member", include only explicit followUpToasts created from toasted items plus still-open standalone toasts created during the session window.',
+            '- Never restate a source toast that was toasted during the session as a new next step unless a separate followUpToast was created for it.',
+            '- In that section, group only the eligible next steps by owner.',
             '- Include due dates when available.',
             '- If a next step has no owner, place it under an "Unassigned" group.',
             '- Use comments as supporting context, concerns, or rationale, but do not present them as decisions unless the rest of the data clearly confirms that.',
@@ -119,6 +120,7 @@ final class ToastingSessionSummaryBuilder
         $lines = [
             sprintf('- Toast #%d: %s', $item->getId(), $item->getTitle()),
             sprintf('  status: %s', $item->getStatus()),
+            sprintf('  nextStepEligible: %s', $this->isNextStepEligible($item, $startedAt, $endedAt) ? 'yes' : 'no'),
             sprintf('  author: %s', $item->getAuthor()->getDisplayName()),
             sprintf('  owner: %s', $item->getOwner()?->getDisplayName() ?? 'unassigned'),
             sprintf('  createdAt: %s', $item->getCreatedAt()->format(\DateTimeInterface::ATOM)),
@@ -182,5 +184,18 @@ final class ToastingSessionSummaryBuilder
     private function normalizeText(string $value): string
     {
         return preg_replace('/\s+/', ' ', trim($value)) ?? trim($value);
+    }
+
+    private function isNextStepEligible(Toast $item, \DateTimeImmutable $startedAt, \DateTimeImmutable $endedAt): bool
+    {
+        if (null !== $item->getPreviousItem()) {
+            return true;
+        }
+
+        if ($item->isToasted() || $item->isVetoed()) {
+            return false;
+        }
+
+        return $this->isWithinWindow($item->getCreatedAt(), $startedAt, $endedAt);
     }
 }

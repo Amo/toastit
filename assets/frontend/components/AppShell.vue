@@ -180,6 +180,14 @@ const logout = () => {
   window.location.href = '/';
 };
 
+const stopImpersonation = () => {
+  if (!authStore.stopImpersonation()) {
+    return;
+  }
+
+  window.location.href = '/app';
+};
+
 const lockSession = () => {
   window.dispatchEvent(new CustomEvent('toastit:lock-session'));
 };
@@ -239,6 +247,24 @@ watch(() => route.fullPath, () => {
 
 <template>
   <div class="min-h-screen bg-stone-50">
+    <div
+      v-if="showAppNavigation && authState.impersonationContext?.user"
+      class="border-b border-amber-200 bg-amber-100/90 px-4 py-2 text-sm text-amber-950"
+    >
+      <div class="tw-toastit-shell flex flex-wrap items-center justify-between gap-3">
+        <p>
+          Impersonating <span class="font-semibold">{{ user?.displayName ?? user?.email }}</span>
+          as <span class="font-semibold">{{ authState.impersonationContext.user?.displayName ?? authState.impersonationContext.user?.email }}</span>.
+        </p>
+        <button
+          type="button"
+          class="rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-900 transition hover:bg-amber-50"
+          @click="stopImpersonation"
+        >
+          Stop impersonation
+        </button>
+      </div>
+    </div>
     <header v-if="!showAppNavigation" class="sticky top-0 z-50 border-b border-stone-200/80 bg-white/90 backdrop-blur">
       <div class="tw-toastit-shell px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -344,8 +370,11 @@ watch(() => route.fullPath, () => {
                   <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
                 </div>
                 <div class="space-y-2">
-                  <a v-if="user?.isRoot" href="/admin" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Admin</a>
+                  <a v-if="user?.isRoot" href="/admin" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Overview</a>
+                  <a v-if="user?.isRoot || user?.isRoute" href="/admin/users" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Users</a>
+                  <a v-if="user?.isRoot" href="/admin/prompts" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Prompts</a>
                   <a :href="profileUrl" class="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</a>
+                  <button v-if="authState.impersonationContext?.user" class="flex w-full items-center rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100" type="button" @click="stopImpersonation">Stop impersonation</button>
                   <button class="flex w-full items-center justify-center rounded-2xl bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-300" type="button" @click="logout">
                     Sign out
                   </button>
@@ -358,8 +387,11 @@ watch(() => route.fullPath, () => {
               <div class="space-y-1">
                 <p class="text-base font-semibold text-stone-950">{{ user?.displayName ?? 'Account' }}</p>
               </div>
-              <a v-if="user?.isRoot" href="/admin" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Admin</a>
+              <a v-if="user?.isRoot" href="/admin" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Overview</a>
+              <a v-if="user?.isRoot || user?.isRoute" href="/admin/users" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Users</a>
+              <a v-if="user?.isRoot" href="/admin/prompts" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">Prompts</a>
               <a :href="profileUrl" class="rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700">My profile</a>
+              <button v-if="authState.impersonationContext?.user" class="w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-stone-700" type="button" @click="stopImpersonation">Stop impersonation</button>
               <button class="w-full rounded-2xl bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-900" type="button" @click="logout">Sign out</button>
             </div>
           </div>

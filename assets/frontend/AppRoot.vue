@@ -37,7 +37,8 @@ const loginModalOpen = ref(false);
 const authApi = new AuthApi(new ToastitApiClient(''));
 
 const protectedRouteNames = ['dashboard', 'inbox', 'inbox-create-toast', 'workspace', 'workspace-create-toast', 'toast', 'profile', 'admin-dashboard', 'admin-users', 'admin-prompts'];
-const rootRouteNames = ['admin-dashboard', 'admin-users', 'admin-prompts'];
+const rootRouteNames = ['admin-dashboard', 'admin-prompts'];
+const routeRouteNames = ['admin-users'];
 const authEntryRouteNames = ['home', 'auth-verify', 'auth-magic', 'pin-setup', 'pin-unlock'];
 const accessTokenExpired = computed(() => {
   const expiresAt = authStore.getAccessTokenExpiresAt();
@@ -83,6 +84,11 @@ const redirectToPinUnlock = () => {
   }
 
   if (rootRouteNames.includes(String(routeName.value)) && !authState.user?.isRoot) {
+    router.replace('/app');
+    return;
+  }
+
+  if (routeRouteNames.includes(String(routeName.value)) && !authState.user?.isRoot && !authState.user?.isRoute) {
     router.replace('/app');
     return;
   }

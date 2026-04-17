@@ -39,6 +39,15 @@ final class WorkspaceAccessService
         }
     }
 
+    public function assertRouteOrRoot(): void
+    {
+        $user = $this->getUserOrFail();
+
+        if (!$user->isRoot() && !$user->isRoute()) {
+            throw new AccessDeniedHttpException();
+        }
+    }
+
     public function getWorkspaceOrFail(int $workspaceId): Workspace
     {
         $workspace = $this->workspaceRepository->findOneForUser($workspaceId, $this->getUserOrFail());

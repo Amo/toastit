@@ -8,6 +8,7 @@ const props = defineProps({
   alt: { type: String, default: '' },
   title: { type: String, default: '' },
   sizeClass: { type: String, default: 'h-8 w-8 text-xs' },
+  showStar: { type: Boolean, default: false },
 });
 
 const imageFailed = ref(false);
@@ -52,7 +53,7 @@ const onImageError = () => {
 
 <template>
   <span
-    class="inline-grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold uppercase"
+    class="relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold uppercase"
     :class="sizeClass"
     :title="title || alt"
   >
@@ -71,5 +72,12 @@ const onImageError = () => {
       class="h-full w-full object-cover"
       @error="onImageError"
     >
+    <span
+      v-if="showStar"
+      class="absolute -right-0.5 -top-0.5 inline-grid h-4 w-4 place-items-center rounded-full bg-amber-300 text-[9px] text-amber-950 ring-2 ring-white"
+      aria-hidden="true"
+    >
+      <i class="fa-solid fa-star"></i>
+    </span>
   </span>
 </template>

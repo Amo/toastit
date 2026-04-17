@@ -15,6 +15,7 @@ parameters:
     app.workspace_background_storage_path: '%kernel.project_dir%/var/storage/workspace/background'
     app.xai_base_url: '%env(XAI_BASE_URL)%'
     app.xai_model: '%env(XAI_MODEL)%'
+    app.xai_advanced_model: '%env(default::XAI_ADVANCED_MODEL)%'
     app.xai_timeout_seconds: '%env(int:XAI_TIMEOUT_SECONDS)%'
     app.public_api_host: '%env(PUBLIC_API_HOST)%'
     app.public_api_host_pattern: '%env(PUBLIC_API_HOST_PATTERN)%'
@@ -114,4 +115,5 @@ services:
             $apiKey: '%env(default::XAI_API_KEY)%'
             $baseUrl: '%app.xai_base_url%'
             $model: '%app.xai_model%'
+            $advancedModel: '%app.xai_advanced_model%'
             $timeoutSeconds: '%app.xai_timeout_seconds%'

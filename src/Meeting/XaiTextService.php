@@ -16,6 +16,7 @@ class XaiTextService
         private readonly string $baseUrl,
         private readonly string $model,
         private readonly int $timeoutSeconds,
+        private readonly string $advancedModel = '',
         private readonly ?AppEventLogger $eventLogger = null,
         private readonly ?RequestStack $requestStack = null,
     ) {
@@ -33,7 +34,8 @@ class XaiTextService
      *   workspaceId?: int|null,
      *   toastId?: int|null,
      *   sessionId?: int|null,
-     *   requestId?: string|null
+     *   requestId?: string|null,
+     *   model?: string|null
      * }|null $context
      */
     public function generateText(string $systemPrompt, string $userPrompt, ?array $context = null): string
@@ -44,7 +46,9 @@ class XaiTextService
         $toastId = isset($context['toastId']) ? (int) $context['toastId'] : null;
         $sessionId = isset($context['sessionId']) ? (int) $context['sessionId'] : null;
         $requestId = isset($context['requestId']) ? trim((string) $context['requestId']) : null;
+        $model = isset($context['model']) ? trim((string) $context['model']) : '';
         $requestId = '' === $requestId ? $this->resolveRequestId() : $requestId;
+        $resolvedModel = '' !== $model ? $model : $this->model;
 
         if (!$this->isConfigured()) {
             $this->logEvent($userId, $source, 'not_configured', [
@@ -52,6 +56,7 @@ class XaiTextService
                 'toastId' => $toastId,
                 'sessionId' => $sessionId,
                 'requestId' => $requestId,
+                'model' => $resolvedModel,
             ]);
             throw new SessionSummaryUnavailableException('xai_not_configured', 'xAI is not configured.');
         }
@@ -70,7 +75,7 @@ class XaiTextService
                         'Accept' => 'application/json',
                     ],
                     'json' => [
-                        'model' => $this->model,
+                        'model' => $resolvedModel,
                         'store' => false,
                         'input' => [
                             [
@@ -100,6 +105,7 @@ class XaiTextService
                         'requestId' => $requestId,
                         'attempt' => $attempt,
                         'statusCode' => $statusCode,
+                        'model' => $resolvedModel,
                     ]);
                     throw new SessionSummaryUnavailableException('xai_request_failed', 'xAI returned an error response.');
                 }
@@ -114,6 +120,7 @@ class XaiTextService
                         'attempt' => $attempt,
                         'statusCode' => $statusCode,
                         'error' => 'invalid_payload',
+                        'model' => $resolvedModel,
                     ]);
                     throw new SessionSummaryUnavailableException('xai_empty_response', 'xAI returned an invalid response.');
                 }
@@ -129,6 +136,7 @@ class XaiTextService
                         'attempt' => $attempt,
                         'statusCode' => $statusCode,
                         'error' => 'empty_output',
+                        'model' => $resolvedModel,
                     ]);
                     throw new SessionSummaryUnavailableException('xai_empty_response', 'xAI returned an empty summary.');
                 }
@@ -140,6 +148,7 @@ class XaiTextService
                     'requestId' => $requestId,
                     'attempt' => $attempt,
                     'statusCode' => $statusCode,
+                    'model' => $resolvedModel,
                 ]);
 
                 return $text;
@@ -160,6 +169,7 @@ class XaiTextService
                     'attempt' => $attempt,
                     'errorClass' => $exception::class,
                     'error' => $isTimeout ? 'timeout' : 'transport',
+                    'model' => $resolvedModel,
                 ]);
 
                 if ($isTimeout) {
@@ -186,6 +196,44 @@ class XaiTextService
     public function generateSummary(string $systemPrompt, string $userPrompt, ?array $context = null): string
     {
         return $this->generateText($systemPrompt, $userPrompt, $context);
+    }
+
+    /**
+     * @param array{
+     *   source?: string,
+     *   userId?: int|null,
+     *   workspaceId?: int|null,
+     *   toastId?: int|null,
+     *   sessionId?: int|null,
+     *   requestId?: string|null,
+     *   model?: string|null
+     * }|null $context
+     */
+    public function generateTextForUser(\App\Entity\User $user, string $systemPrompt, string $userPrompt, ?array $context = null): string
+    {
+        $context ??= [];
+        $context['userId'] ??= $user->getId();
+        $context['model'] ??= $user->isAdvancedAiModelEnabled() && '' !== trim($this->advancedModel)
+            ? $this->advancedModel
+            : $this->model;
+
+        return $this->generateText($systemPrompt, $userPrompt, $context);
+    }
+
+    /**
+     * @param array{
+     *   source?: string,
+     *   userId?: int|null,
+     *   workspaceId?: int|null,
+     *   toastId?: int|null,
+     *   sessionId?: int|null,
+     *   requestId?: string|null,
+     *   model?: string|null
+     * }|null $context
+     */
+    public function generateSummaryForUser(\App\Entity\User $user, string $systemPrompt, string $userPrompt, ?array $context = null): string
+    {
+        return $this->generateTextForUser($user, $systemPrompt, $userPrompt, $context);
     }
 
     /**

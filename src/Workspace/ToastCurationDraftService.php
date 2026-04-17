@@ -52,12 +52,12 @@ final class ToastCurationDraftService
             $promptVariables,
         );
 
-        $response = $this->xaiText->generateText(
+        $response = $this->xaiText->generateTextForUser(
+            $requestedBy ?? $workspace->getOrganizer(),
             $systemPrompt,
             $userPrompt,
             [
                 'source' => 'toast_curation_draft',
-                'userId' => $requestedBy?->getId(),
             ],
         );
 

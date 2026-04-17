@@ -53,12 +53,12 @@ final class WorkspaceSuggestionService
                 ],
             );
 
-            $response = $this->xaiText->generateText(
+            $response = $this->xaiText->generateTextForUser(
+                $user,
                 $systemPrompt,
                 $userPrompt,
                 [
                     'source' => 'workspace_suggestion',
-                    'userId' => $user->getId(),
                 ],
             );
         } catch (SessionSummaryUnavailableException) {
@@ -175,12 +175,12 @@ final class WorkspaceSuggestionService
         }
 
         try {
-            $response = $this->xaiText->generateText(
+            $response = $this->xaiText->generateTextForUser(
+                $user,
                 $systemPrompt,
                 $userPrompt,
                 [
                     'source' => 'inbound_email_rewrite',
-                    'userId' => $user->getId(),
                 ],
             );
         } catch (SessionSummaryUnavailableException) {

@@ -55,12 +55,12 @@ final class ToastingSessionSummaryService
             ],
         );
 
-        $rawSummary = $this->xaiText->generateSummary(
+        $rawSummary = $this->xaiText->generateSummaryForUser(
+            $requestedBy,
             $systemPrompt,
             $userPrompt,
             [
                 'source' => 'session_summary',
-                'userId' => $requestedBy->getId(),
                 'workspaceId' => $workspace->getId(),
                 'sessionId' => $session->getId(),
             ],

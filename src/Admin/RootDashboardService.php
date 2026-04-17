@@ -36,6 +36,8 @@ final class RootDashboardService
 SELECT
     u.id,
     u.email,
+    u.roles,
+    u.advanced_ai_model_enabled AS advancedAiModelEnabled,
     u.created_at AS createdAt,
     COALESCE(last_event.occurred_at, last_refresh.lastSeenAt) AS lastConnectionAt,
     COALESCE(workspaces.workspaceCount, 0) AS workspaceCount,
@@ -82,9 +84,19 @@ ORDER BY u.created_at DESC, u.id DESC
 SQL;
 
         return array_map(static function (array $row): array {
+            $roles = json_decode((string) ($row['roles'] ?? '[]'), true);
+            $normalizedRoles = is_array($roles) ? array_values(array_unique(array_map(
+                static fn (mixed $role): string => strtoupper((string) $role),
+                $roles
+            ))) : [];
+
             return [
                 'id' => (int) $row['id'],
                 'email' => (string) $row['email'],
+                'roles' => $normalizedRoles,
+                'isRoot' => in_array('ROLE_ROOT', $normalizedRoles, true),
+                'isRoute' => in_array('ROLE_ROUTE', $normalizedRoles, true),
+                'advancedAiModelEnabled' => (bool) ($row['advancedAiModelEnabled'] ?? false),
                 'createdAt' => (string) $row['createdAt'],
                 'lastConnectionAt' => null !== $row['lastConnectionAt'] ? (string) $row['lastConnectionAt'] : null,
                 'workspaceCount' => (int) $row['workspaceCount'],
@@ -184,6 +196,29 @@ WHERE id = :id
 SQL, ['id' => $userId]);
 
         return 1 === $affectedRows;
+    }
+
+    public function setAdvancedAiModelEnabled(int $userId, bool $enabled): ?array
+    {
+        $affectedRows = $this->connection->executeStatement(
+            'UPDATE user SET advanced_ai_model_enabled = :enabled WHERE id = :id',
+            [
+                'id' => $userId,
+                'enabled' => $enabled ? 1 : 0,
+            ],
+        );
+
+        if ($affectedRows < 1) {
+            return null;
+        }
+
+        foreach ($this->buildUsers() as $user) {
+            if (($user['id'] ?? null) === $userId) {
+                return $user;
+            }
+        }
+
+        return null;
     }
 
     /**

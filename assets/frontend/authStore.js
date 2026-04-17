@@ -8,6 +8,7 @@ const defaultState = () => ({
   accessToken: '',
   refreshToken: '',
   user: null,
+  impersonationContext: null,
   pinLockExpiresAt: null,
   pendingPinSetupToken: '',
   pendingPinUnlockToken: '',
@@ -58,12 +59,41 @@ export const authStore = {
   setAuthenticated(payload) {
     authState.accessToken = payload.accessToken ?? '';
     authState.refreshToken = payload.refreshToken ?? '';
-    authState.user = payload.user ?? null;
+    authState.user = payload.user ?? authState.user;
     authState.pinLockExpiresAt = payload.pinLockExpiresAt ?? null;
     authState.pendingPinSetupToken = '';
     authState.pendingPinUnlockToken = '';
     authState.pendingEmail = '';
     persist();
+  },
+  updateUser(user) {
+    authState.user = user ?? null;
+    persist();
+  },
+  startImpersonation(payload) {
+    if (!authState.impersonationContext) {
+      authState.impersonationContext = {
+        accessToken: authState.accessToken,
+        refreshToken: authState.refreshToken,
+        user: authState.user,
+        pinLockExpiresAt: authState.pinLockExpiresAt,
+      };
+    }
+    this.setAuthenticated(payload);
+  },
+  stopImpersonation() {
+    if (!authState.impersonationContext) {
+      return false;
+    }
+
+    authState.accessToken = authState.impersonationContext.accessToken ?? '';
+    authState.refreshToken = authState.impersonationContext.refreshToken ?? '';
+    authState.user = authState.impersonationContext.user ?? null;
+    authState.pinLockExpiresAt = authState.impersonationContext.pinLockExpiresAt ?? null;
+    authState.impersonationContext = null;
+    persist();
+
+    return true;
   },
   bumpPinLock() {
     authState.pinLockExpiresAt = Math.floor(Date.now() / 1000) + PIN_LOCK_TTL_SECONDS;
@@ -114,6 +144,7 @@ export const authStore = {
     authState.accessToken = '';
     authState.refreshToken = '';
     authState.user = null;
+    authState.impersonationContext = null;
     authState.pinLockExpiresAt = null;
     persist();
   },

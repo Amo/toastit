@@ -1,4 +1,7 @@
 security:
+    role_hierarchy:
+        ROLE_ROOT: [ROLE_ROUTE]
+
     password_hashers:
         App\Entity\User: 'auto'
 
@@ -32,7 +35,7 @@ security:
         - { path: ^/api/inbound/action/, roles: PUBLIC_ACCESS }
         - { host: '%env(PUBLIC_API_HOST_PATTERN)%', path: ^/doc/?$, roles: PUBLIC_ACCESS }
         - { host: '%env(PUBLIC_API_HOST_PATTERN)%', path: ^/, roles: ROLE_USER }
-        - { path: ^/api/admin, roles: ROLE_ROOT }
+        - { path: ^/api/admin, roles: ROLE_ROUTE }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

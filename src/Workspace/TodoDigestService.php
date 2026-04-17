@@ -69,12 +69,12 @@ final class TodoDigestService
             ],
         );
 
-        $rawSummary = $this->xaiText->generateText(
+        $rawSummary = $this->xaiText->generateTextForUser(
+            $user,
             $systemPrompt,
             $userPrompt,
             [
                 'source' => 'todo_digest',
-                'userId' => $user->getId(),
             ],
         );
 
@@ -164,12 +164,12 @@ final class TodoDigestService
             ],
         );
 
-        $rawSummary = $this->xaiText->generateText(
+        $rawSummary = $this->xaiText->generateTextForUser(
+            $user,
             $systemPrompt,
             $userPrompt,
             [
                 'source' => 'daily_collaboration_recap',
-                'userId' => $user->getId(),
             ],
         );
 
@@ -252,12 +252,12 @@ final class TodoDigestService
             ],
         );
 
-        $rawSummary = $this->xaiText->generateText(
+        $rawSummary = $this->xaiText->generateTextForUser(
+            $user,
             $systemPrompt,
             $userPrompt,
             [
                 'source' => 'weekly_operational_summary',
-                'userId' => $user->getId(),
             ],
         );
         $summary = $this->extractMarkdownResult($rawSummary);

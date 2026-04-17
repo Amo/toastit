@@ -56,12 +56,12 @@ final class ToastDraftRefinementService
             ],
         );
 
-        $response = $this->xaiText->generateText(
+        $response = $this->xaiText->generateTextForUser(
+            $requestedBy ?? $workspace->getOrganizer(),
             $systemPrompt,
             $userPrompt,
             [
                 'source' => 'toast_draft_refinement',
-                'userId' => $requestedBy?->getId(),
             ],
         );
 

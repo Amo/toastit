@@ -154,11 +154,19 @@ const isMobileProfileMenu = computed(() => {
 });
 
 const canAccessAdminSection = computed(() => {
-  if (profile.value?.isRoot === true) {
+  if (profile.value?.isRoot === true || profile.value?.isRoute === true) {
     return true;
   }
 
-  return authState.user?.isRoot === true;
+  return authState.user?.isRoot === true || authState.user?.isRoute === true;
+});
+
+const visibleAdminMenuItems = computed(() => {
+  if (authState.user?.isRoot === true || profile.value?.isRoot === true) {
+    return adminMenuItems;
+  }
+
+  return adminMenuItems.filter((item) => item.to === '/admin/users');
 });
 
 const goBackFromProfileSection = () => {
@@ -319,6 +327,10 @@ const saveInboundPreferences = async (preferenceKey) => {
   profile.value.inboundRewordLanguageChoices = data.user.inboundRewordLanguageChoices ?? profile.value.inboundRewordLanguageChoices;
   profile.value.timezone = data.user.timezone ?? profile.value.timezone;
   profile.value.timezoneChoices = data.user.timezoneChoices ?? profile.value.timezoneChoices;
+  authStore.updateUser({
+    ...(authState.user ?? {}),
+    ...data.user,
+  });
 
   highlightedPreferenceState.value = 'saved';
   if (preferencesHighlightTimer) {
@@ -495,6 +507,10 @@ const fetchProfile = async () => {
       inboundAiAutoApply,
       deletedWorkspaces: data.deletedWorkspaces ?? [],
     };
+    authStore.updateUser({
+      ...(authState.user ?? {}),
+      ...data.user,
+    });
   }
 
   isLoading.value = false;
@@ -784,7 +800,7 @@ onUnmounted(() => {
                 <p class="px-4 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Administration</p>
                 <div class="-mx-6 overflow-hidden border-y border-stone-200 bg-white">
                   <button
-                    v-for="item in adminMenuItems"
+                    v-for="item in visibleAdminMenuItems"
                     :key="item.to"
                     type="button"
                     class="flex w-full items-center justify-between border-b border-stone-200 px-6 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
@@ -809,6 +825,7 @@ onUnmounted(() => {
                     :gravatar-url="profile.gravatarUrl"
                     :alt="profile.displayName"
                     :title="profile.displayName || profile.email || ''"
+                    :show-star="profile.advancedAiModelEnabled === true"
                     size-class="h-16 w-16 text-lg"
                   />
                   <div>

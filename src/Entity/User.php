@@ -77,6 +77,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $preferredTimezone = null;
 
+    #[ORM\Column(options: ['default' => false])]
+    private bool $advancedAiModelEnabled = false;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -231,6 +234,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return in_array('ROLE_ROOT', $this->getRoles(), true);
     }
 
+    public function isRoute(): bool
+    {
+        return in_array('ROLE_ROUTE', $this->getRoles(), true);
+    }
+
     public function getPinHash(): ?string
     {
         return $this->pinHash;
@@ -340,6 +348,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->preferredTimezone;
     }
 
+    public function isAdvancedAiModelEnabled(): bool
+    {
+        return $this->advancedAiModelEnabled;
+    }
+
+    public function setAdvancedAiModelEnabled(bool $advancedAiModelEnabled): self
+    {
+        $this->advancedAiModelEnabled = $advancedAiModelEnabled;
+
+        return $this;
+    }
+
     public function setPreferredTimezone(?string $preferredTimezone): self
     {
         $normalized = null !== $preferredTimezone ? trim($preferredTimezone) : null;
@@ -429,6 +449,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->pinHash = null;
         $this->pinSetAt = null;
         $this->avatarPath = null;
+        $this->advancedAiModelEnabled = false;
         $this->roles = [];
 
         return $this;

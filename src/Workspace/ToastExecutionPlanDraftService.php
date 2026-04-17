@@ -41,12 +41,12 @@ final class ToastExecutionPlanDraftService
             $promptVariables,
         );
 
-        $response = $this->xaiText->generateText(
+        $response = $this->xaiText->generateTextForUser(
+            $requestedBy ?? $workspace->getOrganizer(),
             $systemPrompt,
             $userPrompt,
             [
                 'source' => 'toast_execution_plan',
-                'userId' => $requestedBy?->getId(),
             ],
         );
 

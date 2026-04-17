@@ -113,6 +113,10 @@ export class WorkspacesApi {
     return this.client.postJson(`/api/items/${itemId}/comments`, { content });
   }
 
+  summarizeComments(itemId) {
+    return this.client.postJson(`/api/items/${itemId}/comments/summary`, {});
+  }
+
   toggleVote(itemId) {
     return this.client.request(`/api/items/${itemId}/vote`, { method: 'POST' });
   }
