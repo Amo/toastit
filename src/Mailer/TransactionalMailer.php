@@ -159,6 +159,7 @@ final class TransactionalMailer
             'user' => $user,
             'summary_html' => $this->markdownConverter->convert($summary)->getContent(),
             'summary_text' => $summary,
+            'contact_email' => 'hello@toastit.cc',
         ];
 
         $email = (new Email())

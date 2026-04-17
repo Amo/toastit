@@ -113,10 +113,7 @@ final class TodoDigestService
         if ([] === $statusUpdates && [] === $collaborativeComments && [] === $actionableAssignedToasts) {
             $this->transactionalMailer->sendDailyRecap(
                 $user,
-                sprintf(
-                    "## Daily collaboration recap (%s)\n\nNo collaborative updates were detected on your active toasts yesterday.\n\nOpen Toastit to see today's priorities.",
-                    $windowStart->format('Y-m-d')
-                )
+                $this->buildEmptyDailyRecap($windowStart)
             );
 
             return;
@@ -127,8 +124,12 @@ final class TodoDigestService
             $systemPrompt = implode("\n", [
                 'Return markdown only.',
                 'Write a concise daily collaboration recap for one user.',
-                'Focus on work completed yesterday and collaborative signals.',
-                'Required sections: Yesterday completed, Collaborative signals, Today and upcoming toasts, Attention points for today.',
+                'Required sections in this exact order: Actions for today, Attention points, Yesterday in numbers, Yesterday highlights.',
+                'Actions for today and Attention points must use top-level bullets for toast titles, followed by indented sub-bullets for details.',
+                'Never repeat the same toast in both Actions for today and Attention points.',
+                'Within one section, if a toast has multiple reasons to appear, keep a single top-level bullet and group every reason in indented sub-bullets.',
+                'Prioritize Actions for today for assigned actionable toasts. Use Attention points for non-duplicated watchouts, blockers, collaborator comments, or important completed items not already shown in Actions for today.',
+                'Yesterday in numbers must be short and statistical.',
                 'Do not invent events. Only use provided data.',
             ]);
         }
@@ -303,6 +304,27 @@ final class TodoDigestService
         }
 
         return trim($rawSummary);
+    }
+
+    private function buildEmptyDailyRecap(\DateTimeImmutable $dayCovered): string
+    {
+        return implode("\n", [
+            sprintf('## Daily collaboration recap (%s)', $dayCovered->format('Y-m-d')),
+            '',
+            '### Actions for today',
+            '- Review your active toasts in Toastit and confirm what must move today.',
+            '',
+            '### Attention points',
+            '- No collaborative signal was detected yesterday on your involved toasts.',
+            '',
+            '### Yesterday in numbers',
+            '- 0 status changes on toasts where you are involved.',
+            '- 0 comments received from collaborators.',
+            '- 0 active assigned actions currently detected.',
+            '',
+            '### Yesterday highlights',
+            '- No notable update detected yesterday.',
+        ]);
     }
 
     /**
