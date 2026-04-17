@@ -177,6 +177,44 @@ When architecture or conventions intentionally change, update:
 
 - When a request says `CHANGELOG update`, interpret it as: reword the latest changes in `CHANGELOG.md` for end-user sharing, while keeping the existing release/version structure.
 
+## Local environment notes
+
+These notes are operational shortcuts for future sessions on this repository.
+
+### Docker-first local workflow
+
+- The effective local app environment is Docker Compose, not bare host PHP.
+- Main services:
+  - `php`: Symfony app container
+  - `database`: MariaDB
+  - `mailer`: Mailpit SMTP/UI for local email inspection
+  - `worker`: async worker container
+  - `inbound-smtp`: local inbound email bridge
+- If a console command needs database, mailer, or container hostnames such as `database` or `mailer`, prefer running it in the `php` container:
+  - `docker compose exec -T php php bin/console ...`
+
+### Console and cache behavior
+
+- Host-level `php bin/console ...` may fail locally for commands that need `DATABASE_URL=mysql://...@database:3306/...`, because `database` resolves only inside Docker Compose.
+- If a newly added Symfony command is missing in `prod`, clear the Symfony cache before debugging further:
+  - `php bin/console cache:clear`
+- `APP_ENV=dev php bin/console list` is useful to confirm whether a command exists before assuming registration is broken.
+
+### Local email testing
+
+- Local outbound email uses Mailpit.
+- The Compose stack exposes Mailpit SMTP and UI from the `mailer` service.
+- For local verification of emails, trigger the mail from the `php` container, then inspect it in Mailpit rather than relying on external delivery.
+
+### Useful local commands
+
+- Run a Symfony command inside the app container:
+  - `docker compose exec -T php php bin/console <command>`
+- Run targeted PHPUnit from the host when no container-only hostname is needed:
+  - `php bin/phpunit --filter <TestName>`
+- Check running local services:
+  - `docker compose ps`
+
 ## Contributor checklist
 
 Before merging, verify:
