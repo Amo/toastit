@@ -1,3 +1,19 @@
+## 1.5.0 (April 17, 2026)
+- NEW: smoother daily toasting and workspace flow
+  - Active toasts are now easier to process with a clearer `New + Ready` flow.
+  - Ready toasts are more visible in the interface, and finishing a toast returns you to the actionable list.
+  - You can create a new toast directly while toasting, with tighter navigation on desktop and cleaner mobile actions.
+- NEW: stronger admin control for route and AI operations
+  - Route/root admins can now impersonate users with a clear stop-impersonation flow.
+  - Added advanced xAI model controls per user, plus visible app indicators where that mode is enabled.
+  - Added AI comment-thread summarization and improved session-summary prompting.
+- NEW: versioned AI prompt sources in the codebase
+  - Current production AI prompts are now stored as Twig files in the repository instead of living only in the database.
+  - Prompt loading now prefers versioned files while keeping database history available as fallback/reference.
+- FIX: clearer and more reliable AI-generated digests
+  - Refined digest and summary prompt rules to produce more actionable, better-structured results.
+- TECH: documented the local environment workflow for contributors and agents
+
 ## 1.4.2 (April 15, 2026)
   - TECH: env
 
