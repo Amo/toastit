@@ -2817,7 +2817,7 @@ watch(isMobileViewport, (isMobile) => {
                           </div>
                         </div>
 
-                        <div class="px-6 py-6">
+                        <div class="border-b-2 border-stone-200/90 px-6 py-6 shadow-[inset_0_-1px_0_rgba(231,229,228,0.9)]">
                           <div class="space-y-6">
                             <div>
                               <div v-if="selectedToastModal.description" class="tw-markdown text-stone-700" v-html="renderToastDescription(selectedToastModal.description)"></div>
