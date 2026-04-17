@@ -1,3 +1,8 @@
+## 1.5.5 (April 17, 2026)
+- FIX: cleaner mobile toast layout while commenting
+  - The mobile toast action bar now sits below the header instead of colliding with the back button and title.
+  - The comment composer keeps a proper visual background when the mobile keyboard is open, so the lower part of the screen no longer looks cut off.
+
 ## 1.5.4 (April 17, 2026)
 - FIX: better mobile commenting and toast-list ergonomics
   - The mobile comment composer now stays visible above the on-screen keyboard while typing.
