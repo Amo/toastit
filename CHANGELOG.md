@@ -1,3 +1,14 @@
+## 1.5.4 (April 17, 2026)
+- FIX: better mobile commenting and toast-list ergonomics
+  - The mobile comment composer now stays visible above the on-screen keyboard while typing.
+  - Sending a mobile comment no longer refreshes the whole workspace view, making commenting feel faster.
+  - Mobile toast cards now use more compact status badges and cleaner bottom-composer spacing.
+- FIX: cleaner desktop navigation and toasting details
+  - Desktop workspace navigation rows now behave more consistently on hover and click.
+  - Removed the stray `New toast` action from the redesigned follow-up/execution-plan detail view.
+- FIX: clearer AI date handling for toast refinement
+  - AI toast rewriting now keeps implied dates in the future by choosing the next plausible occurrence instead of a past one.
+
 ## 1.5.3 (April 17, 2026)
 - FIX: more fluid toasting, notes, and follow-up execution
   - Decision notes now auto-expand and auto-save while you type.
