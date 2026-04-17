@@ -19,7 +19,6 @@ import ModalHeader from './ModalHeader.vue';
 import PageHeader from './PageHeader.vue';
 import SessionArchiveModal from './SessionArchiveModal.vue';
 import ToastCurationModal from './ToastCurationModal.vue';
-import ToastExecutionPlanPanel from './ToastExecutionPlanPanel.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
 import ToastNavigationFooter from './ToastNavigationFooter.vue';
 
@@ -62,12 +61,9 @@ const selectedToastModalCleanState = ref(null);
 const toastModalNavigationBlocked = ref(false);
 const selectedTargetWorkspaceId = ref('');
 const workspaceSettingsForm = ref({ name: '', defaultDuePreset: 'next_week', isSoloWorkspace: false });
-const executionPlanDraft = ref(null);
 const executionPlanError = ref('');
 const executionPlanNotice = ref('');
 const isExecutionPlanGenerating = ref(false);
-const executionPlanApplyingIndex = ref(-1);
-const executionPlanActionStatuses = ref({});
 const isToastCurationOpen = ref(false);
 const toastCurationDraft = ref(null);
 const toastCurationError = ref('');
@@ -137,9 +133,6 @@ const selectedTargetWorkspace = computed(() => {
 });
 const members = computed(() => payload.value?.memberships ?? []);
 const participants = computed(() => payload.value?.participants ?? []);
-const participantsLookup = computed(() => Object.fromEntries(
-  participants.value.map((participant) => [participant.id, participant.displayName]),
-));
 const toastingSessions = computed(() => payload.value?.toastingSessions ?? []);
 const agendaItems = computed(() => payload.value?.agendaItems ?? []);
 const vetoedItems = computed(() => payload.value?.vetoedItems ?? []);
@@ -1112,48 +1105,32 @@ const generateExecutionPlan = async () => {
   isExecutionPlanGenerating.value = true;
   executionPlanError.value = '';
   executionPlanNotice.value = '';
-  executionPlanActionStatuses.value = {};
-  executionPlanApplyingIndex.value = -1;
 
   const { ok, data } = await workspacesApi.generateExecutionPlan(selectedToastModal.value.id, {
     discussionNotes: selectedToastModal.value.discussionNotes ?? '',
   });
 
   if (!ok || !data?.ok || !data.draft) {
-    executionPlanDraft.value = null;
     executionPlanError.value = data?.message ?? 'Unable to generate the execution plan.';
     isExecutionPlanGenerating.value = false;
     return;
   }
 
-  executionPlanDraft.value = data.draft;
+  const manualDrafts = ensureDraftFollowUps(selectedToastModal.value)
+    .filter((followUp) => !followUp.aiGenerated);
+  const aiDrafts = (data.draft.actions ?? []).map((action) => ({
+    title: action.title ?? '',
+    ownerId: action.ownerId ?? null,
+    dueOn: action.dueOn ?? null,
+    aiGenerated: true,
+    aiGeneratedReason: action.reason ?? data.draft.summary ?? 'Generated from the current decision notes.',
+  }));
+
+  updateItemField(selectedToastModal.value.id, 'draftFollowUps', [...manualDrafts, ...aiDrafts]);
+  executionPlanNotice.value = aiDrafts.length > 0
+    ? `${aiDrafts.length} AI follow-up draft${aiDrafts.length > 1 ? 's' : ''} added to the list.`
+    : 'No AI follow-up was suggested from the current decision notes.';
   isExecutionPlanGenerating.value = false;
-};
-
-const applyExecutionPlanAction = async ({ action, index }) => {
-  if (!selectedToastModal.value || !action) {
-    return;
-  }
-
-  executionPlanApplyingIndex.value = index;
-  executionPlanError.value = '';
-  executionPlanNotice.value = '';
-
-  const { ok, data } = await workspacesApi.applyExecutionPlanAction(selectedToastModal.value.id, action);
-
-  if (!ok || !data?.ok || !data.result) {
-    executionPlanError.value = data?.message ?? 'Unable to apply this execution plan item.';
-    executionPlanApplyingIndex.value = -1;
-    return;
-  }
-
-  executionPlanActionStatuses.value = {
-    ...executionPlanActionStatuses.value,
-    [index]: (data.result.applied?.length ?? 0) > 0 ? 'applied' : 'skipped',
-  };
-  executionPlanNotice.value = (data.result.applied?.length ?? 0) > 0 ? 'Execution item applied.' : 'Execution item skipped.';
-  await fetchWorkspace();
-  executionPlanApplyingIndex.value = -1;
 };
 
 const openSessionArchive = () => {
@@ -2149,14 +2126,31 @@ const ensureDraftFollowUps = (item) => item.draftFollowUps?.length
 const addFollowUpDraft = (itemId) => {
   const item = agendaItems.value.find((candidate) => candidate.id === itemId);
   if (!item) return;
-  updateItemField(itemId, 'draftFollowUps', [...ensureDraftFollowUps(item), { title: '', ownerId: null, dueOn: null }]);
+  updateItemField(itemId, 'draftFollowUps', [...ensureDraftFollowUps(item), {
+    title: '',
+    ownerId: null,
+    dueOn: null,
+    aiGenerated: false,
+    aiGeneratedReason: '',
+  }]);
 };
 
 const updateFollowUpDraft = (itemId, index, key, value) => {
   const item = agendaItems.value.find((candidate) => candidate.id === itemId);
   if (!item) return;
   const nextDrafts = ensureDraftFollowUps(item).map((followUp, currentIndex) => (
-    currentIndex === index ? { ...followUp, [key]: value || null } : followUp
+    currentIndex === index
+      ? {
+        ...followUp,
+        [key]: value || null,
+        aiGenerated: key === 'title' || key === 'ownerId' || key === 'dueOn'
+          ? false
+          : followUp.aiGenerated,
+        aiGeneratedReason: key === 'title' || key === 'ownerId' || key === 'dueOn'
+          ? ''
+          : (followUp.aiGeneratedReason ?? ''),
+      }
+      : followUp
   ));
   updateItemField(itemId, 'draftFollowUps', nextDrafts);
 };
@@ -2823,29 +2817,19 @@ watch(isMobileViewport, (isMobile) => {
                                 />
                               </label>
 
-                              <div class="space-y-4">
-                                <ToastExecutionPlanPanel
-                                  :draft="executionPlanDraft"
-                                  :participants-lookup="participantsLookup"
-                                  :can-generate="!!selectedToastModal.discussionNotes?.trim()"
-                                  :is-generating="isExecutionPlanGenerating"
-                                  :applying-index="executionPlanApplyingIndex"
-                                  :action-statuses="executionPlanActionStatuses"
-                                  :error-message="executionPlanError"
-                                  :notice-message="executionPlanNotice"
-                                  @generate="generateExecutionPlan"
-                                  @apply-item="applyExecutionPlanAction"
-                                />
-
-                                <FollowUpEditor
-                                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
-                                  :participants="participants"
-                                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
-                                  @add="addFollowUpDraft(selectedToastModal.id)"
-                                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
-                                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
-                                />
-                              </div>
+                              <FollowUpEditor
+                                :follow-ups="ensureDraftFollowUps(selectedToastModal)"
+                                :participants="participants"
+                                :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
+                                :can-generate="!!selectedToastModal.discussionNotes?.trim()"
+                                :is-generating="isExecutionPlanGenerating"
+                                :error-message="executionPlanError"
+                                :notice-message="executionPlanNotice"
+                                @generate="generateExecutionPlan"
+                                @add="addFollowUpDraft(selectedToastModal.id)"
+                                @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
+                                @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
+                              />
 
                               <div class="flex flex-wrap justify-end gap-3">
                                 <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isSaving" @click="saveDiscussion">
@@ -3595,29 +3579,19 @@ watch(isMobileViewport, (isMobile) => {
                   />
                 </label>
 
-                <div class="space-y-4">
-                  <ToastExecutionPlanPanel
-                    :draft="executionPlanDraft"
-                    :participants-lookup="participantsLookup"
-                    :can-generate="!!selectedToastModal.discussionNotes?.trim()"
-                    :is-generating="isExecutionPlanGenerating"
-                    :applying-index="executionPlanApplyingIndex"
-                    :action-statuses="executionPlanActionStatuses"
-                    :error-message="executionPlanError"
-                    :notice-message="executionPlanNotice"
-                    @generate="generateExecutionPlan"
-                    @apply-item="applyExecutionPlanAction"
-                  />
-
-                  <FollowUpEditor
-                    :follow-ups="ensureDraftFollowUps(selectedToastModal)"
-                    :participants="participants"
-                    :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
-                    @add="addFollowUpDraft(selectedToastModal.id)"
-                    @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
-                    @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
-                  />
-                </div>
+                <FollowUpEditor
+                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
+                  :participants="participants"
+                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
+                  :can-generate="!!selectedToastModal.discussionNotes?.trim()"
+                  :is-generating="isExecutionPlanGenerating"
+                  :error-message="executionPlanError"
+                  :notice-message="executionPlanNotice"
+                  @generate="generateExecutionPlan"
+                  @add="addFollowUpDraft(selectedToastModal.id)"
+                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
+                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
+                />
 
                 <div class="flex flex-wrap justify-end gap-3">
                   <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isSaving" @click="saveDiscussion">
