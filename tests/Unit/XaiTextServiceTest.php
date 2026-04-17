@@ -27,7 +27,7 @@ final class XaiTextServiceTest extends TestCase
             ]),
             'test-key',
             'https://api.x.ai/v1',
-            'grok-4.20-reasoning',
+            'grok-4.20-0309-non-reasoning',
             30,
         );
 
@@ -108,7 +108,7 @@ final class XaiTextServiceTest extends TestCase
         }
     }
 
-    public function testGenerateTextForUserMapsLegacyAdvancedModelAliasToCurrentModelName(): void
+    public function testGenerateTextForUserMapsLegacyAdvancedNonReasoningAliasToCurrentModelName(): void
     {
         $capturedModel = null;
         $service = new XaiTextService(
@@ -129,7 +129,7 @@ final class XaiTextServiceTest extends TestCase
             'https://api.x.ai/v1',
             'grok-4-1-fast-non-reasoning',
             30,
-            'grok-4.20-reasoning',
+            'grok-4.20-non-reasoning',
         );
 
         $user = (new User())
@@ -137,6 +137,6 @@ final class XaiTextServiceTest extends TestCase
             ->setAdvancedAiModelEnabled(true);
 
         self::assertSame('OK', $service->generateTextForUser($user, 'system', 'user'));
-        self::assertSame('grok-4.20-0309-reasoning', $capturedModel);
+        self::assertSame('grok-4.20-0309-non-reasoning', $capturedModel);
     }
 }
