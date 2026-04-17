@@ -99,6 +99,8 @@ const mobileCommentsSectionRef = ref(null);
 const mobileActionBarDocked = ref(false);
 const mobileActionBarScrollFrame = ref(0);
 const mobileVetoConfirmToastId = ref(null);
+const isCopyToastConfirmOpen = ref(false);
+const pendingCopyTargetWorkspaceId = ref(null);
 const MOBILE_AGENDA_SWIPE_ACTION_SLOT_WIDTH = 56;
 const mobileAgendaSwipe = ref({
   activeItemId: null,
@@ -1725,6 +1727,11 @@ const closeMobileVetoConfirmModal = () => {
   mobileVetoConfirmToastId.value = null;
 };
 
+const closeCopyToastConfirmModal = () => {
+  isCopyToastConfirmOpen.value = false;
+  pendingCopyTargetWorkspaceId.value = null;
+};
+
 const confirmMobileVeto = async () => {
   const toastId = Number(mobileVetoConfirmToastId.value);
   if (!Number.isFinite(toastId) || toastId <= 0) {
@@ -2158,12 +2165,8 @@ const buildCopyToastConfirmation = (targetWorkspaceId = null) => {
   return `Create a new copy of "${selectedToastModal.value.title}"?`;
 };
 
-const copyToast = async (targetWorkspaceId = null) => {
+const executeCopyToast = async (targetWorkspaceId = null) => {
   if (!selectedToastModal.value) return;
-  const confirmationMessage = buildCopyToastConfirmation(targetWorkspaceId);
-  if (confirmationMessage && !window.confirm(confirmationMessage)) {
-    return;
-  }
 
   const { ok, data } = await workspacesApi.copyToast(selectedToastModal.value.id, targetWorkspaceId ?? null);
 
@@ -2185,6 +2188,36 @@ const copyToast = async (targetWorkspaceId = null) => {
   }
 
   openToastWithReturnTo(result.toastId);
+};
+
+const copyToast = async (targetWorkspaceId = null) => {
+  if (!selectedToastModal.value) {
+    return;
+  }
+
+  const confirmationMessage = buildCopyToastConfirmation(targetWorkspaceId);
+  if (!confirmationMessage) {
+    await executeCopyToast(targetWorkspaceId);
+    return;
+  }
+
+  if (isMobileViewport.value) {
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    await executeCopyToast(targetWorkspaceId);
+    return;
+  }
+
+  pendingCopyTargetWorkspaceId.value = targetWorkspaceId;
+  isCopyToastConfirmOpen.value = true;
+};
+
+const confirmCopyToast = async () => {
+  const targetWorkspaceId = pendingCopyTargetWorkspaceId.value;
+  closeCopyToastConfirmModal();
+  await executeCopyToast(targetWorkspaceId);
 };
 
 const transferToast = async () => {
@@ -3890,6 +3923,33 @@ watch(isMobileViewport, (isMobile) => {
               @click="confirmMobileVeto"
             >
               Decline toast
+            </button>
+          </div>
+        </div>
+      </ModalDialog>
+
+      <ModalDialog v-if="selectedToastModal && !isMobileViewport && isCopyToastConfirmOpen" max-width-class="max-w-4xl" @close="closeCopyToastConfirmModal">
+        <ModalHeader
+          eyebrow="Confirmation"
+          title="Copy this toast?"
+          :description="buildCopyToastConfirmation(pendingCopyTargetWorkspaceId)"
+          @close="closeCopyToastConfirmModal"
+        />
+        <div class="space-y-4 px-6 py-6">
+          <div class="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
+              @click="closeCopyToastConfirmModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
+              @click="confirmCopyToast"
+            >
+              Copy as new
             </button>
           </div>
         </div>
