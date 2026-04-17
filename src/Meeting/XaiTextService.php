@@ -48,7 +48,7 @@ class XaiTextService
         $requestId = isset($context['requestId']) ? trim((string) $context['requestId']) : null;
         $model = isset($context['model']) ? trim((string) $context['model']) : '';
         $requestId = '' === $requestId ? $this->resolveRequestId() : $requestId;
-        $resolvedModel = '' !== $model ? $model : $this->model;
+        $resolvedModel = $this->normalizeModel('' !== $model ? $model : $this->model);
 
         if (!$this->isConfigured()) {
             $this->logEvent($userId, $source, 'not_configured', [
@@ -213,9 +213,11 @@ class XaiTextService
     {
         $context ??= [];
         $context['userId'] ??= $user->getId();
-        $context['model'] ??= $user->isAdvancedAiModelEnabled() && '' !== trim($this->advancedModel)
-            ? $this->advancedModel
-            : $this->model;
+        $context['model'] ??= $this->normalizeModel(
+            $user->isAdvancedAiModelEnabled() && '' !== trim($this->advancedModel)
+                ? $this->advancedModel
+                : $this->model,
+        );
 
         return $this->generateText($systemPrompt, $userPrompt, $context);
     }
@@ -306,5 +308,16 @@ class XaiTextService
         $requestId = trim($requestId);
 
         return '' === $requestId ? null : $requestId;
+    }
+
+    private function normalizeModel(string $model): string
+    {
+        $normalized = trim($model);
+
+        return match ($normalized) {
+            'grok-4.20-reasoning' => 'grok-4.20-0309-reasoning',
+            'grok-4.20-non-reasoning' => 'grok-4.20-0309-non-reasoning',
+            default => $normalized,
+        };
     }
 }

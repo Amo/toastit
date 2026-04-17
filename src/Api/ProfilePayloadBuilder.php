@@ -59,13 +59,15 @@ final class ProfilePayloadBuilder
      */
     public function buildProfile(User $user, array $deletedWorkspaces): array
     {
+        $userDateTimeFormatter = $this->userDateTimeFormatter;
+
         return [
             'user' => $this->buildUser($user),
             'deletedWorkspaces' => array_map(static fn (Workspace $workspace): array => [
                 'id' => $workspace->getId(),
                 'name' => $workspace->getName(),
                 'deletedAt' => $workspace->getDeletedAt()?->format(\DateTimeInterface::ATOM),
-                'deletedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($workspace->getDeletedAt(), $user),
+                'deletedAtDisplay' => $userDateTimeFormatter->formatDateTime($workspace->getDeletedAt(), $user),
                 'isSoloWorkspace' => $workspace->isSoloWorkspace(),
             ], $deletedWorkspaces),
         ];

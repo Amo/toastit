@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit;
 
+use App\Entity\User;
 use App\Meeting\SessionSummaryUnavailableException;
 use App\Meeting\XaiTextService;
 use PHPUnit\Framework\TestCase;
@@ -105,5 +106,37 @@ final class XaiTextServiceTest extends TestCase
             self::assertSame('xai_request_timeout', $exception->getReason());
             self::assertSame('xAI request timed out.', $exception->getMessage());
         }
+    }
+
+    public function testGenerateTextForUserMapsLegacyAdvancedModelAliasToCurrentModelName(): void
+    {
+        $capturedModel = null;
+        $service = new XaiTextService(
+            new MockHttpClient(static function (string $method, string $url, array $options) use (&$capturedModel) {
+                $payload = json_decode((string) ($options['body'] ?? ''), true);
+                $capturedModel = is_array($payload) ? ($payload['model'] ?? null) : null;
+
+                return new MockResponse(json_encode([
+                    'output' => [[
+                        'content' => [[
+                            'type' => 'output_text',
+                            'text' => 'OK',
+                        ]],
+                    ]],
+                ], JSON_THROW_ON_ERROR));
+            }),
+            'test-key',
+            'https://api.x.ai/v1',
+            'grok-4-1-fast-reasoning',
+            30,
+            'grok-4.20-reasoning',
+        );
+
+        $user = (new User())
+            ->setEmail('amaury@example.com')
+            ->setAdvancedAiModelEnabled(true);
+
+        self::assertSame('OK', $service->generateTextForUser($user, 'system', 'user'));
+        self::assertSame('grok-4.20-0309-reasoning', $capturedModel);
     }
 }
