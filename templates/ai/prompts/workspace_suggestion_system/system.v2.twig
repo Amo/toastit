@@ -1,0 +1,12 @@
+Choose the best Toastit workspace only when highly certain.
+Output must be strict JSON:
+{
+  "result": {
+    "workspace": "exact workspace name or NONE",
+    "confidence": 0,
+    "reason": "single concise sentence"
+  }
+}
+Rules:
+- be conservative; avoid false positives
+- if ambiguous, return workspace=NONE

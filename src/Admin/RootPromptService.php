@@ -2,6 +2,7 @@
 
 namespace App\Admin;
 
+use App\Ai\AiPromptFileStore;
 use App\Entity\AiPrompt;
 use App\Entity\AiPromptVersion;
 use App\Entity\User;
@@ -14,6 +15,7 @@ final class RootPromptService
     public function __construct(
         private readonly AiPromptRepository $promptRepository,
         private readonly AiPromptVersionRepository $promptVersionRepository,
+        private readonly AiPromptFileStore $promptFileStore,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -25,9 +27,11 @@ final class RootPromptService
      *   description: ?string,
      *   availableVariables: list<array{name: string, description: string, example: string}>,
      *   availableUserVariables: list<array{name: string, description: string, example: string}>,
-      *   latestVersionNumber: int|null,
+     *   latestVersionNumber: int|null,
       *   latestChangedAt: string|null,
-      *   latestChangedBy: ?string
+     *   latestChangedBy: ?string,
+     *   isFileBacked: bool,
+     *   currentSourceVersion: int|null
      * }>
      */
     public function listPrompts(): array
@@ -36,6 +40,7 @@ final class RootPromptService
 
         return array_map(function (AiPrompt $prompt): array {
             $latest = $this->promptVersionRepository->findLatestForPrompt($prompt);
+            $filePrompt = $this->promptFileStore->getDefinition($prompt->getCode());
 
             return [
                 'code' => $prompt->getCode(),
@@ -43,9 +48,11 @@ final class RootPromptService
                 'description' => $prompt->getDescription(),
                 'availableVariables' => $prompt->getAvailableVariables(),
                 'availableUserVariables' => $prompt->getAvailableUserVariables(),
-                'latestVersionNumber' => $latest?->getVersionNumber(),
+                'latestVersionNumber' => $filePrompt['version'] ?? $latest?->getVersionNumber(),
                 'latestChangedAt' => $latest?->getChangedAt()->format(\DateTimeInterface::ATOM),
                 'latestChangedBy' => $latest?->getChangedByUser()?->getDisplayName(),
+                'isFileBacked' => null !== $filePrompt,
+                'currentSourceVersion' => $filePrompt['version'] ?? null,
             ];
         }, $prompts);
     }
@@ -57,9 +64,11 @@ final class RootPromptService
      *   description: ?string,
      *   availableVariables: list<array{name: string, description: string, example: string}>,
      *   availableUserVariables: list<array{name: string, description: string, example: string}>,
-      *   currentSystemPrompt: string,
+     *   currentSystemPrompt: string,
      *   currentUserPromptTemplate: string,
-      *   currentVersionNumber: int,
+     *   currentVersionNumber: int,
+     *   isFileBacked: bool,
+     *   sourceTemplatePaths: array{system: string, user: string}|null,
      *   versions: list<array{versionNumber: int, changedAt: string, changedBy: ?string, systemPrompt: string, userPromptTemplate: string}>
      * }|null
      */
@@ -73,8 +82,14 @@ final class RootPromptService
 
         $versions = $this->promptVersionRepository->findAllForPrompt($prompt);
         $latestVersion = $versions[0] ?? null;
+        $filePrompt = $this->promptFileStore->getDefinition($prompt->getCode());
+        $currentSystemPrompt = $this->promptFileStore->getSystemPromptSource($prompt->getCode());
+        $currentUserPromptTemplate = $this->promptFileStore->getUserPromptTemplateSource($prompt->getCode());
 
-        if (!$latestVersion instanceof AiPromptVersion) {
+        if (
+            !$latestVersion instanceof AiPromptVersion
+            && (null === $filePrompt || null === $currentSystemPrompt || null === $currentUserPromptTemplate)
+        ) {
             return null;
         }
 
@@ -84,9 +99,14 @@ final class RootPromptService
             'description' => $prompt->getDescription(),
             'availableVariables' => $prompt->getAvailableVariables(),
             'availableUserVariables' => $prompt->getAvailableUserVariables(),
-            'currentSystemPrompt' => $latestVersion->getSystemPrompt(),
-            'currentUserPromptTemplate' => $latestVersion->getUserPromptTemplate(),
-            'currentVersionNumber' => $latestVersion->getVersionNumber(),
+            'currentSystemPrompt' => $currentSystemPrompt ?? $latestVersion?->getSystemPrompt() ?? '',
+            'currentUserPromptTemplate' => $currentUserPromptTemplate ?? $latestVersion?->getUserPromptTemplate() ?? '',
+            'currentVersionNumber' => $filePrompt['version'] ?? $latestVersion?->getVersionNumber() ?? 0,
+            'isFileBacked' => null !== $filePrompt,
+            'sourceTemplatePaths' => null !== $filePrompt ? [
+                'system' => $filePrompt['system'],
+                'user' => $filePrompt['user'],
+            ] : null,
             'versions' => array_map(static fn (AiPromptVersion $version): array => [
                 'versionNumber' => $version->getVersionNumber(),
                 'changedAt' => $version->getChangedAt()->format(\DateTimeInterface::ATOM),

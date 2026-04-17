@@ -22,6 +22,15 @@ final class PromptRollbackController extends AbstractController
         $this->workspaceAccess->assertRoot();
         $actor = $this->workspaceAccess->getUserOrFail();
 
+        $prompt = $this->rootPrompt->getPrompt($code);
+        if (null === $prompt) {
+            return $this->json(['ok' => false, 'error' => 'prompt_or_version_not_found'], 404);
+        }
+
+        if (($prompt['isFileBacked'] ?? false) === true) {
+            return $this->json(['ok' => false, 'error' => 'file_backed_prompt_read_only'], 409);
+        }
+
         $updatedPrompt = $this->rootPrompt->rollbackPromptVersion($code, $versionNumber, $actor);
         if (null === $updatedPrompt) {
             return $this->json(['ok' => false, 'error' => 'prompt_or_version_not_found'], 404);
@@ -30,4 +39,3 @@ final class PromptRollbackController extends AbstractController
         return $this->json(['ok' => true, 'prompt' => $updatedPrompt]);
     }
 }
-

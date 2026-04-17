@@ -35,6 +35,15 @@ final class PromptUpdateController extends AbstractController
             return $this->json(['ok' => false, 'error' => 'missing_user_prompt_template'], 400);
         }
 
+        $prompt = $this->rootPrompt->getPrompt($code);
+        if (null === $prompt) {
+            return $this->json(['ok' => false, 'error' => 'prompt_not_found'], 404);
+        }
+
+        if (($prompt['isFileBacked'] ?? false) === true) {
+            return $this->json(['ok' => false, 'error' => 'file_backed_prompt_read_only'], 409);
+        }
+
         $updatedPrompt = $this->rootPrompt->createPromptVersion($code, $systemPrompt, $userPromptTemplate, $actor);
         if (null === $updatedPrompt) {
             return $this->json(['ok' => false, 'error' => 'prompt_not_found'], 404);

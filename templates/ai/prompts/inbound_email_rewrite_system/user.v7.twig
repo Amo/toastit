@@ -1,0 +1,20 @@
+Requested by: {{ requested_by_display_name }} <{{ requested_by_email }}>
+Language rule: {{ reword_language_instruction }}
+Reference datetime: {{ reference_datetime }}
+Reference timezone: {{ reference_timezone }}
+Sender: {{ sender }}
+Email title: {{ email_title }}
+Email body:
+{{ email_body }}
+
+Workspace contexts format (strict):
+- Each workspace block is separated by a blank line.
+- Each block follows exactly this shape:
+  Workspace: <workspace name>
+  Default due preset: <none|tomorrow|next_week|in_2_weeks|next_monday|first_monday_next_month>
+  Participants:
+  - <display name> <<email>>
+  - <display name> <<email>>
+
+User workspaces (parse exactly using the format above):
+{{ workspace_contexts }}

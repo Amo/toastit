@@ -1,3 +1,6 @@
+imports:
+    - { resource: ai_prompts.php }
+
 # yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
 
 # This file is the entry point to configure your own services.
@@ -58,6 +61,10 @@ services:
     App\Controller\Api\Inbound\ReceiveEmailController:
         arguments:
             $inboundEmailSecret: '%app.inbound_email_secret%'
+
+    App\Ai\AiPromptFileStore:
+        arguments:
+            $promptFiles: '%app.ai_prompt_files%'
 
     app.profile_avatar_adapter:
         class: League\Flysystem\Local\LocalFilesystemAdapter

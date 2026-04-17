@@ -30,6 +30,7 @@ const selectedPrompt = computed(() => prompts.value.find((prompt) => prompt.code
 const selectedPromptVersions = computed(() => selectedPrompt.value?.versions ?? []);
 const selectedSystemPromptVariables = computed(() => selectedPrompt.value?.availableVariables ?? []);
 const selectedUserPromptVariables = computed(() => selectedPrompt.value?.availableUserVariables ?? []);
+const selectedPromptIsReadOnly = computed(() => selectedPrompt.value?.isFileBacked === true);
 const formatTwigVariable = (name) => `{{ ${name} }}`;
 
 const fetchPromptList = async () => {
@@ -89,7 +90,9 @@ const savePrompt = async () => {
   isSaving.value = false;
 
   if (!ok || !data?.ok || !data.prompt) {
-    feedbackError.value = 'Unable to save prompt version.';
+    feedbackError.value = data?.error === 'file_backed_prompt_read_only'
+      ? 'This prompt now loads from versioned Twig files and is read-only here.'
+      : 'Unable to save prompt version.';
     return;
   }
 
@@ -115,7 +118,9 @@ const rollbackPrompt = async (versionNumber) => {
   isRollingBackVersion.value = null;
 
   if (!ok || !data?.ok || !data.prompt) {
-    feedbackError.value = 'Unable to rollback prompt version.';
+    feedbackError.value = data?.error === 'file_backed_prompt_read_only'
+      ? 'This prompt now loads from versioned Twig files and cannot be rolled back here.'
+      : 'Unable to rollback prompt version.';
     return;
   }
 
@@ -174,6 +179,20 @@ onMounted(async () => {
         </aside>
 
         <div v-if="selectedPrompt" class="space-y-4">
+          <div
+            v-if="selectedPromptIsReadOnly"
+            class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
+          >
+            <p class="font-semibold">Authoritative source: versioned Twig files</p>
+            <p class="mt-1">
+              Runtime currently loads
+              <code class="rounded bg-white/80 px-1 py-0.5 text-xs">{{ selectedPrompt.sourceTemplatePaths?.system }}</code>
+              and
+              <code class="rounded bg-white/80 px-1 py-0.5 text-xs">{{ selectedPrompt.sourceTemplatePaths?.user }}</code>.
+            </p>
+            <p class="mt-1">Database history stays visible below, but save and rollback are disabled for file-backed prompts.</p>
+          </div>
+
           <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Template variables</p>
             <p class="mt-1 text-sm text-stone-600">Prompt source is a Twig template. Available variables for this prompt:</p>
@@ -209,6 +228,7 @@ onMounted(async () => {
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">System prompt template</p>
             <textarea
               v-model="systemEditorValue"
+              :disabled="selectedPromptIsReadOnly"
               class="mt-3 h-80 w-full rounded-2xl border border-stone-200 p-4 font-mono text-sm text-stone-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             />
           </div>
@@ -217,13 +237,14 @@ onMounted(async () => {
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">User prompt template</p>
             <textarea
               v-model="userEditorValue"
+              :disabled="selectedPromptIsReadOnly"
               class="mt-3 h-80 w-full rounded-2xl border border-stone-200 p-4 font-mono text-sm text-stone-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             />
             <div class="mt-3 flex items-center justify-between gap-3">
               <p v-if="feedbackError" class="text-sm text-rose-700">{{ feedbackError }}</p>
               <p v-else-if="feedbackMessage" class="text-sm text-emerald-700">{{ feedbackMessage }}</p>
               <span v-else />
-              <PrimaryActionButton :disabled="isSaving" @click="savePrompt">
+              <PrimaryActionButton :disabled="isSaving || selectedPromptIsReadOnly" @click="savePrompt">
                 {{ isSaving ? 'Saving...' : 'Save new version' }}
               </PrimaryActionButton>
             </div>
@@ -238,7 +259,7 @@ onMounted(async () => {
                   <p class="text-xs text-stone-500">{{ version.changedAt }} · {{ version.changedBy ?? 'system' }}</p>
                 </div>
                 <SecondaryActionButton
-                  :disabled="isRollingBackVersion === version.versionNumber || version.versionNumber === selectedPrompt.currentVersionNumber"
+                  :disabled="selectedPromptIsReadOnly || isRollingBackVersion === version.versionNumber || version.versionNumber === selectedPrompt.currentVersionNumber"
                   @click="rollbackPrompt(version.versionNumber)"
                 >
                   {{ isRollingBackVersion === version.versionNumber ? 'Rolling back...' : 'Rollback' }}

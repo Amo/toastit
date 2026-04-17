@@ -1,0 +1,32 @@
+Workspace: {{ workspace_name }}
+
+Participants:
+{% for participant in participants %}
+- {{ participant.id }}: {{ participant.display_name }}
+{% else %}
+- none
+{% endfor %}
+
+Active toasts:
+{% for toast in active_toasts %}
+- toastId: {{ toast.toast_id }}
+  title: {{ toast.title }}
+  status: {{ toast.status }} / discussion: {{ toast.discussion_status }}
+  author: {{ toast.author }}
+  ownerId: {{ toast.owner_id is not null ? toast.owner_id : 'null' }}
+  ownerName: {{ toast.owner_name }}
+  voteCount: {{ toast.vote_count }}
+  isBoosted: {{ toast.is_boosted ? 'true' : 'false' }}
+  dueOn: {{ toast.due_on ?? 'null' }}
+{% if toast.description %}
+  description: {{ toast.description }}
+{% endif %}
+{% if toast.comments is not empty %}
+  comments:
+{% for comment in toast.comments %}
+    - {{ comment.author }}: {{ comment.content }}
+{% endfor %}
+{% endif %}
+{% else %}
+- none
+{% endfor %}

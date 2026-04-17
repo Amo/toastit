@@ -1,0 +1,15 @@
+Workspace: {{ workspace_name }}
+Source toast id: {{ source_toast.id }}
+Source title: {{ source_toast.title }}
+Current owner id: {{ source_toast.current_owner_id is not null ? source_toast.current_owner_id : 'null' }}
+Current dueOn: {{ source_toast.current_due_on ?? 'null' }}
+Description: {{ source_toast.description }}
+Decision notes:
+{{ source_toast.decision_notes }}
+
+Workspace participants:
+{% for participant in participants %}
+- {{ participant.id }}: {{ participant.display_name }}
+{% else %}
+- none
+{% endfor %}
