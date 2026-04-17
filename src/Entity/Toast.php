@@ -36,6 +36,9 @@ class Toast
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
 
+    #[ORM\Column(name: 'ai_refinement_pending', options: ['default' => false])]
+    private bool $aiRefinementPending = false;
+
     #[ORM\Column(length: 16)]
     private string $status = self::STATUS_PENDING;
 
@@ -141,6 +144,18 @@ class Toast
     public function setDescription(?string $description): self
     {
         $this->description = $description;
+
+        return $this;
+    }
+
+    public function isAiRefinementPending(): bool
+    {
+        return $this->aiRefinementPending;
+    }
+
+    public function setAiRefinementPending(bool $aiRefinementPending): self
+    {
+        $this->aiRefinementPending = $aiRefinementPending;
 
         return $this;
     }

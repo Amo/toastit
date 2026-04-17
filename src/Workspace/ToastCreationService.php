@@ -23,6 +23,7 @@ final class ToastCreationService
         ?User $owner = null,
         ?\DateTimeImmutable $dueAt = null,
         ?Toast $previousItem = null,
+        bool $aiRefinementPending = false,
     ): Toast {
         $normalizedTitle = $this->toastTitleNormalization->normalize($title, $description);
 
@@ -31,6 +32,7 @@ final class ToastCreationService
             ->setAuthor($author)
             ->setTitle($normalizedTitle['title'])
             ->setDescription($normalizedTitle['description'])
+            ->setAiRefinementPending($aiRefinementPending)
             ->setOwner($owner)
             ->setDueAt($dueAt)
             ->setPreviousItem($previousItem);

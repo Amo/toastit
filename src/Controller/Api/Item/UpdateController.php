@@ -63,6 +63,7 @@ final class UpdateController extends AbstractController
         $item
             ->setTitle($normalizedTitle['title'])
             ->setDescription($normalizedTitle['description'])
+            ->setAiRefinementPending(array_key_exists('aiRefinementPending', $payload) ? (bool) $payload['aiRefinementPending'] : $item->isAiRefinementPending())
             ->setOwner($owner)
             ->setDueAt($dueAt);
 

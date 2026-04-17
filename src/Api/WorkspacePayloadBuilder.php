@@ -129,6 +129,7 @@ final class WorkspacePayloadBuilder
             'id' => $item->getId(),
             'title' => $item->getTitle(),
             'description' => $item->getDescription(),
+            'aiRefinementPending' => $item->isAiRefinementPending(),
             'status' => $item->getStatus(),
             'isBoosted' => $item->isBoosted(),
             'boostRank' => $item->getBoostRank(),

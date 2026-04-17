@@ -187,10 +187,12 @@ final class EntityBehaviorTest extends TestCase
 
         $toast
             ->setStatus(Toast::STATUS_PENDING)
-            ->setStatus(Toast::STATUS_READY);
+            ->setStatus(Toast::STATUS_READY)
+            ->setAiRefinementPending(true);
 
         self::assertTrue($toast->isReady());
         self::assertTrue($toast->isNew());
+        self::assertTrue($toast->isAiRefinementPending());
 
         $vote = (new Vote())->setItem($toast)->setUser($author);
         $toast->addVote($vote)->addVote($vote);

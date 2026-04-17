@@ -601,6 +601,9 @@ const toastStatusBadgeClass = (item) => {
   return 'border-amber-200 bg-amber-50';
 };
 
+const toastAiPendingBadgeClass = 'border-sky-200 bg-sky-50';
+const toastAiPendingToneClass = 'text-sky-700';
+
 const toastStatusTone = (item) => {
   if (item.status === 'discarded') {
     return 'text-stone-400';
@@ -768,6 +771,55 @@ const removeMember = async (memberId) => {
   await fetchWorkspace();
 };
 
+const buildFallbackToastTitle = (description) => {
+  const normalized = String(description ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  if (normalized.length <= 72) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 69)}...`;
+};
+
+const refineCreatedToastInBackground = async (workspaceId, toastId, draftSnapshot) => {
+  const snapshotTitle = String(draftSnapshot?.title ?? '').trim();
+  const snapshotDescription = String(draftSnapshot?.description ?? '').trim();
+  if (!workspaceId || !toastId || (!snapshotTitle && !snapshotDescription)) {
+    return;
+  }
+
+  const { ok, data } = await workspacesApi.refineToastDraft(workspaceId, {
+    title: snapshotTitle,
+    description: snapshotDescription,
+  });
+
+  if (!ok || !data?.ok || !data?.draft) {
+    return;
+  }
+
+  const refinedTitle = String(data.draft.title ?? '').trim();
+  const refinedDescription = String(data.draft.description ?? '').trim();
+  if (!refinedTitle) {
+    return;
+  }
+
+  await workspacesApi.updateToast(toastId, {
+    title: refinedTitle,
+    description: refinedDescription || snapshotDescription,
+    ownerId: data.draft.ownerId ? String(data.draft.ownerId) : '',
+    dueOn: data.draft.dueOn ?? '',
+    aiRefinementPending: false,
+  });
+
+  await fetchWorkspace();
+};
+
 const createItem = async () => {
   if (!workspace.value) return;
 
@@ -775,16 +827,23 @@ const createItem = async () => {
   const hasDraftInput = itemForm.value.title.trim() || itemForm.value.description.trim();
   if (!hasDraftInput) return;
 
+  let shouldRefineAfterCreateInBackground = false;
+  let draftSnapshotForBackgroundRefine = null;
+
   if (!isEditingToast) {
-    const refined = await refineToastDraft({
+    shouldRefineAfterCreateInBackground = true;
+    draftSnapshotForBackgroundRefine = {
       title: itemForm.value.title ?? '',
       description: itemForm.value.description ?? '',
       ownerId: itemForm.value.ownerId ?? '',
       dueOn: itemForm.value.dueOn ?? '',
-    }, { forceApply: true });
+    };
 
-    if (!refined) {
-      return;
+    if (!itemForm.value.title.trim() && itemForm.value.description.trim()) {
+      itemForm.value = {
+        ...itemForm.value,
+        title: buildFallbackToastTitle(itemForm.value.description),
+      };
     }
   }
 
@@ -802,6 +861,10 @@ const createItem = async () => {
   isCreateToastModalOpen.value = false;
   editingToastId.value = null;
   const createdItemId = Number(data?.itemId ?? 0);
+
+  if (shouldRefineAfterCreateInBackground && Number.isFinite(createdItemId) && createdItemId > 0 && draftSnapshotForBackgroundRefine) {
+    void refineCreatedToastInBackground(workspace.value.id, createdItemId, draftSnapshotForBackgroundRefine);
+  }
 
   if (!isEditingToast && Number.isFinite(createdItemId) && createdItemId > 0) {
     try {
@@ -2522,6 +2585,12 @@ watch(isMobileViewport, (isMobile) => {
                         :tone-class="toastStatusTone(item)"
                         :badge-class="toastStatusBadgeClass(item)"
                       />
+                      <ToastStatusBadge
+                        v-if="item.aiRefinementPending"
+                        label="IA"
+                        :tone-class="toastAiPendingToneClass"
+                        :badge-class="toastAiPendingBadgeClass"
+                      />
                     </div>
                     <p class="block w-full text-left text-sm font-medium leading-5 line-clamp-2" :class="agendaItemMobileTitleClass(item)">
                       {{ item.title }}
@@ -2562,11 +2631,19 @@ watch(isMobileViewport, (isMobile) => {
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.dueOnDisplay ?? 'No due date' }}</td>
                     <td class="px-4 py-3">
-                      <ToastStatusBadge
-                        :label="item.status === 'ready' ? 'Ready' : 'New'"
-                        :tone-class="toastStatusTone(item)"
-                        :badge-class="toastStatusBadgeClass(item)"
-                      />
+                      <div class="flex items-center gap-2">
+                        <ToastStatusBadge
+                          :label="item.status === 'ready' ? 'Ready' : 'New'"
+                          :tone-class="toastStatusTone(item)"
+                          :badge-class="toastStatusBadgeClass(item)"
+                        />
+                        <ToastStatusBadge
+                          v-if="item.aiRefinementPending"
+                          label="IA"
+                          :tone-class="toastAiPendingToneClass"
+                          :badge-class="toastAiPendingBadgeClass"
+                        />
+                      </div>
                     </td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.comments?.length ?? 0 }}</td>
                     <td class="px-4 py-3">
@@ -2783,11 +2860,19 @@ watch(isMobileViewport, (isMobile) => {
           <div class="tw-toastit-card rounded-none border-l-0 border-r-0 border-t-0 p-4">
             <template v-if="selectedToastModal">
               <div class="flex items-center">
-                <ToastStatusBadge
-                  :label="displayToastStatus(selectedToastModal)"
-                  :tone-class="toastStatusTone(selectedToastModal)"
-                  :badge-class="toastStatusBadgeClass(selectedToastModal)"
-                />
+                <div class="flex flex-wrap items-center gap-2">
+                  <ToastStatusBadge
+                    :label="displayToastStatus(selectedToastModal)"
+                    :tone-class="toastStatusTone(selectedToastModal)"
+                    :badge-class="toastStatusBadgeClass(selectedToastModal)"
+                  />
+                  <ToastStatusBadge
+                    v-if="selectedToastModal.aiRefinementPending"
+                    label="IA pending"
+                    :tone-class="toastAiPendingToneClass"
+                    :badge-class="toastAiPendingBadgeClass"
+                  />
+                </div>
               </div>
 
               <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-500">
@@ -3139,6 +3224,12 @@ watch(isMobileViewport, (isMobile) => {
                 :label="displayToastStatus(selectedToastModal)"
                 :tone-class="toastStatusTone(selectedToastModal)"
                 :badge-class="toastStatusBadgeClass(selectedToastModal)"
+              />
+              <ToastStatusBadge
+                v-if="selectedToastModal.aiRefinementPending"
+                label="IA pending"
+                :tone-class="toastAiPendingToneClass"
+                :badge-class="toastAiPendingBadgeClass"
               />
               <span class="inline-flex items-center gap-2">
                 <i class="fa-regular fa-user" aria-hidden="true"></i>

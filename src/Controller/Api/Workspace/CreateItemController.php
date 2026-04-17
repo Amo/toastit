@@ -28,6 +28,11 @@ final class CreateItemController extends AbstractController
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $payload = $request->toArray();
         $title = trim((string) ($payload['title'] ?? ''));
+        $description = trim((string) ($payload['description'] ?? '')) ?: null;
+
+        if ('' === $title && null !== $description) {
+            $title = $this->buildFallbackTitle($description);
+        }
 
         if ('' === $title) {
             return $this->json(['ok' => false, 'error' => 'missing_title'], 400);
@@ -49,13 +54,34 @@ final class CreateItemController extends AbstractController
             $workspace,
             $this->workspaceAccess->getUserOrFail(),
             $title,
-            trim((string) ($payload['description'] ?? '')) ?: null,
+            $description,
             $owner,
             $dueAt,
+            null,
+            true,
         );
 
         $this->entityManager->flush();
 
-        return $this->json(['ok' => true, 'itemId' => $item->getId()]);
+        return $this->json([
+            'ok' => true,
+            'itemId' => $item->getId(),
+            'aiRefinementPending' => $item->isAiRefinementPending(),
+        ]);
+    }
+
+    private function buildFallbackTitle(string $description): string
+    {
+        $normalized = preg_replace('/\s+/', ' ', trim($description)) ?? trim($description);
+
+        if ('' === $normalized) {
+            return '';
+        }
+
+        if (mb_strlen($normalized) <= 72) {
+            return $normalized;
+        }
+
+        return mb_substr($normalized, 0, 69).'...';
     }
 }
