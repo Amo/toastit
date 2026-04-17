@@ -9,6 +9,8 @@ const props = defineProps({
   label: { type: String, required: true },
   help: { type: String, default: '' },
   placeholder: { type: String, default: 'Select date' },
+  hideLabel: { type: Boolean, default: false },
+  inputClass: { type: String, default: '' },
 });
 
 const inputRef = ref(null);
@@ -102,10 +104,10 @@ watch(isMobileViewport, async (isMobile) => {
 </script>
 
 <template>
-  <FormField :label="label" :help="help">
+  <FormField :label="label" :help="help" :hide-label="hideLabel">
     <input
       ref="inputRef"
-      class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm"
+      :class="['rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm', inputClass]"
       :type="isMobileViewport ? 'date' : 'text'"
       :value="model"
       :placeholder="placeholder"

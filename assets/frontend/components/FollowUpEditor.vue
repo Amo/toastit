@@ -63,26 +63,20 @@ defineEmits(['add', 'remove', 'update', 'generate']);
       </div>
       <div class="space-y-2">
         <input
-          class="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
+          class="h-10 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
           type="text"
           :value="followUp.title ?? ''"
           placeholder="Follow-up outcome or task"
           @input="$emit('update', { index: followUpIndex, key: 'title', value: $event.target.value })"
         >
-        <div v-if="followUp.aiGeneratedReason || followUp.aiGenerated" class="flex flex-wrap items-center gap-2">
-          <span
-            v-if="followUp.aiGenerated"
-            class="tw-ai-rainbow-action inline-flex items-center rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white"
-          >
-            AI draft
-          </span>
+        <div v-if="followUp.aiGeneratedReason" class="flex flex-wrap items-center gap-2">
           <p v-if="followUp.aiGeneratedReason" class="text-xs leading-5 text-stone-500">
             {{ followUp.aiGeneratedReason }}
           </p>
         </div>
       </div>
       <select
-        class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
+        class="h-10 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
         :value="followUp.ownerId ?? ''"
         @change="$emit('update', { index: followUpIndex, key: 'ownerId', value: $event.target.value })"
       >
@@ -92,10 +86,22 @@ defineEmits(['add', 'remove', 'update', 'generate']);
       <DatePickerField
         :model-value="followUp.dueOn ?? ''"
         label="Date"
+        :hide-label="true"
+        input-class="h-10"
         @update:model-value="$emit('update', { index: followUpIndex, key: 'dueOn', value: $event })"
       />
       <div class="flex items-end justify-end">
-        <button type="button" class="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700" @click="$emit('remove', followUpIndex)">Remove</button>
+        <button
+          type="button"
+          class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-800"
+          aria-label="Remove follow-up"
+          @click="$emit('remove', followUpIndex)"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M4 4L12 12" />
+            <path d="M12 4L4 12" />
+          </svg>
+        </button>
       </div>
     </div>
   </div>
