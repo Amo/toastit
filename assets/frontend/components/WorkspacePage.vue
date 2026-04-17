@@ -1775,6 +1775,9 @@ const mobileAgendaSwipeActionCount = (item) => {
   if (item.currentUserCanMarkReady) {
     count += 1; // Ready
   }
+  if (workspace.value?.currentUserIsOwner && isSoloWorkspace.value && isActiveToast(item)) {
+    count += 1; // Toasted
+  }
   if (workspace.value?.currentUserIsOwner && !isToastingMode.value) {
     count += 1; // Delete
   }
@@ -2454,6 +2457,15 @@ watch(isMobileViewport, (isMobile) => {
                       @click.stop="executeMobileAgendaAction(item.id, () => setReady(item.id, item.status !== 'ready'))"
                     >
                       <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      v-if="workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(item)"
+                      type="button"
+                      class="inline-grid w-14 place-items-center border-l border-stone-200 transition bg-white text-amber-700 hover:bg-amber-50"
+                      title="Mark toasted"
+                      @click.stop="executeMobileAgendaAction(item.id, () => toastItem(item.id))"
+                    >
+                      <i class="fa-solid fa-check-double text-sm" aria-hidden="true"></i>
                     </button>
                     <button
                       v-if="workspace.currentUserIsOwner && !isToastingMode"

@@ -24,6 +24,7 @@ const keyboardShortcutsOpen = ref(false);
 const mobileNavOpen = ref(false);
 const contentRef = ref(null);
 const isMobilePlatform = ref(false);
+const isLandscapeViewport = ref(false);
 const slots = useSlots();
 const navigationWorkspaces = ref([]);
 const MOBILE_SHELL_OVERRIDE_KEY = 'toastit.mobileShellOverride';
@@ -96,6 +97,8 @@ const workspaceModeBadgeClass = (workspace) => {
   return workspace?.isSoloWorkspace ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700';
 };
 
+const shouldBlockLandscape = computed(() => props.showAppNavigation && isMobilePlatform.value && isLandscapeViewport.value);
+
 const syncMobilePlatform = () => {
   const mobileQuery = typeof route.query.mobile === 'string' ? route.query.mobile.toLowerCase() : '';
   if (['1', 'true', 'on'].includes(mobileQuery)) {
@@ -118,6 +121,7 @@ const syncMobilePlatform = () => {
     || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
 
   isMobilePlatform.value = userAgentDataMobile || mobileUa || ipadOs || (touchDevice && window.innerWidth <= 1024);
+  isLandscapeViewport.value = window.innerWidth > window.innerHeight;
 };
 
 const isTypingTarget = (target) => {
@@ -424,6 +428,18 @@ watch(() => route.fullPath, () => {
     </ModalDialog>
 
     <main :class="showAppNavigation && !mobileAppModeActive ? 'py-0 lg:py-6' : 'py-0'">
+      <div
+        v-if="shouldBlockLandscape"
+        class="fixed inset-0 z-[120] flex flex-col items-center justify-center gap-4 bg-stone-950 px-6 text-center text-white"
+      >
+        <div class="inline-grid h-16 w-16 place-items-center rounded-3xl bg-white/10">
+          <i class="fa-solid fa-mobile-screen-button text-2xl" aria-hidden="true"></i>
+        </div>
+        <div class="space-y-2">
+          <p class="text-lg font-semibold">Portrait only</p>
+          <p class="text-sm leading-6 text-white/80">Rotate your phone back to portrait to continue using Toastit.</p>
+        </div>
+      </div>
       <template v-if="showAppNavigation && !mobileAppModeActive">
         <div class="px-0 lg:px-6">
           <div class="mb-0 flex items-center justify-between rounded-none border border-stone-200 bg-white px-4 py-3 lg:hidden">
@@ -470,26 +486,28 @@ watch(() => route.fullPath, () => {
                     v-for="workspace in listedNavigationWorkspaces"
                     :key="workspace.id"
                     :href="workspaceHref(workspace)"
-                    class="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition"
+                    class="rounded-xl px-3 py-2 text-sm transition"
                     :class="isWorkspaceActive(workspace) ? 'bg-amber-50 font-semibold text-amber-900' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'"
                   >
-                    <span class="flex min-w-0 items-center gap-2">
-                      <span class="truncate">{{ workspace.name }}</span>
-                      <span
-                        class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]"
-                        :class="workspaceModeBadgeClass(workspace)"
-                      >
-                        {{ workspaceModeLabel(workspace) }}
-                      </span>
-                    </span>
-                    <span class="inline-flex items-center gap-1">
-                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
-                        {{ workspace.openItemCount ?? 0 }}
-                      </span>
-                      <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                        {{ workspace.assignedOpenItemCount ?? 0 }}
-                      </span>
-                    </span>
+                    <div class="min-w-0">
+                      <p class="truncate">{{ workspace.name }}</p>
+                      <div class="mt-1 flex items-center justify-between gap-2">
+                        <span
+                          class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]"
+                          :class="workspaceModeBadgeClass(workspace)"
+                        >
+                          {{ workspaceModeLabel(workspace) }}
+                        </span>
+                        <span class="inline-flex items-center gap-1">
+                          <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
+                            {{ workspace.openItemCount ?? 0 }}
+                          </span>
+                          <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                            {{ workspace.assignedOpenItemCount ?? 0 }}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
                   </a>
                 </div>
                 <a
