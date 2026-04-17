@@ -1439,11 +1439,6 @@ const triggerToastModalNavigationBlockedFeedback = () => {
 triggerToastModalNavigationBlockedFeedback.timeoutId = 0;
 
 const openToastModal = (item) => {
-  if (!isMobileViewport.value && !standaloneMode.value) {
-    openToastWithReturnTo(item.id, route.fullPath);
-    return;
-  }
-
   selectedToastModalId.value = item.id;
   selectedTargetWorkspaceId.value = otherWorkspaces.value[0]?.id ? String(otherWorkspaces.value[0].id) : '';
   selectedToastModalCleanState.value = serializeToastModalState(item);
