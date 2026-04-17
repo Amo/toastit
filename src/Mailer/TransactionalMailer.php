@@ -22,6 +22,7 @@ final class TransactionalMailer
         private readonly CommonMarkConverter $markdownConverter,
         private readonly UserDateTimeFormatter $userDateTimeFormatter,
         private readonly string $defaultFrom,
+        private readonly string $defaultUri = '',
     ) {
     }
 
@@ -87,7 +88,7 @@ final class TransactionalMailer
         ?string $replyToAddress = null,
     ): void
     {
-        $summary = trim($summary);
+        $summary = $this->normalizeEmailMarkdownLinks(trim($summary));
         if ('' === $summary) {
             return;
         }
@@ -122,7 +123,7 @@ final class TransactionalMailer
         ?string $references = null,
         ?string $replyToAddress = null,
     ): void {
-        $summary = trim($summary);
+        $summary = $this->normalizeEmailMarkdownLinks(trim($summary));
         if ('' === $summary) {
             return;
         }
@@ -150,7 +151,7 @@ final class TransactionalMailer
 
     public function sendDailyRecap(User $user, string $summary): void
     {
-        $summary = trim($summary);
+        $summary = $this->normalizeEmailMarkdownLinks(trim($summary));
         if ('' === $summary) {
             return;
         }
@@ -218,8 +219,8 @@ final class TransactionalMailer
         $context = [
             'toast' => $toast,
             'proposed_title' => $proposedTitle,
-            'proposed_description_html' => $this->markdownConverter->convert(trim($proposedDescription))->getContent(),
-            'proposed_description_text' => trim($proposedDescription),
+            'proposed_description_html' => $this->markdownConverter->convert($this->normalizeEmailMarkdownLinks(trim($proposedDescription)))->getContent(),
+            'proposed_description_text' => $this->normalizeEmailMarkdownLinks(trim($proposedDescription)),
         ];
 
         $email = (new Email())
@@ -336,7 +337,7 @@ final class TransactionalMailer
      */
     private function formatSessionSummaryHtml(string $summary, array $toastUrlsById): string
     {
-        $markdownSummary = $this->replaceToastReferencesWithMarkdownLinks($summary, $toastUrlsById);
+        $markdownSummary = $this->normalizeEmailMarkdownLinks($this->replaceToastReferencesWithMarkdownLinks($summary, $toastUrlsById));
 
         return $this->markdownConverter->convert($markdownSummary)->getContent();
     }
@@ -346,7 +347,27 @@ final class TransactionalMailer
      */
     private function formatSessionSummaryText(string $summary, array $toastUrlsById): string
     {
-        return $this->replaceToastReferencesWithPlainLinks($summary, $toastUrlsById);
+        return $this->normalizeEmailMarkdownLinks($this->replaceToastReferencesWithPlainLinks($summary, $toastUrlsById));
+    }
+
+    private function normalizeEmailMarkdownLinks(string $value): string
+    {
+        if ('' === trim($value) || '' === trim($this->defaultUri)) {
+            return $value;
+        }
+
+        $baseUri = rtrim($this->defaultUri, '/');
+        $value = (string) preg_replace_callback(
+            '/\]\((\/app\/[^)\s]+)\)/',
+            static fn (array $matches): string => sprintf('](%s%s)', $baseUri, $matches[1]),
+            $value,
+        );
+
+        return (string) preg_replace_callback(
+            '/href=(["\'])(\/app\/[^"\']+)\1/',
+            static fn (array $matches): string => sprintf('href=%s%s%s%s', $matches[1], $baseUri, $matches[2], $matches[1]),
+            $value,
+        );
     }
 
     /**

@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { WorkspacesApi } from '../api/workspaces';
+import { nextSnoozeDueOn } from '../utils/workspaceFormatting';
 import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -146,13 +147,17 @@ const actionDateStatus = (action) => {
 const myDayActions = computed(() => {
   return Array.isArray(payload.value?.myActions?.actions) ? payload.value.myActions.actions : [];
 });
+const mobileWorkspaceSummaries = computed(() => {
+  const workspaces = Array.isArray(payload.value?.workspaces) ? payload.value.workspaces : [];
 
-const formatDateInput = (value) => {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+  return workspaces.filter((workspace) => {
+    if (workspace?.isInboxWorkspace !== true) {
+      return true;
+    }
+
+    return Number(workspace?.openItemCount ?? 0) > 0;
+  });
+});
 
 const formatDateDisplay = (value) => {
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
@@ -250,12 +255,8 @@ const snoozeAction = async (action) => {
   }
 
   isSnoozingActionId.value = actionId;
-  const parsedDueAt = typeof action?.dueOn === 'string' ? new Date(`${action.dueOn}T00:00:00`) : null;
-  const nextDueAt = parsedDueAt && !Number.isNaN(parsedDueAt.getTime())
-    ? new Date(parsedDueAt)
-    : new Date();
-  nextDueAt.setDate(nextDueAt.getDate() + 1);
-  const nextDueOn = formatDateInput(nextDueAt);
+  const nextDueOn = nextSnoozeDueOn(action?.dueOn);
+  const nextDueAt = new Date(`${nextDueOn}T12:00:00`);
 
   const { ok } = await workspacesApi.updateToast(actionId, {
     title: action?.title ?? '',
@@ -819,10 +820,10 @@ onUnmounted(() => {
       </div>
 
       <EmptyState v-if="isLoading" message="Loading..." />
-      <EmptyState v-else-if="!(payload.workspaces?.length ?? 0)" message="No workspace yet." />
+      <EmptyState v-else-if="!(mobileWorkspaceSummaries.length ?? 0)" message="No workspace yet." />
       <div v-else class="-mx-6 space-y-3 bg-white py-4 lg:mx-0 lg:grid lg:gap-3 lg:space-y-0 lg:bg-transparent lg:py-0">
         <button
-          v-for="workspace in payload.workspaces"
+          v-for="workspace in mobileWorkspaceSummaries"
           :key="workspace.id"
           type="button"
           class="group block w-full border-l-[5px] border-transparent px-4 py-2 text-left transition hover:bg-stone-50 lg:rounded-2xl lg:border lg:border-stone-200 lg:bg-white lg:px-4 lg:py-3 lg:hover:border-amber-200 lg:hover:bg-amber-50/30"

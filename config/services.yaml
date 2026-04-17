@@ -40,6 +40,7 @@ services:
     App\Mailer\TransactionalMailer:
         arguments:
             $defaultFrom: '%app.mailer_from%'
+            $defaultUri: '%app.default_uri%'
 
     App\Routing\AppUrlGenerator:
         arguments:

@@ -101,3 +101,21 @@ export const defaultDueDateForPreset = (preset) => {
       return toDateInputValue(base);
   }
 };
+
+export const nextSnoozeDueOn = (dueOn) => {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+
+  let base = new Date(today);
+
+  if (typeof dueOn === 'string' && dueOn.trim() !== '') {
+    const parsedDueAt = new Date(`${dueOn}T12:00:00`);
+    if (!Number.isNaN(parsedDueAt.getTime()) && parsedDueAt > today) {
+      base = parsedDueAt;
+    }
+  }
+
+  base.setDate(base.getDate() + 1);
+
+  return toDateInputValue(base);
+};

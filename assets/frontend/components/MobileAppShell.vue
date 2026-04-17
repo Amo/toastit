@@ -18,6 +18,7 @@ const route = useRoute();
 const router = useRouter();
 const workspacePickerOpen = ref(false);
 const workspaceCreateFlowActive = ref(false);
+const immersiveModeActive = ref(false);
 
 const tabs = computed(() => [
   {
@@ -99,6 +100,10 @@ const createToastTarget = computed(() => {
 });
 
 const showFloatingCreateButton = computed(() => {
+  if (immersiveModeActive.value) {
+    return false;
+  }
+
   const routeName = String(route.name ?? '');
 
   if (routeName === 'workspace' || routeName === 'inbox') {
@@ -113,6 +118,10 @@ const showFloatingCreateButton = computed(() => {
 });
 
 const showFloatingCreateWorkspaceButton = computed(() => {
+  if (immersiveModeActive.value) {
+    return false;
+  }
+
   const routeName = String(route.name ?? '');
   return routeName === 'dashboard' && activeTabKey.value === 'workspaces' && !workspaceCreateFlowActive.value;
 });
@@ -181,6 +190,11 @@ const syncWorkspaceCreateFlowState = (event) => {
   workspaceCreateFlowActive.value = nextState;
 };
 
+const syncImmersiveModeState = (event) => {
+  const nextState = event instanceof CustomEvent && event.detail?.active === true;
+  immersiveModeActive.value = nextState;
+};
+
 const navigateToTab = (tabKey) => {
   if (tabKey === 'profile') {
     router.push('/app/profile');
@@ -197,10 +211,12 @@ const navigateToTab = (tabKey) => {
 
 onMounted(() => {
   window.addEventListener('toastit:create-workspace-flow-state', syncWorkspaceCreateFlowState);
+  window.addEventListener('toastit:mobile-immersive-state', syncImmersiveModeState);
 });
 
 onUnmounted(() => {
   window.removeEventListener('toastit:create-workspace-flow-state', syncWorkspaceCreateFlowState);
+  window.removeEventListener('toastit:mobile-immersive-state', syncImmersiveModeState);
 });
 
 </script>
@@ -237,7 +253,7 @@ onUnmounted(() => {
       </section>
     </Transition>
 
-    <nav class="tw-mobile-app-shell__nav" aria-label="Mobile navigation">
+    <nav v-if="!immersiveModeActive" class="tw-mobile-app-shell__nav" aria-label="Mobile navigation">
       <button
         v-for="tab in tabs"
         :key="tab.key"

@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { WorkspacesApi } from '../api/workspaces';
-import { defaultDueDateForPreset, renderToastDescription } from '../utils/workspaceFormatting';
+import { defaultDueDateForPreset, nextSnoozeDueOn, renderToastDescription } from '../utils/workspaceFormatting';
 import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
 import CommentThread from './CommentThread.vue';
@@ -99,7 +99,6 @@ const resolvedInfiniteLoader = ref(null);
 const mobileCommentsSectionRef = ref(null);
 const mobileActionBarDocked = ref(false);
 const mobileActionBarScrollFrame = ref(0);
-const isMobileCommentModalOpen = ref(false);
 const mobileVetoConfirmToastId = ref(null);
 const MOBILE_AGENDA_SWIPE_ACTION_SLOT_WIDTH = 56;
 const mobileAgendaSwipe = ref({
@@ -1456,7 +1455,6 @@ const openToastModal = (item) => {
 
 const closeToastModal = () => {
   closeMoveCopyToastModal();
-  closeMobileCommentModal();
   closeMobileVetoConfirmModal();
 
   if (standaloneMode.value) {
@@ -1637,29 +1635,6 @@ const summarizeComments = async (itemId) => {
     ...commentSummaries.value,
     [numericItemId]: data.summary,
   };
-};
-
-const openMobileCommentModal = () => {
-  if (!selectedToastModal.value || !isActiveToast(selectedToastModal.value)) {
-    return;
-  }
-
-  isMobileCommentModalOpen.value = true;
-};
-
-const closeMobileCommentModal = () => {
-  isMobileCommentModalOpen.value = false;
-};
-
-const submitMobileComment = async () => {
-  if (!selectedToastModal.value) {
-    return;
-  }
-
-  const created = await createComment(selectedToastModal.value.id);
-  if (created) {
-    closeMobileCommentModal();
-  }
 };
 
 const closeMobileVetoConfirmModal = () => {
@@ -2036,6 +2011,32 @@ const setReady = async (itemId, ready) => {
   }
 };
 
+const snoozeToast = async (itemId) => {
+  const currentItem = [
+    ...agendaItems.value,
+    ...vetoedItems.value,
+    ...resolvedItems.value,
+  ].find((candidate) => candidate.id === itemId);
+  if (!currentItem || !currentItem.currentUserCanEdit || !isActiveToast(currentItem)) {
+    return;
+  }
+
+  const nextDueOn = nextSnoozeDueOn(currentItem.dueOn);
+  const { ok } = await workspacesApi.updateToast(itemId, {
+    title: currentItem.title ?? '',
+    description: currentItem.description ?? '',
+    ownerId: currentItem.owner?.id ? String(currentItem.owner.id) : '',
+    dueOn: nextDueOn,
+  });
+
+  if (!ok) {
+    errorMessage.value = 'Unable to snooze this toast.';
+    return;
+  }
+
+  await fetchWorkspace();
+};
+
 const resolveWorkspacePrivacyLabel = (candidateWorkspace) => (
   candidateWorkspace?.isSoloWorkspace ? 'private' : 'shared'
 );
@@ -2296,6 +2297,14 @@ const syncMobileActionBarDockState = () => {
   }
 };
 
+const syncMobileImmersiveState = () => {
+  window.dispatchEvent(new CustomEvent('toastit:mobile-immersive-state', {
+    detail: {
+      active: useDedicatedMobileToastView.value && !!selectedToastModal.value,
+    },
+  }));
+};
+
 const handleViewportOrScrollForMobileActionBar = () => {
   syncViewport();
   syncMobileActionBarDockState();
@@ -2338,6 +2347,7 @@ onUnmounted(() => {
   disconnectArchivedToastObserver();
   revokeWorkspaceBackgroundObjectUrl();
   closeMobileAgendaSwipe();
+  window.dispatchEvent(new CustomEvent('toastit:mobile-immersive-state', { detail: { active: false } }));
 });
 
 watch(() => props.apiUrl, fetchWorkspace);
@@ -2388,6 +2398,7 @@ watch(hasMoreResolvedItems, syncArchivedToastObserver);
 watch([useDedicatedMobileToastView, selectedToastModal], async () => {
   await nextTick();
   syncMobileActionBarDockState();
+  syncMobileImmersiveState();
 });
 watch(isMobileViewport, (isMobile) => {
   if (isMobile) {
@@ -2549,6 +2560,15 @@ watch(isMobileViewport, (isMobile) => {
                       @click.stop="executeMobileAgendaAction(item.id, () => setReady(item.id, item.status !== 'ready'))"
                     >
                       <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      v-if="item.currentUserCanEdit && isActiveToast(item) && !isToastingMode"
+                      type="button"
+                      class="inline-grid w-14 place-items-center border-l border-stone-200 bg-white text-blue-600 transition hover:bg-blue-50"
+                      title="Snooze"
+                      @click.stop="executeMobileAgendaAction(item.id, () => snoozeToast(item.id))"
+                    >
+                      <i class="fa-solid fa-clock text-sm" aria-hidden="true"></i>
                     </button>
                     <button
                       v-if="workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(item)"
@@ -2995,15 +3015,19 @@ watch(isMobileViewport, (isMobile) => {
                 <div class="mt-2 tw-markdown text-sm text-stone-800" v-html="renderToastDescription(commentSummaryFor(selectedToastModal.id))"></div>
               </div>
               <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" mobile />
-              <button
+              <div
                 v-if="isActiveToast(selectedToastModal)"
-                type="button"
-                class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
-                @click="openMobileCommentModal"
+                class="sticky bottom-0 z-[97] -mx-4 border-t border-stone-200/80 bg-white/95 px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur"
               >
-                <i class="fa-regular fa-message text-sm" aria-hidden="true"></i>
-                <span>Add a comment</span>
-              </button>
+                <CommentComposer
+                  mobile
+                  :current-user="currentUser"
+                  :value="commentDraftFor(selectedToastModal.id)"
+                  @input="handleCommentDraftInput(selectedToastModal.id, $event)"
+                  @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
+                  @submit="createComment(selectedToastModal.id)"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -3524,39 +3548,6 @@ watch(isMobileViewport, (isMobile) => {
             >
               <span>{{ option.label }}</span>
               <i v-if="currentAssigneeFilter === option.value" class="fa-solid fa-check text-amber-700" aria-hidden="true"></i>
-            </button>
-          </div>
-        </div>
-      </ModalDialog>
-
-      <ModalDialog v-if="useDedicatedMobileToastView && selectedToastModal && isMobileCommentModalOpen" max-width-class="max-w-4xl" @close="closeMobileCommentModal">
-        <ModalHeader
-          eyebrow="Comment"
-          title="Add a comment"
-          @close="closeMobileCommentModal"
-        />
-        <div class="space-y-4 px-6 py-6">
-          <textarea
-            class="min-h-36 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm leading-6 text-stone-800 transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
-            :value="commentDraftFor(selectedToastModal.id)"
-            placeholder="Write your comment"
-            @input="updateCommentDraft(selectedToastModal.id, $event.target.value)"
-            @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
-          />
-          <div class="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950"
-              @click="closeMobileCommentModal"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300"
-              @click="submitMobileComment"
-            >
-              Add comment
             </button>
           </div>
         </div>
