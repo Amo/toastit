@@ -10,7 +10,9 @@ use App\Entity\ToastingSession;
 use App\Entity\User;
 use App\Entity\Vote;
 use App\Entity\Workspace;
+use App\Entity\WorkspaceNote;
 use App\Entity\WorkspaceMember;
+use App\Entity\WorkspaceNoteVersion;
 use App\Tests\Support\ReflectionHelper;
 use Doctrine\Common\Collections\ArrayCollection;
 use PHPUnit\Framework\TestCase;
@@ -136,6 +138,27 @@ final class EntityBehaviorTest extends TestCase
         self::assertTrue($workspace->isInboxWorkspace());
         self::assertTrue($workspace->isSoloWorkspace());
         self::assertSame(Workspace::MEETING_MODE_IDLE, $workspace->getMeetingMode());
+
+        $note = (new WorkspaceNote())
+            ->setAuthor($organizer)
+            ->applySnapshot('  Team recap  ', "  ## Decisions\n\n- Ship  ", true, new \DateTimeImmutable('2026-04-03 08:30:00'));
+        $version = (new WorkspaceNoteVersion())
+            ->setAuthor($guestUser)
+            ->setTitle('Team recap')
+            ->setBody("## Decisions\n\n- Ship")
+            ->setIsImportant(true);
+
+        $workspace->addNote($note);
+        $note->addVersion($version);
+
+        self::assertCount(1, $workspace->getNotes());
+        self::assertSame($workspace, $note->getWorkspace());
+        self::assertTrue($note->isImportant());
+        self::assertSame('Team recap', $note->getTitle());
+        self::assertSame("## Decisions\n\n- Ship", $note->getBody());
+        self::assertTrue($note->matchesSnapshot('Team recap', "## Decisions\n\n- Ship", true));
+        self::assertCount(1, $note->getVersions());
+        self::assertSame($note, $version->getNote());
     }
 
     public function testToastSanitizesFollowUpsAndTracksVotesCommentsAndFlags(): void

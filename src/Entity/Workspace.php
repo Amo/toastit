@@ -75,12 +75,18 @@ class Workspace
     #[ORM\OrderBy(['startedAt' => 'DESC'])]
     private Collection $toastingSessions;
 
+    /** @var Collection<int, WorkspaceNote> */
+    #[ORM\OneToMany(mappedBy: 'workspace', targetEntity: WorkspaceNote::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['isImportant' => 'DESC', 'updatedAt' => 'DESC', 'id' => 'DESC'])]
+    private Collection $notes;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->memberships = new ArrayCollection();
         $this->items = new ArrayCollection();
         $this->toastingSessions = new ArrayCollection();
+        $this->notes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -406,6 +412,29 @@ class Workspace
             $this->items->add($item);
             $item->setWorkspace($this);
         }
+
+        return $this;
+    }
+
+    /** @return Collection<int, WorkspaceNote> */
+    public function getNotes(): Collection
+    {
+        return $this->notes;
+    }
+
+    public function addNote(WorkspaceNote $note): self
+    {
+        if (!$this->notes->contains($note)) {
+            $this->notes->add($note);
+            $note->setWorkspace($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNote(WorkspaceNote $note): self
+    {
+        $this->notes->removeElement($note);
 
         return $this;
     }
