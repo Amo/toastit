@@ -5,6 +5,7 @@ import { ToastitApiClient } from '../api/ToastitApiClient';
 import { authState, authStore } from '../authStore';
 import { ProfileApi } from '../api/profile';
 import { WorkspacesApi } from '../api/workspaces';
+import { formatDateTimeForUser } from '../utils/dateTimeFormatting';
 import AvatarBadge from './AvatarBadge.vue';
 import EmptyState from './EmptyState.vue';
 import ModalDialog from './ModalDialog.vue';
@@ -425,22 +426,13 @@ const buildProcessedAvatarFile = async (file) => {
 };
 
 const formatDateTime = (value) => {
-  if (!value) {
-    return 'Never';
-  }
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
+  return formatDateTimeForUser(value, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(parsedDate);
+  }, profile.value.timezone, 'Never');
 };
 
 const buildExpiresAtPayload = (localDateTime) => {

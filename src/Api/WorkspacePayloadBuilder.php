@@ -43,6 +43,7 @@ final class WorkspacePayloadBuilder
                 'email' => $currentUser->getPublicEmail(),
                 'initials' => $currentUser->getInitials(),
                 'gravatarUrl' => $this->avatarUrl->resolve($currentUser),
+                'preferredTimezone' => $currentUser->getPreferredTimezone() ?? 'auto',
                 'advancedAiModelEnabled' => $currentUser->isAdvancedAiModelEnabled(),
                 'inboxEmailAddress' => $this->inboundEmailAddress->buildAddressForUser($currentUser),
             ],

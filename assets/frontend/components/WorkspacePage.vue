@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ToastitApiClient } from '../api/ToastitApiClient';
 import { WorkspacesApi } from '../api/workspaces';
+import { formatDateTimeForUser } from '../utils/dateTimeFormatting';
 import { defaultDueDateForPreset, nextSnoozeDueOn, renderToastDescription } from '../utils/workspaceFormatting';
 import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
@@ -1745,10 +1746,10 @@ const formatCommentCreatedAtDisplay = (value) => {
     return 'Just now';
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return formatDateTimeForUser(value, {
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(value);
+  }, currentUser.value?.preferredTimezone ?? 'auto', 'Just now');
 };
 
 const autosizeTextarea = (element) => {

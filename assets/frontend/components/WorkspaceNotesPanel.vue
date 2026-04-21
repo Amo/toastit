@@ -1,7 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import EmptyState from './EmptyState.vue';
-import { renderToastDescription } from '../utils/workspaceFormatting';
 
 const props = defineProps({
   notes: { type: Array, default: () => [] },
@@ -61,10 +60,6 @@ const parsedDocumentDraft = computed(() => parseDocument(documentDraft.value));
 const noteDirty = computed(() => selectedNote.value && documentDraft.value !== selectedDocumentSnapshot.value);
 const canSaveDraft = computed(() => selectedNote.value && noteDirty.value && parsedDocumentDraft.value.isValid);
 const historyEntries = computed(() => selectedNote.value?.versions ?? []);
-const previewBody = computed(() => {
-  const body = parsedDocumentDraft.value.body ?? '';
-  return body.trim() ? renderToastDescription(body) : '';
-});
 const canTransferSelectedNote = computed(() => (
   !!selectedNote.value && props.currentUserIsOwner && props.otherWorkspaces.length > 0 && transferTargetWorkspaceId.value !== ''
 ));
@@ -320,13 +315,17 @@ onBeforeUnmount(() => {
             <div class="space-y-1">
               <p class="text-sm font-semibold text-stone-900">{{ selectedNote.author.displayName }}</p>
               <p class="text-xs text-stone-500">Created {{ selectedNote.createdAtDisplay }}</p>
-              <button type="button" class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 transition hover:text-stone-900" @click="isHistoryOpen = !isHistoryOpen">
-                <i class="fa-solid fa-clock-rotate-left text-[11px]" aria-hidden="true"></i>
-                <span>History</span>
-              </button>
             </div>
 
             <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
+                @click="isHistoryOpen = !isHistoryOpen"
+              >
+                <i class="fa-solid fa-clock-rotate-left text-sm" aria-hidden="true"></i>
+                <span class="sr-only">{{ isHistoryOpen ? 'Hide history' : 'Show history' }}</span>
+              </button>
               <button
                 type="button"
                 class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
@@ -388,17 +387,10 @@ onBeforeUnmount(() => {
 
             <textarea
               v-model="documentDraft"
-              class="min-h-[24rem] w-full resize-none rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-5 text-base leading-7 text-stone-900 outline-none transition focus:border-amber-300 focus:bg-white"
+              class="min-h-[32rem] w-full resize-none rounded-[1.5rem] border border-stone-200 bg-white px-6 py-6 text-[1.02rem] leading-8 text-stone-900 outline-none transition focus:border-amber-300"
               placeholder="Title on the first line, then the note body in Markdown."
               @blur="persistSelectedNote({ immediate: true })"
             ></textarea>
-
-            <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50/70 px-5 py-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Preview</p>
-              <h2 class="mt-3 text-2xl font-semibold tracking-tight text-stone-950">{{ parsedDocumentDraft.title || 'Untitled note' }}</h2>
-              <div v-if="previewBody" class="mt-5 tw-markdown text-stone-800" v-html="previewBody"></div>
-              <p v-else class="mt-5 text-sm text-stone-500">No body content yet.</p>
-            </div>
           </div>
         </div>
 

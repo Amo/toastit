@@ -29,6 +29,7 @@ final class WorkspacePayloadBuilderTest extends TestCase
     public function testBuildReturnsWorkspaceAndItemPayloads(): void
     {
         $currentUser = (new User())->setEmail('owner@example.com')->setFirstName('Owner');
+        $currentUser->setPreferredTimezone('America/New_York');
         $member = (new User())->setEmail('member@example.com')->setFirstName('Member');
         ReflectionHelper::setId($currentUser, 1);
         ReflectionHelper::setId($member, 2);
@@ -125,6 +126,7 @@ final class WorkspacePayloadBuilderTest extends TestCase
         $payload = $builder->build($workspace, $currentUser);
 
         self::assertSame(1, $payload['currentUser']['id']);
+        self::assertSame('America/New_York', $payload['currentUser']['preferredTimezone']);
         self::assertSame('Workspace', $payload['workspace']['name']);
         self::assertTrue($payload['workspace']['currentUserIsOwner']);
         self::assertSame(1, $payload['workspace']['ownerCount']);
@@ -140,8 +142,8 @@ final class WorkspacePayloadBuilderTest extends TestCase
         self::assertSame(1, $payload['agendaItems'][0]['voteCount']);
         self::assertTrue($payload['agendaItems'][0]['currentUserHasVoted']);
         self::assertSame('Member', $payload['agendaItems'][0]['ownerName']);
-        self::assertSame('11/04/2026', $payload['agendaItems'][0]['dueOnDisplay']);
-        self::assertSame('12/04/2026', $payload['agendaItems'][0]['statusChangedAtDisplay']);
+        self::assertSame('10/04/2026', $payload['agendaItems'][0]['dueOnDisplay']);
+        self::assertSame('11/04/2026', $payload['agendaItems'][0]['statusChangedAtDisplay']);
         self::assertSame('Earlier', $payload['agendaItems'][0]['followUpItems'][0]['title']);
         self::assertSame('Later', $payload['agendaItems'][0]['followUpItems'][1]['title']);
         self::assertSame('Comment', $payload['agendaItems'][0]['comments'][0]['content']);
