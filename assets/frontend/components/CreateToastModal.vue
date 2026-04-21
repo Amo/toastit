@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import DatePickerField from './DatePickerField.vue';
 import KeyboardHint from './KeyboardHint.vue';
+import MarkdownRichTextEditor from './MarkdownRichTextEditor.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
 
@@ -20,7 +21,6 @@ const props = defineProps({
 const emit = defineEmits(['close', 'create', 'refine', 'undo-refine', 'title-input', 'title-keydown', 'update:title', 'update:ownerId', 'update:dueOn', 'update:description', 'update:aiImproveEnabled']);
 
 const titleInput = ref(null);
-const descriptionInput = ref(null);
 const isMobileViewport = ref(false);
 
 const syncViewport = () => {
@@ -49,7 +49,7 @@ const focusTitle = async () => {
 
 const emitRefineRequest = () => {
   const currentTitle = titleInput.value?.value ?? props.itemForm?.title ?? '';
-  const currentDescription = descriptionInput.value?.value ?? props.itemForm?.description ?? '';
+  const currentDescription = props.itemForm?.description ?? '';
 
   emit('refine', {
     title: currentTitle,
@@ -135,25 +135,22 @@ onUnmounted(() => {
 
           <label class="grid gap-2 text-sm font-medium text-stone-700">
             <span>Details</span>
-            <textarea
-              ref="descriptionInput"
-              class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
-              :value="itemForm.description"
+            <MarkdownRichTextEditor
+              :model-value="itemForm.description"
+              min-height-class="min-h-52"
               placeholder="Describe what needs to be done..."
-              @input="$emit('update:description', $event.target.value)"
+              @update:model-value="$emit('update:description', $event)"
             />
           </label>
         </template>
         <template v-else>
           <label class="grid gap-2 text-sm font-medium text-stone-700">
             <span>Toast</span>
-            <textarea
-              ref="descriptionInput"
-              class="min-h-52 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base leading-6"
-              :value="itemForm.description"
-              autofocus
+            <MarkdownRichTextEditor
+              :model-value="itemForm.description"
+              min-height-class="min-h-52"
               placeholder="Describe what needs to be done..."
-              @input="$emit('update:description', $event.target.value)"
+              @update:model-value="$emit('update:description', $event)"
               @keydown="$emit('title-input', $event)"
             />
           </label>
@@ -191,7 +188,12 @@ onUnmounted(() => {
 
         <label class="grid gap-2 text-sm font-medium text-stone-700">
           <span>Details</span>
-          <textarea ref="descriptionInput" class="min-h-48 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" :value="itemForm.description" placeholder="Add details or description" @input="$emit('update:description', $event.target.value)" />
+          <MarkdownRichTextEditor
+            :model-value="itemForm.description"
+            min-height-class="min-h-48"
+            placeholder="Add details or description"
+            @update:model-value="$emit('update:description', $event)"
+          />
         </label>
       </template>
 

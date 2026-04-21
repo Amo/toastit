@@ -1,5 +1,6 @@
 <script setup>
 import AvatarBadge from './AvatarBadge.vue';
+import MarkdownRichTextEditor from './MarkdownRichTextEditor.vue';
 
 defineProps({
   currentUser: { type: Object, default: null },
@@ -20,19 +21,16 @@ defineEmits(['focus', 'input', 'keydown', 'submit']);
       :gravatar-url="currentUser?.gravatarUrl"
       :alt="currentUser?.displayName"
     />
-    <textarea
-      class="min-h-[2.75rem] min-w-0 flex-1 resize-none overflow-hidden text-sm leading-6 transition"
-      :class="[
-        mobile ? 'rounded-2xl border bg-white px-4 py-3' : 'rounded-[1.4rem] border bg-white px-4 py-3',
-        blocked ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200'
-      ]"
-      :value="value"
-      rows="1"
+    <MarkdownRichTextEditor
+      class="min-w-0 flex-1"
+      :model-value="value"
+      :blocked="blocked"
+      :compact="true"
       placeholder="Write a comment"
       @focus="$emit('focus', $event)"
-      @input="$emit('input', $event)"
+      @update:model-value="$emit('input', $event)"
       @keydown="$emit('keydown', $event)"
-    ></textarea>
+    />
     <button
       type="button"
       :class="mobile ? 'inline-grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-200 text-amber-900 shadow-sm transition hover:bg-amber-300' : 'rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-300'"
