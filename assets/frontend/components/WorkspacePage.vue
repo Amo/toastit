@@ -22,6 +22,7 @@ import SessionArchiveModal from './SessionArchiveModal.vue';
 import ToastCurationModal from './ToastCurationModal.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
 import ToastNavigationFooter from './ToastNavigationFooter.vue';
+import WorkspaceNotesPanel from './WorkspaceNotesPanel.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -41,8 +42,11 @@ const inviteEmail = ref('');
 const itemForm = ref({ title: '', description: '', ownerId: '', dueOn: '' });
 const currentToastFilter = ref('pending');
 const currentAssigneeFilter = ref('');
+const currentWorkspaceSection = ref('toasts');
 const isApplyingFiltersFromRoute = ref(false);
 const isSyncingFiltersToRoute = ref(false);
+const isApplyingSectionFromRoute = ref(false);
+const isSyncingSectionToRoute = ref(false);
 const isMobileStatusFilterModalOpen = ref(false);
 const isMobileAssigneeFilterModalOpen = ref(false);
 const vetoedVisibleCount = ref(20);
@@ -146,6 +150,7 @@ const selectedTargetWorkspace = computed(() => {
 const members = computed(() => payload.value?.memberships ?? []);
 const participants = computed(() => payload.value?.participants ?? []);
 const toastingSessions = computed(() => payload.value?.toastingSessions ?? []);
+const workspaceNotes = computed(() => payload.value?.notes ?? []);
 const agendaItems = computed(() => payload.value?.agendaItems ?? []);
 const vetoedItems = computed(() => payload.value?.vetoedItems ?? []);
 const resolvedItems = computed(() => payload.value?.resolvedItems ?? []);
@@ -188,6 +193,11 @@ const selectedAssigneeFilterLabel = computed(() => (
   assigneeFilterOptions.value.find((option) => option.value === currentAssigneeFilter.value)?.label ?? 'Assignee'
 ));
 
+const workspaceSectionOptions = [
+  { value: 'toasts', label: 'Toasts' },
+  { value: 'notes', label: 'Notes' },
+];
+
 const resolveToastFilter = (value) => {
   const normalizedValue = typeof value === 'string' ? value : '';
   if (normalizedValue === 'active' || normalizedValue === 'ready') {
@@ -220,6 +230,24 @@ const applyFiltersFromRoute = () => {
   currentAssigneeFilter.value = resolvedAssigneeFilter;
   nextTick(() => {
     isApplyingFiltersFromRoute.value = false;
+  });
+};
+
+const resolveWorkspaceSection = (value) => (
+  workspaceSectionOptions.some((option) => option.value === value) ? value : 'toasts'
+);
+
+const applySectionFromRoute = () => {
+  const resolvedSection = resolveWorkspaceSection(typeof route.query.section === 'string' ? route.query.section : '');
+
+  if (resolvedSection === currentWorkspaceSection.value) {
+    return;
+  }
+
+  isApplyingSectionFromRoute.value = true;
+  currentWorkspaceSection.value = resolvedSection;
+  nextTick(() => {
+    isApplyingSectionFromRoute.value = false;
   });
 };
 
@@ -278,6 +306,33 @@ const syncFiltersToRoute = async () => {
   await router.replace({ query: nextQuery });
   } finally {
     isSyncingFiltersToRoute.value = false;
+  }
+};
+
+const syncSectionToRoute = async () => {
+  if (isApplyingSectionFromRoute.value || isSyncingSectionToRoute.value) {
+    return;
+  }
+
+  isSyncingSectionToRoute.value = true;
+
+  try {
+    const nextQuery = { ...route.query };
+    const currentSection = typeof route.query.section === 'string' ? route.query.section : undefined;
+
+    if (currentWorkspaceSection.value === 'toasts') {
+      delete nextQuery.section;
+    } else {
+      nextQuery.section = currentWorkspaceSection.value;
+    }
+
+    if (currentSection === nextQuery.section) {
+      return;
+    }
+
+    await router.replace({ query: nextQuery });
+  } finally {
+    isSyncingSectionToRoute.value = false;
   }
 };
 
@@ -732,6 +787,74 @@ const fetchWorkspace = async () => {
   }
   resetItemForm();
   isLoading.value = false;
+};
+
+const sortWorkspaceNotes = (notes = []) => [...notes].sort((left, right) => {
+  if (!!left?.isImportant !== !!right?.isImportant) {
+    return left?.isImportant ? -1 : 1;
+  }
+
+  const leftUpdatedAt = Date.parse(left?.updatedAt ?? '') || 0;
+  const rightUpdatedAt = Date.parse(right?.updatedAt ?? '') || 0;
+
+  return rightUpdatedAt - leftUpdatedAt;
+});
+
+const replaceWorkspaceNote = (nextNote) => {
+  if (!payload.value || !nextNote) {
+    return nextNote;
+  }
+
+  const currentNotes = Array.isArray(payload.value.notes) ? payload.value.notes : [];
+  const nextNotes = currentNotes.some((note) => note.id === nextNote.id)
+    ? currentNotes.map((note) => (note.id === nextNote.id ? nextNote : note))
+    : [nextNote, ...currentNotes];
+
+  payload.value.notes = sortWorkspaceNotes(nextNotes);
+
+  return nextNote;
+};
+
+const createWorkspaceNote = async (notePayload) => {
+  const { ok, data } = await workspacesApi.createNote(workspace.value.id, notePayload);
+
+  if (!ok || !data?.ok || !data.note) {
+    throw new Error(data?.message ?? 'Unable to create note.');
+  }
+
+  return replaceWorkspaceNote(data.note);
+};
+
+const updateWorkspaceNote = async (noteId, notePayload) => {
+  const { ok, data } = await workspacesApi.updateNote(workspace.value.id, noteId, notePayload);
+
+  if (!ok || !data?.ok || !data.note) {
+    throw new Error(data?.message ?? 'Unable to save note.');
+  }
+
+  return replaceWorkspaceNote(data.note);
+};
+
+const deleteWorkspaceNote = async (noteId) => {
+  const { ok, data } = await workspacesApi.deleteNote(workspace.value.id, noteId);
+
+  if (!ok || data?.ok === false) {
+    throw new Error(data?.message ?? 'Unable to delete note.');
+  }
+
+  if (payload.value) {
+    payload.value.notes = (payload.value.notes ?? []).filter((note) => note.id !== noteId);
+  }
+};
+
+const revertWorkspaceNoteVersion = async (noteId, versionId) => {
+  const { ok, data } = await workspacesApi.revertNoteVersion(workspace.value.id, noteId, versionId);
+
+  if (!ok || !data?.ok || !data.note) {
+    throw new Error(data?.message ?? 'Unable to revert note history.');
+  }
+
+  return replaceWorkspaceNote(data.note);
 };
 
 const revokeWorkspaceBackgroundObjectUrl = () => {
@@ -2576,6 +2699,7 @@ onMounted(() => {
   syncViewport();
   syncToastReturnToFromRoute();
   applyFiltersFromRoute();
+  applySectionFromRoute();
   fetchWorkspace();
   window.addEventListener('keydown', handleWorkspaceKeydown);
   window.addEventListener('toastit:create-toast', handleExternalCreateToastRequest);
@@ -2617,6 +2741,7 @@ watch(() => workspace.value?.id, consumeCreateToastRouteIntent);
 watch(() => props.createOnlyMode, syncCreateOnlyMode);
 watch(() => workspace.value?.id, syncCreateOnlyMode);
 watch(() => [route.query.filter, route.query.assignee], applyFiltersFromRoute);
+watch(() => route.query.section, applySectionFromRoute);
 watch(() => selectedToastModal.value?.title, () => nextTick(syncMobileStickyHeaderHeight));
 watch(useDedicatedMobileToastView, () => nextTick(() => {
   syncMobileStickyHeaderHeight();
@@ -2624,6 +2749,7 @@ watch(useDedicatedMobileToastView, () => nextTick(() => {
 }));
 watch(currentToastFilter, syncFiltersToRoute);
 watch(currentAssigneeFilter, syncFiltersToRoute);
+watch(currentWorkspaceSection, syncSectionToRoute);
 watch(currentToastFilter, () => {
   resetArchivedToastPagination();
   syncArchivedToastObserver();
@@ -2699,6 +2825,19 @@ watch(isMobileViewport, (isMobile) => {
       </div>
 
       <div class="mt-0 space-y-0 lg:mt-4">
+        <div class="mb-4 inline-flex rounded-full border border-stone-200 bg-white p-1">
+          <button
+            v-for="option in workspaceSectionOptions"
+            :key="option.value"
+            type="button"
+            class="rounded-full px-4 py-2 text-sm font-semibold transition"
+            :class="currentWorkspaceSection === option.value ? 'bg-amber-200 text-amber-900 shadow-sm' : 'text-stone-600 hover:text-stone-950'"
+            @click="currentWorkspaceSection = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+
         <div v-if="isInboxWorkspace" class="mb-4 tw-toastit-card border border-amber-200 bg-amber-50/80 p-5 text-sm text-amber-900">
           <p class="font-semibold">Email-to-toast inbox</p>
           <p class="mt-2 text-amber-800">
@@ -2742,7 +2881,19 @@ watch(isMobileViewport, (isMobile) => {
           </ul>
         </div>
 
-        <div class="tw-toastit-card p-6 space-y-4">
+        <WorkspaceNotesPanel
+          v-if="currentWorkspaceSection === 'notes'"
+          :notes="workspaceNotes"
+          :workspace="workspace"
+          :current-user="currentUser"
+          :can-create-note="workspace.meetingMode !== 'live'"
+          :create-note="createWorkspaceNote"
+          :update-note="updateWorkspaceNote"
+          :delete-note="deleteWorkspaceNote"
+          :revert-note="revertWorkspaceNoteVersion"
+        />
+
+        <div v-else class="tw-toastit-card p-6 space-y-4">
             <div class="hidden gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] lg:grid">
               <input v-model="itemForm.title" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="New toast" @keydown.enter.prevent="createItem">
               <button type="button" class="inline-grid h-[3.125rem] place-items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="openCreateToastModal">

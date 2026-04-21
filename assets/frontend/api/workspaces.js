@@ -105,6 +105,22 @@ export class WorkspacesApi {
     return this.client.putJson(`/api/workspaces/${workspaceId}/sessions/${sessionId}/summary`, { summary });
   }
 
+  createNote(workspaceId, payload) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/notes`, payload);
+  }
+
+  updateNote(workspaceId, noteId, payload) {
+    return this.client.putJson(`/api/workspaces/${workspaceId}/notes/${noteId}`, payload);
+  }
+
+  deleteNote(workspaceId, noteId) {
+    return this.client.delete(`/api/workspaces/${workspaceId}/notes/${noteId}`);
+  }
+
+  revertNoteVersion(workspaceId, noteId, versionId) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/notes/${noteId}/versions/${versionId}/revert`, {});
+  }
+
   sendSessionSummary(workspaceId, sessionId) {
     return this.client.postJson(`/api/workspaces/${workspaceId}/sessions/${sessionId}/summary/send`, {});
   }
