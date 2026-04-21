@@ -135,6 +135,67 @@ final class WorkspaceNoteFlowTest extends WebTestCase
         self::assertResponseStatusCodeSame(403);
     }
 
+    public function testOwnerCanTransferNoteToAnotherWorkspaceButMemberCannot(): void
+    {
+        $ownerEmail = sprintf('notes-transfer-owner-%s@example.com', time());
+        $memberEmail = sprintf('notes-transfer-member-%s@example.com', time());
+
+        $ownerClient = static::createClient();
+        $this->loginWithMagicLink($ownerClient, $ownerEmail);
+        $ownerClient->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+
+        $ownerClient->jsonRequest('POST', '/api/workspaces', ['name' => 'Source workspace']);
+        self::assertResponseIsSuccessful();
+        $sourceWorkspaceId = $this->decodeJsonResponse($ownerClient)['workspaceId'];
+
+        $ownerClient->jsonRequest('POST', '/api/workspaces', ['name' => 'Target workspace']);
+        self::assertResponseIsSuccessful();
+        $targetWorkspaceId = $this->decodeJsonResponse($ownerClient)['workspaceId'];
+
+        $ownerClient->jsonRequest('POST', sprintf('/api/workspaces/%d/invite', $sourceWorkspaceId), ['email' => $memberEmail]);
+        self::assertResponseIsSuccessful();
+
+        static::ensureKernelShutdown();
+        $memberClient = static::createClient();
+        $this->loginWithMagicLink($memberClient, $memberEmail);
+        $memberClient->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($memberEmail));
+        $memberClient->jsonRequest('POST', sprintf('/api/workspaces/%d/notes', $sourceWorkspaceId), [
+            'title' => 'Transferable note',
+            'body' => 'Move me.',
+        ]);
+        self::assertResponseIsSuccessful();
+        $noteId = (int) $this->decodeJsonResponse($memberClient)['note']['id'];
+
+        $memberClient->jsonRequest('POST', sprintf('/api/workspaces/%d/notes/%d/transfer', $sourceWorkspaceId, $noteId), [
+            'targetWorkspaceId' => $targetWorkspaceId,
+        ]);
+        self::assertResponseStatusCodeSame(403);
+
+        static::ensureKernelShutdown();
+        $ownerClient = static::createClient();
+        $ownerClient->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+        $ownerClient->jsonRequest('POST', sprintf('/api/workspaces/%d/notes/%d/transfer', $sourceWorkspaceId, $noteId), [
+            'targetWorkspaceId' => $targetWorkspaceId,
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $payload = $this->decodeJsonResponse($ownerClient);
+        self::assertTrue($payload['ok']);
+        self::assertSame($targetWorkspaceId, $payload['workspaceId']);
+        self::assertSame($noteId, $payload['note']['id']);
+
+        $ownerClient->request('GET', sprintf('/api/workspaces/%d', $sourceWorkspaceId));
+        self::assertResponseIsSuccessful();
+        self::assertCount(0, $this->decodeJsonResponse($ownerClient)['notes']);
+
+        $ownerClient->request('GET', sprintf('/api/workspaces/%d', $targetWorkspaceId));
+        self::assertResponseIsSuccessful();
+        $targetPayload = $this->decodeJsonResponse($ownerClient);
+        self::assertCount(1, $targetPayload['notes']);
+        self::assertSame($noteId, $targetPayload['notes'][0]['id']);
+        self::assertSame('Transferable note', $targetPayload['notes'][0]['title']);
+    }
+
     private function workspaceNoteExists(int $noteId): bool
     {
         $note = static::getContainer()->get(EntityManagerInterface::class)

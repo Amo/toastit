@@ -7,11 +7,14 @@ const props = defineProps({
   notes: { type: Array, default: () => [] },
   workspace: { type: Object, required: true },
   currentUser: { type: Object, default: null },
+  currentUserIsOwner: { type: Boolean, default: false },
+  otherWorkspaces: { type: Array, default: () => [] },
   canCreateNote: { type: Boolean, default: true },
   createNote: { type: Function, required: true },
   updateNote: { type: Function, required: true },
   deleteNote: { type: Function, required: true },
   revertNote: { type: Function, required: true },
+  transferNote: { type: Function, required: true },
 });
 
 const selectedNoteId = ref(null);
@@ -20,6 +23,7 @@ const isHistoryOpen = ref(false);
 const isSaving = ref(false);
 const saveError = ref('');
 const saveState = ref('idle');
+const transferTargetWorkspaceId = ref('');
 let autosaveTimeout = null;
 let saveStateTimeout = null;
 let saveRequestId = 0;
@@ -61,6 +65,9 @@ const previewBody = computed(() => {
   const body = parsedDocumentDraft.value.body ?? '';
   return body.trim() ? renderToastDescription(body) : '';
 });
+const canTransferSelectedNote = computed(() => (
+  !!selectedNote.value && props.currentUserIsOwner && props.otherWorkspaces.length > 0 && transferTargetWorkspaceId.value !== ''
+));
 
 const clearAutosaveTimeout = () => {
   if (autosaveTimeout) {
@@ -78,6 +85,7 @@ const clearSaveStateTimeout = () => {
 
 const syncDraftFromSelectedNote = () => {
   documentDraft.value = selectedDocumentSnapshot.value;
+  transferTargetWorkspaceId.value = props.otherWorkspaces[0]?.id ? String(props.otherWorkspaces[0].id) : '';
   saveError.value = '';
   saveState.value = 'idle';
 };
@@ -214,6 +222,28 @@ const handleRevertVersion = async (versionId) => {
   isHistoryOpen.value = false;
 };
 
+const handleTransferNote = async () => {
+  if (!selectedNote.value || !canTransferSelectedNote.value) {
+    return;
+  }
+
+  const persisted = await persistSelectedNote({ immediate: true });
+  if (!persisted) {
+    return;
+  }
+
+  const targetWorkspace = props.otherWorkspaces.find((workspace) => String(workspace.id) === transferTargetWorkspaceId.value);
+  const targetWorkspaceName = targetWorkspace?.name ?? 'the target workspace';
+  const confirmed = window.confirm(`Move "${selectedNote.value.title}" to ${targetWorkspaceName}?`);
+  if (!confirmed) {
+    return;
+  }
+
+  await props.transferNote(selectedNote.value.id, Number(transferTargetWorkspaceId.value));
+  selectedNoteId.value = null;
+  isHistoryOpen.value = false;
+};
+
 watch(sortedNotes, (notes) => {
   if (!notes.length) {
     selectedNoteId.value = null;
@@ -277,16 +307,15 @@ onBeforeUnmount(() => {
           </span>
           <span class="min-w-0 flex-1">
             <span class="block truncate text-sm font-semibold text-stone-900">{{ note.title }}</span>
-            <span class="mt-1 block line-clamp-2 text-sm text-stone-600">{{ note.body || 'No content yet.' }}</span>
-            <span class="mt-2 block text-xs font-medium text-stone-500">Updated {{ note.updatedAtDisplay }}</span>
+            <span class="mt-1 block text-xs font-medium text-stone-500">Updated {{ note.updatedAtDisplay }}</span>
           </span>
         </button>
       </div>
     </aside>
 
     <section class="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white">
-      <div v-if="selectedNote" class="grid min-h-[38rem] lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div class="border-b border-stone-200 lg:border-b-0 lg:border-r">
+      <div v-if="selectedNote" class="grid min-h-[38rem]" :class="isHistoryOpen ? 'lg:grid-cols-[minmax(0,1fr)_18rem]' : 'lg:grid-cols-[minmax(0,1fr)]'">
+        <div class="border-b border-stone-200" :class="isHistoryOpen ? 'lg:border-b-0 lg:border-r' : 'lg:border-b-0'">
           <div class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 px-5 py-5">
             <div class="space-y-1">
               <p class="text-sm font-semibold text-stone-900">{{ selectedNote.author.displayName }}</p>
@@ -319,9 +348,9 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div class="space-y-4 px-5 py-5">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="text-xs font-medium text-stone-500">
+            <div class="space-y-4 px-5 py-5">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="text-xs font-medium text-stone-500">
                 <span v-if="saveState === 'autosaving'">Autosaving…</span>
                 <span v-else-if="saveState === 'saving'">Saving…</span>
                 <span v-else-if="saveState === 'saved'">Saved</span>
@@ -335,8 +364,27 @@ onBeforeUnmount(() => {
                 @click="persistSelectedNote({ immediate: true })"
               >
                 Save now
-              </button>
-            </div>
+                </button>
+              </div>
+
+              <div v-if="currentUserIsOwner && otherWorkspaces.length" class="flex flex-wrap items-center gap-3 rounded-[1.25rem] border border-stone-200 bg-stone-50 px-4 py-4">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Move note</p>
+                  <p class="mt-1 text-sm text-stone-600">Available only because you are admin of this workspace.</p>
+                </div>
+                <select v-model="transferTargetWorkspaceId" class="min-w-[13rem] rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-700">
+                  <option value="" disabled>Select workspace</option>
+                  <option v-for="candidate in otherWorkspaces" :key="candidate.id" :value="String(candidate.id)">{{ candidate.name }}</option>
+                </select>
+                <button
+                  type="button"
+                  class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-50"
+                  :disabled="!canTransferSelectedNote"
+                  @click="handleTransferNote"
+                >
+                  Move
+                </button>
+              </div>
 
             <textarea
               v-model="documentDraft"
@@ -354,7 +402,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <aside class="border-t border-stone-200 bg-stone-50/80 lg:border-t-0" :class="isHistoryOpen ? '' : 'hidden lg:block'">
+        <aside v-if="isHistoryOpen" class="border-t border-stone-200 bg-stone-50/80 lg:border-t-0">
           <div class="border-b border-stone-200 px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">History</p>
             <p class="mt-1 text-sm text-stone-600">{{ historyEntries.length }} saved version{{ historyEntries.length > 1 ? 's' : '' }}</p>

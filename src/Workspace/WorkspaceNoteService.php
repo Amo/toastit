@@ -90,6 +90,23 @@ final class WorkspaceNoteService
         $this->entityManager->remove($note);
     }
 
+    public function transferNote(WorkspaceNote $note, Workspace $targetWorkspace, User $actor): WorkspaceNote
+    {
+        if (!$note->getWorkspace()->isOwnedBy($actor) && !$actor->isRoot()) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $sourceWorkspace = $note->getWorkspace();
+        if ($sourceWorkspace->getId() === $targetWorkspace->getId()) {
+            throw new \InvalidArgumentException('invalid_target_workspace');
+        }
+
+        $sourceWorkspace->removeNote($note);
+        $targetWorkspace->addNote($note);
+
+        return $note;
+    }
+
     public function canDelete(WorkspaceNote $note, User $actor): bool
     {
         if ($actor->isRoot()) {

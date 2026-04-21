@@ -121,6 +121,10 @@ export class WorkspacesApi {
     return this.client.postJson(`/api/workspaces/${workspaceId}/notes/${noteId}/versions/${versionId}/revert`, {});
   }
 
+  transferNote(workspaceId, noteId, targetWorkspaceId) {
+    return this.client.postJson(`/api/workspaces/${workspaceId}/notes/${noteId}/transfer`, { targetWorkspaceId });
+  }
+
   sendSessionSummary(workspaceId, sessionId) {
     return this.client.postJson(`/api/workspaces/${workspaceId}/sessions/${sessionId}/summary/send`, {});
   }

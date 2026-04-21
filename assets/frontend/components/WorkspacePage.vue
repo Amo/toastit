@@ -857,6 +857,20 @@ const revertWorkspaceNoteVersion = async (noteId, versionId) => {
   return replaceWorkspaceNote(data.note);
 };
 
+const transferWorkspaceNote = async (noteId, targetWorkspaceId) => {
+  const { ok, data } = await workspacesApi.transferNote(workspace.value.id, noteId, targetWorkspaceId);
+
+  if (!ok || !data?.ok || !data.note) {
+    throw new Error(data?.message ?? 'Unable to move note.');
+  }
+
+  if (payload.value) {
+    payload.value.notes = (payload.value.notes ?? []).filter((note) => note.id !== noteId);
+  }
+
+  return data.note;
+};
+
 const revokeWorkspaceBackgroundObjectUrl = () => {
   if (workspaceBackgroundObjectUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(workspaceBackgroundObjectUrl.value);
@@ -2886,11 +2900,14 @@ watch(isMobileViewport, (isMobile) => {
           :notes="workspaceNotes"
           :workspace="workspace"
           :current-user="currentUser"
+          :current-user-is-owner="workspace.currentUserIsOwner"
+          :other-workspaces="otherWorkspaces"
           :can-create-note="workspace.meetingMode !== 'live'"
           :create-note="createWorkspaceNote"
           :update-note="updateWorkspaceNote"
           :delete-note="deleteWorkspaceNote"
           :revert-note="revertWorkspaceNoteVersion"
+          :transfer-note="transferWorkspaceNote"
         />
 
         <div v-else class="tw-toastit-card p-6 space-y-4">

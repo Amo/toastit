@@ -165,4 +165,61 @@ final class WorkspaceNoteServiceTest extends TestCase
         $this->expectException(NotFoundHttpException::class);
         $service->revertToVersion($note, $otherVersion, $owner);
     }
+
+    public function testOwnerCanTransferNoteToAnotherWorkspace(): void
+    {
+        $owner = (new User())->setEmail('owner@example.com');
+        $member = (new User())->setEmail('member@example.com');
+        ReflectionHelper::setId($owner, 1);
+        ReflectionHelper::setId($member, 2);
+
+        $sourceWorkspace = (new Workspace())
+            ->setName('Source')
+            ->setOrganizer($owner);
+        ReflectionHelper::setId($sourceWorkspace, 10);
+        $sourceWorkspace->addMembership((new WorkspaceMember())->setUser($member));
+
+        $targetWorkspace = (new Workspace())
+            ->setName('Target')
+            ->setOrganizer($owner);
+        ReflectionHelper::setId($targetWorkspace, 11);
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $service = new WorkspaceNoteService($entityManager);
+        $note = $service->createNote($sourceWorkspace, $member, 'Transfer me', 'Body');
+
+        $service->transferNote($note, $targetWorkspace, $owner);
+
+        self::assertSame($targetWorkspace, $note->getWorkspace());
+        self::assertCount(0, $sourceWorkspace->getNotes());
+        self::assertCount(1, $targetWorkspace->getNotes());
+    }
+
+    public function testNonOwnerCannotTransferNote(): void
+    {
+        $owner = (new User())->setEmail('owner@example.com');
+        $member = (new User())->setEmail('member@example.com');
+        $outsider = (new User())->setEmail('outsider@example.com');
+        ReflectionHelper::setId($owner, 1);
+        ReflectionHelper::setId($member, 2);
+        ReflectionHelper::setId($outsider, 3);
+
+        $sourceWorkspace = (new Workspace())
+            ->setName('Source')
+            ->setOrganizer($owner);
+        ReflectionHelper::setId($sourceWorkspace, 10);
+        $sourceWorkspace->addMembership((new WorkspaceMember())->setUser($member));
+
+        $targetWorkspace = (new Workspace())
+            ->setName('Target')
+            ->setOrganizer($owner);
+        ReflectionHelper::setId($targetWorkspace, 11);
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $service = new WorkspaceNoteService($entityManager);
+        $note = $service->createNote($sourceWorkspace, $member, 'Transfer me', 'Body');
+
+        $this->expectException(AccessDeniedHttpException::class);
+        $service->transferNote($note, $targetWorkspace, $outsider);
+    }
 }
