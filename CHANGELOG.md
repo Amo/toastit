@@ -1,11 +1,15 @@
-## 1.5.7 (April 21, 2026)
-- NEW: workspace notes now use a richer editing flow
-  - Notes open in a dedicated sidesheet instead of inline.
-  - Note titles now live in the sidesheet header, with history displayed in the main content flow.
-  - Note transfer is now tucked behind a dedicated action instead of being always visible.
-- NEW: rich Markdown editing across notes, toasts, and comments
+## 1.6.0 (April 21, 2026)
+- NEW: workspace notes are now a first-class planning surface
+  - Notes now open in a dedicated sidesheet instead of inline.
+  - Notes support richer editing, integrated history, and cleaner move actions.
+  - Notes, toasts, and workspace settings now follow the same sidesheet interaction model for a more consistent workspace flow.
+- NEW: richer Markdown editing across the product
   - Added a shared Tiptap-based Markdown editor for notes, toast drafting, and comment composition.
+  - Markdown shortcuts and formatted rendering are now more consistent while keeping Markdown as the stored format.
+- NEW: clearer desktop and mobile toast detail flows
   - Desktop toasts now use a consistent sidesheet layout instead of mixing inline detail panels and standalone views.
+  - Mobile toast details now open as true in-app panels, without full-page refresh behavior.
+  - Mobile toast reading and commenting were tightened so long content, sticky headers, action bars, and comment composition behave more predictably.
 - FIX: user timezone preference is now respected everywhere the frontend still formats optimistic timestamps locally
 
 ## 1.5.6 (April 17, 2026)
