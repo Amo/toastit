@@ -6,11 +6,14 @@ use App\Entity\Toast;
 use App\Entity\ToastingSession;
 use App\Entity\User;
 use App\Entity\Workspace;
+use App\Entity\WorkspaceNote;
+use App\Entity\WorkspaceNoteVersion;
 use App\Meeting\MeetingAgendaBuilder;
 use App\Profile\AvatarUrlService;
 use App\Profile\UserDateTimeFormatter;
 use App\Repository\WorkspaceRepository;
 use App\Workspace\InboundEmailAddressService;
+use App\Workspace\WorkspaceNoteService;
 use App\Workspace\WorkspaceWorkflowService;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -23,6 +26,7 @@ final class WorkspacePayloadBuilder
         private readonly AvatarUrlService $avatarUrl,
         private readonly UserDateTimeFormatter $userDateTimeFormatter,
         private readonly InboundEmailAddressService $inboundEmailAddress,
+        private readonly WorkspaceNoteService $workspaceNoteService,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
@@ -94,6 +98,10 @@ final class WorkspacePayloadBuilder
             'toastingSessions' => array_map(
                 fn (ToastingSession $session): array => $this->buildSessionPayload($session, $currentUser),
                 $workspace->getToastingSessions()->toArray()
+            ),
+            'notes' => array_map(
+                fn (WorkspaceNote $note): array => $this->buildNotePayload($note, $currentUser),
+                $workspace->getNotes()->toArray()
             ),
             'agendaItems' => array_map(
                 fn (Toast $item): array => $this->buildItemPayload($item, $currentUser, $workspace),
@@ -215,6 +223,52 @@ final class WorkspacePayloadBuilder
             'summaryGeneratedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($session->getSummaryGeneratedAt(), $currentUser),
             'summaryUpdatedAt' => $session->getSummaryUpdatedAt()?->format(\DateTimeInterface::ATOM),
             'summaryUpdatedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($session->getSummaryUpdatedAt(), $currentUser),
+        ];
+    }
+
+    public function buildNotePayload(WorkspaceNote $note, User $currentUser): array
+    {
+        return [
+            'id' => $note->getId(),
+            'title' => $note->getTitle(),
+            'body' => $note->getBody(),
+            'isImportant' => $note->isImportant(),
+            'createdAt' => $note->getCreatedAt()->format(\DateTimeInterface::ATOM),
+            'createdAtDisplay' => $this->userDateTimeFormatter->formatDateTime($note->getCreatedAt(), $currentUser),
+            'updatedAt' => $note->getUpdatedAt()->format(\DateTimeInterface::ATOM),
+            'updatedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($note->getUpdatedAt(), $currentUser),
+            'author' => [
+                'id' => $note->getAuthor()->getId(),
+                'displayName' => $note->getAuthor()->getDisplayName(),
+                'email' => $note->getAuthor()->getPublicEmail(),
+                'initials' => $note->getAuthor()->getInitials(),
+                'gravatarUrl' => $this->avatarUrl->resolve($note->getAuthor()),
+            ],
+            'currentUserCanEdit' => true,
+            'currentUserCanDelete' => $this->workspaceNoteService->canDelete($note, $currentUser),
+            'versions' => array_map(
+                fn (WorkspaceNoteVersion $version): array => $this->buildNoteVersionPayload($version, $currentUser),
+                $note->getVersions()->toArray()
+            ),
+        ];
+    }
+
+    public function buildNoteVersionPayload(WorkspaceNoteVersion $version, User $currentUser): array
+    {
+        return [
+            'id' => $version->getId(),
+            'title' => $version->getTitle(),
+            'body' => $version->getBody(),
+            'isImportant' => $version->isImportant(),
+            'recordedAt' => $version->getRecordedAt()->format(\DateTimeInterface::ATOM),
+            'recordedAtDisplay' => $this->userDateTimeFormatter->formatDateTime($version->getRecordedAt(), $currentUser),
+            'author' => [
+                'id' => $version->getAuthor()->getId(),
+                'displayName' => $version->getAuthor()->getDisplayName(),
+                'email' => $version->getAuthor()->getPublicEmail(),
+                'initials' => $version->getAuthor()->getInitials(),
+                'gravatarUrl' => $this->avatarUrl->resolve($version->getAuthor()),
+            ],
         ];
     }
 

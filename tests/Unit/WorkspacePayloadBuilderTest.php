@@ -8,13 +8,17 @@ use App\Entity\ToastComment;
 use App\Entity\User;
 use App\Entity\Vote;
 use App\Entity\Workspace;
+use App\Entity\WorkspaceNote;
 use App\Entity\WorkspaceMember;
+use App\Entity\WorkspaceNoteVersion;
 use App\Profile\AvatarStorageService;
 use App\Profile\AvatarUrlService;
 use App\Meeting\MeetingAgendaBuilder;
+use App\Profile\UserDateTimeFormatter;
 use App\Repository\WorkspaceRepository;
 use App\Tests\Support\ReflectionHelper;
 use App\Workspace\InboundEmailAddressService;
+use App\Workspace\WorkspaceNoteService;
 use App\Workspace\WorkspaceWorkflowService;
 use League\Flysystem\FilesystemOperator;
 use PHPUnit\Framework\TestCase;
@@ -79,7 +83,22 @@ final class WorkspacePayloadBuilderTest extends TestCase
             ->setTitle('Resolved')
             ->setStatus(Toast::STATUS_TOASTED);
         ReflectionHelper::setId($resolvedItem, 101);
+
+        $note = (new WorkspaceNote())
+            ->setWorkspace($workspace)
+            ->setAuthor($member)
+            ->applySnapshot('Operating note', 'Body', true, new \DateTimeImmutable('2026-04-13 08:00:00'));
+        ReflectionHelper::setId($note, 301);
+        $noteVersion = (new WorkspaceNoteVersion())
+            ->setAuthor($currentUser)
+            ->setTitle('Operating note')
+            ->setBody('Body')
+            ->setIsImportant(true)
+            ->setRecordedAt(new \DateTimeImmutable('2026-04-13 08:00:00'));
+        ReflectionHelper::setId($noteVersion, 401);
+        $note->addVersion($noteVersion);
         $workspace->addItem($activeItem)->addItem($resolvedItem);
+        $workspace->addNote($note);
 
         $repository = $this->createMock(WorkspaceRepository::class);
         $repository
@@ -98,7 +117,9 @@ final class WorkspacePayloadBuilderTest extends TestCase
             new WorkspaceWorkflowService(),
             $repository,
             $avatarUrl,
+            new UserDateTimeFormatter(),
             new InboundEmailAddressService('inbound.toastit.test'),
+            new WorkspaceNoteService($this->createMock(\Doctrine\ORM\EntityManagerInterface::class)),
             $urlGenerator,
         );
         $payload = $builder->build($workspace, $currentUser);
@@ -124,6 +145,9 @@ final class WorkspacePayloadBuilderTest extends TestCase
         self::assertSame('Earlier', $payload['agendaItems'][0]['followUpItems'][0]['title']);
         self::assertSame('Later', $payload['agendaItems'][0]['followUpItems'][1]['title']);
         self::assertSame('Comment', $payload['agendaItems'][0]['comments'][0]['content']);
+        self::assertSame(301, $payload['notes'][0]['id']);
+        self::assertTrue($payload['notes'][0]['currentUserCanDelete']);
+        self::assertSame(401, $payload['notes'][0]['versions'][0]['id']);
         self::assertSame(101, $payload['resolvedItems'][0]['id']);
     }
 }

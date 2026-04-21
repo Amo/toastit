@@ -6,6 +6,8 @@ use App\Entity\Toast;
 use App\Entity\ToastingSession;
 use App\Entity\User;
 use App\Entity\Workspace;
+use App\Entity\WorkspaceNote;
+use App\Entity\WorkspaceNoteVersion;
 use App\Repository\WorkspaceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -81,6 +83,28 @@ final class WorkspaceAccessService
         }
 
         return $session;
+    }
+
+    public function getWorkspaceNoteOrFail(Workspace $workspace, int $noteId): WorkspaceNote
+    {
+        $note = $this->entityManager->getRepository(WorkspaceNote::class)->find($noteId);
+
+        if (!$note instanceof WorkspaceNote || $note->getWorkspace()->getId() !== $workspace->getId()) {
+            throw new NotFoundHttpException();
+        }
+
+        return $note;
+    }
+
+    public function getWorkspaceNoteVersionOrFail(WorkspaceNote $note, int $versionId): WorkspaceNoteVersion
+    {
+        $version = $this->entityManager->getRepository(WorkspaceNoteVersion::class)->find($versionId);
+
+        if (!$version instanceof WorkspaceNoteVersion || $version->getNote()->getId() !== $note->getId()) {
+            throw new NotFoundHttpException();
+        }
+
+        return $version;
     }
 
     public function assertOwner(Workspace $workspace): void

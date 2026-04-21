@@ -5,6 +5,8 @@ namespace App\Tests\Unit;
 use App\Entity\Toast;
 use App\Entity\User;
 use App\Entity\Workspace;
+use App\Entity\WorkspaceNote;
+use App\Entity\WorkspaceNoteVersion;
 use App\Repository\WorkspaceRepository;
 use App\Tests\Support\ReflectionHelper;
 use App\Workspace\WorkspaceAccessService;
@@ -32,6 +34,17 @@ final class WorkspaceAccessServiceTest extends TestCase
             ->setAuthor($user)
             ->setTitle('Toast');
         ReflectionHelper::setId($item, 99);
+        $note = (new WorkspaceNote())
+            ->setWorkspace($workspace)
+            ->setAuthor($user)
+            ->applySnapshot('Note', 'Body', false);
+        ReflectionHelper::setId($note, 77);
+        $version = (new WorkspaceNoteVersion())
+            ->setNote($note)
+            ->setAuthor($user)
+            ->setTitle('Note')
+            ->setBody('Body');
+        ReflectionHelper::setId($version, 78);
 
         $workspaceRepository = $this->createMock(WorkspaceRepository::class);
         $workspaceRepository
@@ -42,12 +55,26 @@ final class WorkspaceAccessServiceTest extends TestCase
         $toastRepository
             ->method('find')
             ->willReturnCallback(static fn (int $itemId) => 99 === $itemId ? $item : null);
+        $noteRepository = $this->createMock(EntityRepository::class);
+        $noteRepository
+            ->method('find')
+            ->willReturnCallback(static fn (int $noteId) => 77 === $noteId ? $note : null);
+        $versionRepository = $this->createMock(EntityRepository::class);
+        $versionRepository
+            ->method('find')
+            ->willReturnCallback(static fn (int $versionId) => 78 === $versionId ? $version : null);
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager
             ->method('getRepository')
-            ->with(Toast::class)
-            ->willReturn($toastRepository);
+            ->willReturnCallback(static function (string $entityClass) use ($toastRepository, $noteRepository, $versionRepository) {
+                return match ($entityClass) {
+                    Toast::class => $toastRepository,
+                    WorkspaceNote::class => $noteRepository,
+                    WorkspaceNoteVersion::class => $versionRepository,
+                    default => throw new \InvalidArgumentException(sprintf('Unexpected repository for %s', $entityClass)),
+                };
+            });
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
@@ -57,6 +84,8 @@ final class WorkspaceAccessServiceTest extends TestCase
         self::assertSame($user, $access->getUserOrFail());
         self::assertSame($workspace, $access->getWorkspaceOrFail(10));
         self::assertSame($item, $access->getItemOrFail(99));
+        self::assertSame($note, $access->getWorkspaceNoteOrFail($workspace, 77));
+        self::assertSame($version, $access->getWorkspaceNoteVersionOrFail($note, 78));
 
         $access->assertOwner($workspace);
         $access->assertMeetingModeIdle($workspace);
