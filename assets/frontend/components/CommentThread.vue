@@ -19,7 +19,11 @@ defineProps({
       />
       <div class="min-w-0 flex-1 space-y-2">
         <div :class="mobile ? 'rounded-2xl border border-stone-200 bg-white px-3 py-2.5 shadow-sm' : 'rounded-2xl bg-stone-50 px-4 py-3'">
-          <p :class="mobile ? 'text-sm leading-6 text-stone-700' : 'text-sm leading-7 text-stone-700'" v-html="renderComment(comment.content)"></p>
+          <div
+            class="tw-markdown text-stone-700"
+            :class="mobile ? 'text-sm leading-6' : 'text-sm leading-7'"
+            v-html="renderComment(comment.content)"
+          ></div>
         </div>
         <div :class="mobile ? 'px-1 text-[11px] text-stone-500' : 'px-1 text-xs text-stone-500'">
           {{ comment.author.displayName }} · {{ comment.createdAtDisplay }}

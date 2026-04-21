@@ -27,6 +27,7 @@ const isTransferFormOpen = ref(false);
 const isSaving = ref(false);
 const saveError = ref('');
 const saveState = ref('idle');
+const isMobileViewport = ref(false);
 const transferTargetWorkspaceId = ref('');
 const isSyncingEditorContent = ref(false);
 let autosaveTimeout = null;
@@ -56,6 +57,7 @@ const canTransferSelectedNote = computed(() => (
   !!selectedNote.value && props.currentUserIsOwner && props.otherWorkspaces.length > 0 && transferTargetWorkspaceId.value !== ''
 ));
 const isNoteSheetOpen = computed(() => !!selectedNote.value);
+const isMobileImmersiveActive = computed(() => isMobileViewport.value && isNoteSheetOpen.value);
 
 const editor = useEditor({
   extensions: [
@@ -232,8 +234,7 @@ const handleDeleteNote = async () => {
 
   const deletedId = selectedNote.value.id;
   await props.deleteNote(deletedId);
-  const remainingNotes = sortedNotes.value.filter((note) => note.id !== deletedId);
-  selectedNoteId.value = remainingNotes[0]?.id ?? null;
+  selectedNoteId.value = null;
   isHistoryOpen.value = false;
 };
 
@@ -289,6 +290,23 @@ const handleGlobalKeydown = (event) => {
   closeNoteSheet();
 };
 
+const syncViewport = () => {
+  if (typeof window === 'undefined') {
+    isMobileViewport.value = false;
+    return;
+  }
+
+  isMobileViewport.value = window.innerWidth < 1024;
+};
+
+const syncMobileImmersiveState = () => {
+  window.dispatchEvent(new CustomEvent('toastit:mobile-immersive-state', {
+    detail: {
+      active: isMobileImmersiveActive.value,
+    },
+  }));
+};
+
 watch(sortedNotes, (notes) => {
   if (!notes.length) {
     selectedNoteId.value = null;
@@ -299,7 +317,7 @@ watch(sortedNotes, (notes) => {
   }
 
   if (!notes.some((note) => note.id === selectedNoteId.value)) {
-    selectedNoteId.value = notes[0].id;
+    selectedNoteId.value = null;
   }
 }, { immediate: true });
 
@@ -321,12 +339,21 @@ watch(noteBody, () => {
   scheduleAutosave();
 });
 
+watch([isMobileImmersiveActive, isNoteSheetOpen], () => {
+  syncMobileImmersiveState();
+});
+
 onMounted(() => {
+  syncViewport();
+  syncMobileImmersiveState();
   window.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('resize', syncViewport);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeydown);
+  window.removeEventListener('resize', syncViewport);
+  window.dispatchEvent(new CustomEvent('toastit:mobile-immersive-state', { detail: { active: false } }));
   clearAutosaveTimeout();
   clearSaveStateTimeout();
 });
@@ -405,67 +432,79 @@ onBeforeUnmount(() => {
         v-if="selectedNote"
         class="fixed inset-y-0 right-0 z-50 flex w-full max-w-[min(100vw,56rem)] flex-col border-l border-stone-200 bg-stone-50 shadow-[-24px_0_60px_rgba(28,25,23,0.18)]"
       >
-        <div class="flex items-start justify-between gap-4 border-b border-stone-200 bg-white px-5 py-5">
-          <div class="min-w-0 flex-1 space-y-2">
-            <input
-              v-model="noteTitle"
-              type="text"
-              class="w-full rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-2xl font-semibold tracking-tight text-stone-950 outline-none transition focus:border-amber-300"
-              placeholder="Note title"
-              @blur="persistSelectedNote({ immediate: true })"
-            />
-            <p class="text-xs text-stone-500">Created {{ selectedNote.createdAtDisplay }}</p>
-          </div>
-
-          <div class="flex items-center gap-2">
+        <div class="border-b border-stone-200 bg-white px-5 py-5">
+          <div class="flex items-start justify-between gap-4">
             <button
-              v-if="currentUserIsOwner && otherWorkspaces.length"
+              v-if="isMobileViewport"
               type="button"
-              class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
-              @click="isTransferFormOpen = !isTransferFormOpen"
-            >
-              <i class="fa-solid fa-right-left text-sm" aria-hidden="true"></i>
-              <span class="sr-only">{{ isTransferFormOpen ? 'Hide move note form' : 'Move note' }}</span>
-            </button>
-            <button
-              type="button"
-              class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
-              @click="isHistoryOpen = !isHistoryOpen"
-            >
-              <i class="fa-solid fa-clock-rotate-left text-sm" aria-hidden="true"></i>
-              <span class="sr-only">{{ isHistoryOpen ? 'Hide history' : 'Show history' }}</span>
-            </button>
-            <button
-              type="button"
-              class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
-              :class="selectedNote.isImportant ? 'border-amber-300 bg-amber-100 text-amber-700' : 'border-stone-200 bg-white text-stone-400 hover:text-amber-700'"
-              @click="toggleImportant"
-            >
-              <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
-              <span class="sr-only">{{ selectedNote.isImportant ? 'Unmark important' : 'Mark important' }}</span>
-            </button>
-            <button
-              v-if="selectedNote.currentUserCanDelete"
-              type="button"
-              class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-red-200 hover:text-red-700"
-              @click="handleDeleteNote"
-            >
-              <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
-              <span class="sr-only">Delete note</span>
-            </button>
-            <button
-              type="button"
-              class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
+              class="inline-grid h-10 w-10 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
               @click="closeNoteSheet"
             >
-              <i class="fa-solid fa-xmark text-base" aria-hidden="true"></i>
-              <span class="sr-only">Close note</span>
+              <i class="fa-solid fa-arrow-left text-sm" aria-hidden="true"></i>
+              <span class="sr-only">Back to notes</span>
             </button>
+
+            <div class="flex items-center gap-2">
+              <button
+                v-if="currentUserIsOwner && otherWorkspaces.length"
+                type="button"
+                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
+                @click="isTransferFormOpen = !isTransferFormOpen"
+              >
+                <i class="fa-solid fa-right-left text-sm" aria-hidden="true"></i>
+                <span class="sr-only">{{ isTransferFormOpen ? 'Hide move note form' : 'Move note' }}</span>
+              </button>
+              <button
+                type="button"
+                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
+                @click="isHistoryOpen = !isHistoryOpen"
+              >
+                <i class="fa-solid fa-clock-rotate-left text-sm" aria-hidden="true"></i>
+                <span class="sr-only">{{ isHistoryOpen ? 'Hide history' : 'Show history' }}</span>
+              </button>
+              <button
+                type="button"
+                class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
+                :class="selectedNote.isImportant ? 'border-amber-300 bg-amber-100 text-amber-700' : 'border-stone-200 bg-white text-stone-400 hover:text-amber-700'"
+                @click="toggleImportant"
+              >
+                <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
+                <span class="sr-only">{{ selectedNote.isImportant ? 'Unmark important' : 'Mark important' }}</span>
+              </button>
+              <button
+                v-if="selectedNote.currentUserCanDelete"
+                type="button"
+                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-red-200 hover:text-red-700"
+                @click="handleDeleteNote"
+              >
+                <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
+                <span class="sr-only">Delete note</span>
+              </button>
+              <button
+                v-if="!isMobileViewport"
+                type="button"
+                class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-900"
+                @click="closeNoteSheet"
+              >
+                <i class="fa-solid fa-xmark text-base" aria-hidden="true"></i>
+                <span class="sr-only">Close note</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto">
           <div class="space-y-4 px-5 py-5">
+              <div class="min-w-0 space-y-2">
+                <input
+                  v-model="noteTitle"
+                  type="text"
+                  class="w-full rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-2xl font-semibold tracking-tight text-stone-950 outline-none transition focus:border-amber-300"
+                  placeholder="Note title"
+                  @blur="persistSelectedNote({ immediate: true })"
+                />
+              </div>
+
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="text-xs font-medium text-stone-500">
                   <span v-if="saveState === 'autosaving'">Autosaving…</span>

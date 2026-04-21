@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
@@ -19,6 +19,11 @@ const router = useRouter();
 const workspacePickerOpen = ref(false);
 const workspaceCreateFlowActive = ref(false);
 const immersiveModeActive = ref(false);
+
+const pageTransitionKey = computed(() => JSON.stringify({
+  name: String(route.name ?? ''),
+  params: route.params ?? {},
+}));
 
 const tabs = computed(() => [
   {
@@ -195,6 +200,16 @@ const syncImmersiveModeState = (event) => {
   immersiveModeActive.value = nextState;
 };
 
+const setBackgroundScrollLocked = (locked) => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const overflowValue = locked ? 'hidden' : '';
+  document.documentElement.style.overflow = overflowValue;
+  document.body.style.overflow = overflowValue;
+};
+
 const navigateToTab = (tabKey) => {
   if (tabKey === 'profile') {
     router.push('/app/profile');
@@ -217,6 +232,11 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('toastit:create-workspace-flow-state', syncWorkspaceCreateFlowState);
   window.removeEventListener('toastit:mobile-immersive-state', syncImmersiveModeState);
+  setBackgroundScrollLocked(false);
+});
+
+watch(immersiveModeActive, (active) => {
+  setBackgroundScrollLocked(active);
 });
 
 </script>
@@ -225,7 +245,7 @@ onUnmounted(() => {
   <div class="tw-mobile-app-shell">
     <Transition name="tw-mobile-page-slide" mode="out-in">
       <section
-        :key="route.fullPath"
+        :key="pageTransitionKey"
         class="tw-mobile-app-shell__content"
       >
         <button

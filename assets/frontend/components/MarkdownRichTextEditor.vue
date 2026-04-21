@@ -52,6 +52,21 @@ const editor = useEditor({
   },
 });
 
+const focusEditorFromContainer = (event) => {
+  const target = event.target;
+
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  if (target.closest('.ProseMirror')) {
+    return;
+  }
+
+  event.preventDefault();
+  editor.value?.commands.focus('end');
+};
+
 watch(normalizedValue, (nextValue) => {
   if (!editor.value) {
     return;
@@ -76,11 +91,12 @@ defineExpose({
 
 <template>
   <div
-    class="markdown-rich-editor rounded-[1.5rem] border bg-white transition"
+    class="markdown-rich-editor relative rounded-[1.5rem] border bg-white transition"
     :class="[
       blocked ? 'border-red-400 ring-2 ring-red-100' : 'border-stone-200',
       compact ? 'px-4 py-3' : 'px-5 py-4',
     ]"
+    @mousedown="focusEditorFromContainer"
   >
     <EditorContent
       v-if="editor"
@@ -88,7 +104,11 @@ defineExpose({
       class="text-stone-900"
       :class="[minHeightClass, compact ? 'text-sm leading-6' : 'text-base leading-7']"
     />
-    <p v-if="!normalizedValue" class="pointer-events-none mt-0 text-stone-400" :class="compact ? 'text-sm leading-6' : 'text-base leading-7'">
+    <p
+      v-if="!normalizedValue"
+      class="pointer-events-none absolute left-0 right-0 top-0 m-0 text-stone-400"
+      :class="[compact ? 'px-4 py-3 text-sm leading-6' : 'px-5 py-4 text-base leading-7']"
+    >
       {{ placeholder }}
     </p>
   </div>

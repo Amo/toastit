@@ -23,9 +23,11 @@ defineEmits(['focus', 'input', 'keydown', 'submit']);
     />
     <MarkdownRichTextEditor
       class="min-w-0 flex-1"
+      :class="mobile ? 'comment-composer-mobile' : ''"
       :model-value="value"
       :blocked="blocked"
       :compact="true"
+      :min-height-class="mobile ? 'min-h-[1.75rem]' : 'min-h-[10rem]'"
       placeholder="Write a comment"
       @focus="$emit('focus', $event)"
       @update:model-value="$emit('input', $event)"
@@ -42,3 +44,14 @@ defineEmits(['focus', 'input', 'keydown', 'submit']);
     </button>
   </div>
 </template>
+
+<style scoped>
+.comment-composer-mobile :deep(.markdown-rich-editor) {
+  border-radius: 1rem;
+  padding: 0.7rem 0.9rem;
+}
+
+.comment-composer-mobile :deep(.ProseMirror) {
+  min-height: 1.75rem;
+}
+</style>
