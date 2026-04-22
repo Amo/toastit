@@ -137,6 +137,7 @@ const workspacesApi = new WorkspacesApi(apiClient);
 const workspace = computed(() => payload.value?.workspace ?? null);
 const currentUser = computed(() => payload.value?.currentUser ?? null);
 const standaloneMode = computed(() => null !== props.standaloneToastId && '' !== String(props.standaloneToastId));
+const isStandaloneDashboardToastOverlay = computed(() => standaloneMode.value && route.name === 'dashboard');
 const useDedicatedMobileToastView = computed(() => standaloneMode.value && isMobileViewport.value);
 const showDesktopInlineToastPanel = computed(() => !isMobileViewport.value);
 const showDesktopAccordionToast = computed(() => false);
@@ -488,6 +489,17 @@ const resolveToastReturnToPath = () => {
 };
 
 const openToastWithReturnTo = (toastId, returnToOverride = null) => {
+  if (isStandaloneDashboardToastOverlay.value) {
+    router.push({
+      path: route.path,
+      query: {
+        ...route.query,
+        toastId: String(toastId),
+      },
+    });
+    return;
+  }
+
   const explicitReturnTo = sanitizeToastReturnToPath(returnToOverride);
   const currentRouteName = String(route.name ?? '');
   const currentRouteReturnTo = sanitizeToastReturnToPath(route.fullPath);
@@ -1619,6 +1631,13 @@ const closeToastModal = () => {
   closeMoveCopyToastModal();
   closeMobileVetoConfirmModal();
   resetDecisionNotesAutosaveState();
+
+  if (isStandaloneDashboardToastOverlay.value) {
+    const nextQuery = { ...route.query };
+    delete nextQuery.toastId;
+    router.push({ path: route.path, query: nextQuery });
+    return;
+  }
 
   if (standaloneMode.value) {
     router.push(resolveToastReturnToPath());

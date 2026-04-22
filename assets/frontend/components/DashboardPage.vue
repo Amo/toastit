@@ -103,6 +103,17 @@ const openWorkspaceFromSummary = (workspace) => {
 };
 
 const openToast = (toastId) => {
+  if (isMobileViewport.value && route.name === 'dashboard') {
+    router.push({
+      path: route.path,
+      query: {
+        ...route.query,
+        toastId: String(toastId),
+      },
+    });
+    return;
+  }
+
   const returnTo = route.fullPath.startsWith('/app') ? route.fullPath : '/app';
 
   try {

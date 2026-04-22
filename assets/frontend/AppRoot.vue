@@ -65,6 +65,16 @@ const dashboardToastReturnTo = computed(() => {
 });
 
 const isDashboardToastRoute = computed(() => routeName.value === 'toast' && dashboardToastReturnTo.value !== '');
+const dashboardToastOverlayId = computed(() => {
+  if (routeName.value !== 'dashboard') {
+    return null;
+  }
+
+  const rawToastId = Array.isArray(route.query.toastId) ? route.query.toastId[0] : route.query.toastId;
+  const toastId = Number(rawToastId ?? 0);
+
+  return Number.isFinite(toastId) && toastId > 0 ? toastId : null;
+});
 
 const clearPinLockTimer = () => {
   if (null !== pinLockTimerId) {
@@ -385,6 +395,13 @@ watch(() => authState.accessToken, syncAccessRefresh);
     content-html=""
   >
     <DashboardPage api-url="/api/dashboard" :access-token="authState.accessToken" />
+    <WorkspacePage
+      v-if="dashboardToastOverlayId"
+      :api-url="`/api/toasts/${dashboardToastOverlayId}`"
+      :dashboard-url="spa.urls.dashboardUrl"
+      :access-token="authState.accessToken"
+      :standalone-toast-id="dashboardToastOverlayId"
+    />
     <WorkspacePage
       v-if="isDashboardToastRoute"
       :api-url="`/api/toasts/${route.params.id}`"
