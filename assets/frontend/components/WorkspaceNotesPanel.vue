@@ -13,6 +13,7 @@ const props = defineProps({
   otherWorkspaces: { type: Array, default: () => [] },
   canCreateNote: { type: Boolean, default: true },
   createNote: { type: Function, required: true },
+  fetchNote: { type: Function, required: true },
   updateNote: { type: Function, required: true },
   deleteNote: { type: Function, required: true },
   revertNote: { type: Function, required: true },
@@ -181,12 +182,9 @@ const scheduleAutosave = () => {
 };
 
 const selectNote = async (noteId) => {
-  if (noteId === selectedNoteId.value) {
-    return;
-  }
-
   await persistSelectedNote({ immediate: true });
-  selectedNoteId.value = noteId;
+  const refreshedNote = await props.fetchNote(noteId);
+  selectedNoteId.value = refreshedNote?.id ?? noteId;
   isHistoryOpen.value = false;
 };
 

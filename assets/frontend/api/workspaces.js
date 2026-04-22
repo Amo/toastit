@@ -109,6 +109,10 @@ export class WorkspacesApi {
     return this.client.postJson(`/api/workspaces/${workspaceId}/notes`, payload);
   }
 
+  getNote(workspaceId, noteId) {
+    return this.client.getJson(`/api/workspaces/${workspaceId}/notes/${noteId}`);
+  }
+
   updateNote(workspaceId, noteId, payload) {
     return this.client.putJson(`/api/workspaces/${workspaceId}/notes/${noteId}`, payload);
   }

@@ -79,6 +79,15 @@ final class WorkspaceNoteFlowTest extends WebTestCase
         self::assertCount(1, $workspacePayload['notes']);
         self::assertSame($noteId, $workspacePayload['notes'][0]['id']);
         self::assertSame('Workspace contract', $workspacePayload['notes'][0]['title']);
+
+        $memberClient->request('GET', sprintf('/api/workspaces/%d/notes/%d', $workspaceId, $noteId));
+        self::assertResponseIsSuccessful();
+        $notePayload = $this->decodeJsonResponse($memberClient);
+
+        self::assertTrue($notePayload['ok']);
+        self::assertSame($noteId, $notePayload['note']['id']);
+        self::assertSame('Workspace contract', $notePayload['note']['title']);
+        self::assertCount(3, $notePayload['note']['versions']);
     }
 
     public function testNotePermissionsAndMeetingModeGuardsAreEnforced(): void

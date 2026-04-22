@@ -833,6 +833,16 @@ const createWorkspaceNote = async (notePayload) => {
   return replaceWorkspaceNote(data.note);
 };
 
+const fetchWorkspaceNote = async (noteId) => {
+  const { ok, data } = await workspacesApi.getNote(workspace.value.id, noteId);
+
+  if (!ok || !data?.ok || !data.note) {
+    throw new Error(data?.message ?? 'Unable to load note.');
+  }
+
+  return replaceWorkspaceNote(data.note);
+};
+
 const updateWorkspaceNote = async (noteId, notePayload) => {
   const { ok, data } = await workspacesApi.updateNote(workspace.value.id, noteId, notePayload);
 
@@ -2983,6 +2993,7 @@ watch(isMobileViewport, (isMobile) => {
           :other-workspaces="otherWorkspaces"
           :can-create-note="workspace.meetingMode !== 'live'"
           :create-note="createWorkspaceNote"
+          :fetch-note="fetchWorkspaceNote"
           :update-note="updateWorkspaceNote"
           :delete-note="deleteWorkspaceNote"
           :revert-note="revertWorkspaceNoteVersion"
