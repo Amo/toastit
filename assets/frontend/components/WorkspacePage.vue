@@ -2212,6 +2212,9 @@ const mobileAgendaSwipeActionCount = (item) => {
   if (item.currentUserCanMarkReady) {
     count += 1; // Ready
   }
+  if (item.currentUserCanEdit && isActiveToast(item) && !isToastingMode.value) {
+    count += 1; // Snooze
+  }
   if (workspace.value?.currentUserIsOwner && isSoloWorkspace.value && isActiveToast(item)) {
     count += 1; // Toasted
   }
