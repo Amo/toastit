@@ -700,6 +700,14 @@ const toastStatusTone = (item) => {
   return 'text-amber-600';
 };
 
+const mobileToastStatusIcon = (item) => {
+  if (item?.status === 'ready') {
+    return 'fa-solid fa-check';
+  }
+
+  return 'fa-regular fa-circle';
+};
+
 const workspaceMobileItemDateStatus = (item) => {
   const dueOn = typeof item?.dueOn === 'string' ? item.dueOn : '';
   if (!dueOn) {
@@ -3144,17 +3152,23 @@ watch(isMobileViewport, (isMobile) => {
                         {{ item.title }}
                       </p>
                       <div class="flex shrink-0 items-center gap-1.5">
-                        <ToastStatusBadge
-                          :label="item.status === 'ready' ? 'Ready' : 'New'"
-                          :tone-class="toastStatusTone(item)"
-                          :badge-class="`${toastStatusBadgeClass(item)} px-2.5 py-0.5 text-[10px] tracking-[0.12em]`"
-                        />
-                        <ToastStatusBadge
+                        <span
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border"
+                          :class="toastStatusBadgeClass(item)"
+                          :title="item.status === 'ready' ? 'Ready' : 'New'"
+                          :aria-label="item.status === 'ready' ? 'Ready' : 'New'"
+                        >
+                          <i :class="[mobileToastStatusIcon(item), toastStatusTone(item), 'text-[11px]']" aria-hidden="true"></i>
+                        </span>
+                        <span
                           v-if="item.aiRefinementPending"
-                          label="IA"
-                          :tone-class="toastAiPendingToneClass"
-                          :badge-class="`${toastAiPendingBadgeClass} px-2.5 py-0.5 text-[10px] tracking-[0.12em]`"
-                        />
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border"
+                          :class="toastAiPendingBadgeClass"
+                          title="AI pending"
+                          aria-label="AI pending"
+                        >
+                          <i class="fa-solid fa-wand-magic-sparkles text-[11px]" :class="toastAiPendingToneClass" aria-hidden="true"></i>
+                        </span>
                       </div>
                     </div>
                     <div class="flex items-center justify-between gap-3">
