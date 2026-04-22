@@ -1,3 +1,8 @@
+## 1.9.1 (April 22, 2026)
+- FIX: cleaner mobile boost signals in workspace lists
+  - Mobile workspace toast rows no longer repeat the boost state with a second badge when the star indicator is already shown next to the due date.
+  - Boost remains available in quick actions, but the list itself is now less noisy and easier to scan.
+
 ## 1.9.0 (April 22, 2026)
 - FIX: clearer boost access and more consistent toast refinement
   - Boost is now available directly from workspace quick actions, including in solo workspaces and swipe actions.
