@@ -1,3 +1,8 @@
+## 1.9.2 (April 22, 2026)
+- FIX: consistent toast detail presentation from the home dashboard
+  - Toasts opened from the home dashboard now reuse the same workspace sidesheet surface and transition as toasts opened inside a workspace.
+  - This removes the remaining visual mismatch between dashboard opening and workspace opening on mobile.
+
 ## 1.9.1 (April 22, 2026)
 - FIX: cleaner mobile boost signals in workspace lists
   - Mobile workspace toast rows no longer repeat the boost state with a second badge when the star indicator is already shown next to the due date.
