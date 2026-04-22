@@ -49,6 +49,23 @@ const accessTokenExpired = computed(() => {
   return (expiresAt * 1000) <= Date.now();
 });
 
+const dashboardToastReturnTo = computed(() => {
+  const rawReturnTo = Array.isArray(route.query.returnTo) ? route.query.returnTo[0] : route.query.returnTo;
+  const normalizedReturnTo = typeof rawReturnTo === 'string' ? rawReturnTo : '';
+
+  if (!normalizedReturnTo.startsWith('/app')) {
+    return '';
+  }
+
+  if (normalizedReturnTo.startsWith('/app/workspaces/') || normalizedReturnTo.startsWith('/app/inbox')) {
+    return '';
+  }
+
+  return normalizedReturnTo;
+});
+
+const isDashboardToastRoute = computed(() => routeName.value === 'toast' && dashboardToastReturnTo.value !== '');
+
 const clearPinLockTimer = () => {
   if (null !== pinLockTimerId) {
     window.clearTimeout(pinLockTimerId);
@@ -360,7 +377,7 @@ watch(() => authState.accessToken, syncAccessRefresh);
   </AppShell>
 
   <AppShell
-    v-else-if="routeName === 'dashboard'"
+    v-else-if="routeName === 'dashboard' || isDashboardToastRoute"
     current-section="workspace"
     :dashboard-url="spa.urls.dashboardUrl"
     :profile-url="spa.urls.profileUrl"
@@ -368,6 +385,13 @@ watch(() => authState.accessToken, syncAccessRefresh);
     content-html=""
   >
     <DashboardPage api-url="/api/dashboard" :access-token="authState.accessToken" />
+    <WorkspacePage
+      v-if="isDashboardToastRoute"
+      :api-url="`/api/toasts/${route.params.id}`"
+      :dashboard-url="spa.urls.dashboardUrl"
+      :access-token="authState.accessToken"
+      :standalone-toast-id="route.params.id"
+    />
   </AppShell>
 
   <AppShell
