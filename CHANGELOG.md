@@ -1,3 +1,9 @@
+## 1.9.0 (April 22, 2026)
+- FIX: clearer boost access and more consistent toast refinement
+  - Boost is now available directly from workspace quick actions, including in solo workspaces and swipe actions.
+  - Mobile workspace lists now use tighter status badges built around icons, so toast rows stay more compact.
+  - AI toast refinement now keeps an existing due date unless the content clearly justifies changing it, and date handling is covered by stronger automated tests.
+
 ## 1.8.1 (April 22, 2026)
 - FIX: smoother mobile toast opening from the home dashboard
   - Opening a toast from the mobile home dashboard now stays in-app and fills the screen instead of triggering a visible page reload.
