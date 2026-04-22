@@ -1,3 +1,8 @@
+## 1.7.0 (April 22, 2026)
+- NEW: workspace notes are now available through the public API and MCP
+  - Added public API endpoints to list notes in a workspace, create a note, and update an existing note with the same Markdown content model used in the app.
+  - `toastit-mcp` now exposes note tools so MCP clients can read existing workspace notes, create new ones, and edit them directly.
+
 ## 1.6.0 (April 21, 2026)
 - NEW: workspace notes are now a first-class planning surface
   - Notes now open in a dedicated sidesheet instead of inline.
