@@ -33,13 +33,14 @@ final class MeetingAgendaBuilderTest extends TestCase
         $this->setCreatedAt($boosted, '2026-04-01 10:00:00');
         $boosted->addVote((new Vote())->setItem($boosted)->setUser((new User())->setEmail('boosted-vote@example.com')));
 
-        $boostedOlder = (new Toast())
+        $boostedNewer = (new Toast())
             ->setWorkspace($workspace)
-            ->setAuthor((new User())->setEmail('boosted-older@example.com'))
-            ->setTitle('Boosted older')
+            ->setAuthor((new User())->setEmail('boosted-newer@example.com'))
+            ->setTitle('Boosted newer')
             ->setIsBoosted(true)
+            ->setBoostRank(3)
             ->setDueAt(new \DateTimeImmutable('2026-04-03'));
-        $this->setCreatedAt($boostedOlder, '2026-04-01 08:00:00');
+        $this->setCreatedAt($boostedNewer, '2026-04-01 08:00:00');
 
         $nearestDue = (new Toast())
             ->setWorkspace($workspace)
@@ -81,7 +82,7 @@ final class MeetingAgendaBuilderTest extends TestCase
 
         $workspace->getItems()->add($normal);
         $workspace->getItems()->add($boosted);
-        $workspace->getItems()->add($boostedOlder);
+        $workspace->getItems()->add($boostedNewer);
         $workspace->getItems()->add($nearestDue);
         $workspace->getItems()->add($olderLessVoted);
         $workspace->getItems()->add($sameVotesLaterDue);
@@ -90,7 +91,7 @@ final class MeetingAgendaBuilderTest extends TestCase
 
         $agenda = (new MeetingAgendaBuilder())->build($workspace);
 
-        self::assertSame(['Boosted older', 'Boosted', 'Nearest due', 'Later due', 'Normal', 'Older less voted'], array_map(
+        self::assertSame(['Boosted newer', 'Boosted', 'Nearest due', 'Later due', 'Normal', 'Older less voted'], array_map(
             static fn (Toast $item): string => $item->getTitle(),
             $agenda->activeItems
         ));

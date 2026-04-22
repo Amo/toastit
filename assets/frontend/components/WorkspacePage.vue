@@ -638,6 +638,19 @@ const displayToastStatus = (item) => {
   return 'In progress';
 };
 
+const displayBoostLabel = (item) => {
+  if (!item?.isBoosted) {
+    return '';
+  }
+
+  const rank = Number(item?.boostRank ?? 0);
+  if (Number.isFinite(rank) && rank > 0) {
+    return `Boost ${rank}`;
+  }
+
+  return 'Boosted';
+};
+
 const isActiveToast = (item) => item?.status === 'pending' || item?.status === 'ready';
 
 const toastStatusBadgeClass = (item) => {
@@ -2154,7 +2167,7 @@ const mobileAgendaSwipeActionCount = (item) => {
   if (!isSoloWorkspace.value) {
     count += 1; // Vote
   }
-  if (workspace.value?.currentUserIsOwner && !isToastingMode.value && !isSoloWorkspace.value) {
+  if (workspace.value?.currentUserIsOwner && !isToastingMode.value) {
     count += 1; // Boost
   }
   if (item.currentUserCanMarkReady) {
@@ -3039,7 +3052,7 @@ watch(isMobileViewport, (isMobile) => {
                       <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
                     </button>
                     <button
-                      v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace"
+                      v-if="workspace.currentUserIsOwner && !isToastingMode"
                       type="button"
                       class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
                       :class="item.isBoosted ? 'bg-slate-400 text-black hover:bg-slate-300' : 'bg-white text-slate-700 hover:bg-slate-50'"
@@ -3119,6 +3132,12 @@ watch(isMobileViewport, (isMobile) => {
                         <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
                         {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
                       </p>
+                      <ToastStatusBadge
+                        v-if="item.isBoosted"
+                        :label="displayBoostLabel(item)"
+                        tone-class="text-slate-700"
+                        badge-class="border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] tracking-[0.08em]"
+                      />
                     </div>
                   </div>
                 </div>
@@ -3142,9 +3161,17 @@ watch(isMobileViewport, (isMobile) => {
                     @click="openToastModal(item)"
                   >
                     <td class="px-4 py-3">
-                      <span class="text-left font-medium" :class="agendaItemTitleClass(item)">
-                        {{ item.title }}
-                      </span>
+                      <div class="flex items-center gap-2">
+                        <span class="text-left font-medium" :class="agendaItemTitleClass(item)">
+                          {{ item.title }}
+                        </span>
+                        <ToastStatusBadge
+                          v-if="item.isBoosted"
+                          :label="displayBoostLabel(item)"
+                          tone-class="text-slate-700"
+                          badge-class="border-slate-200 bg-slate-100"
+                        />
+                      </div>
                     </td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.dueOnDisplay ?? 'No due date' }}</td>
@@ -3199,7 +3226,7 @@ watch(isMobileViewport, (isMobile) => {
                           <span class="sr-only">Mark as toasted</span>
                         </button>
                         <button
-                          v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace"
+                          v-if="workspace.currentUserIsOwner && !isToastingMode"
                           type="button"
                           class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
                           :class="item.isBoosted ? 'border-slate-400 bg-slate-400 text-white' : 'border-stone-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-700'"
@@ -3443,7 +3470,7 @@ watch(isMobileViewport, (isMobile) => {
                 <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
               </button>
               <button
-                v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace && isActiveToast(selectedToastModal)"
+                v-if="workspace.currentUserIsOwner && !isToastingMode && isActiveToast(selectedToastModal)"
                 type="button"
                 class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center px-3.5 py-2.5 transition"
                 :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-transparent text-slate-600'"
@@ -3823,7 +3850,7 @@ watch(isMobileViewport, (isMobile) => {
                     <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
                   </button>
                   <button
-                    v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace && isActiveToast(selectedToastModal)"
+                    v-if="workspace.currentUserIsOwner && !isToastingMode && isActiveToast(selectedToastModal)"
                     type="button"
                     class="inline-grid min-h-12 min-w-[3.75rem] flex-1 place-items-center px-3.5 py-2.5 transition"
                     :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-transparent text-slate-600'"
@@ -4089,7 +4116,7 @@ watch(isMobileViewport, (isMobile) => {
                   <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
                 </button>
                 <button
-                  v-if="workspace.currentUserIsOwner && !isToastingMode && !isSoloWorkspace && isActiveToast(selectedToastModal)"
+                  v-if="workspace.currentUserIsOwner && !isToastingMode && isActiveToast(selectedToastModal)"
                   type="button"
                   class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 px-4 transition"
                   :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-white text-slate-600 hover:bg-stone-50'"

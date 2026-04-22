@@ -168,6 +168,42 @@ final class WorkspaceFlowTest extends WebTestCase
         self::assertResponseStatusCodeSame(403);
     }
 
+    public function testSoloWorkspaceOwnerCanBoostToastAndSeeItInWorkspacePayload(): void
+    {
+        $client = static::createClient();
+        $email = sprintf('solo-boost-%s@example.com', time());
+        $this->loginWithMagicLink($client, $email);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($email));
+
+        $client->jsonRequest('POST', '/api/workspaces', [
+            'name' => 'Solo priorities',
+            'isSoloWorkspace' => true,
+        ]);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($client)['workspaceId'];
+
+        $title = sprintf('Boost me %s', microtime(true));
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/items', $workspaceId), [
+            'title' => $title,
+            'description' => 'Important solo task',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $itemId = $this->findToastIdByTitle($title);
+
+        $client->jsonRequest('POST', sprintf('/api/items/%d/boost', $itemId));
+        self::assertResponseIsSuccessful();
+
+        $client->request('GET', sprintf('/api/workspaces/%d', $workspaceId));
+        self::assertResponseIsSuccessful();
+        $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertTrue($payload['workspace']['isSoloWorkspace']);
+        self::assertTrue($payload['agendaItems'][0]['isBoosted']);
+        self::assertSame(1, $payload['agendaItems'][0]['boostRank']);
+        self::assertSame($itemId, $payload['agendaItems'][0]['id']);
+    }
+
     public function testWorkspaceMemberCanGenerateLatestMeetingSummary(): void
     {
         $client = static::createClient();

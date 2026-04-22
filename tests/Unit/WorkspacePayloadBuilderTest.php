@@ -55,6 +55,8 @@ final class WorkspacePayloadBuilderTest extends TestCase
             ->setDescription('Description')
             ->setOwner($member)
             ->setDueAt(new \DateTimeImmutable('2026-04-11'))
+            ->setIsBoosted(true)
+            ->setBoostRank(3)
             ->setStatusChangedAt(new \DateTimeImmutable('2026-04-12'));
         ReflectionHelper::setId($activeItem, 100);
 
@@ -141,6 +143,8 @@ final class WorkspacePayloadBuilderTest extends TestCase
         self::assertSame(100, $payload['agendaItems'][0]['id']);
         self::assertSame(1, $payload['agendaItems'][0]['voteCount']);
         self::assertTrue($payload['agendaItems'][0]['currentUserHasVoted']);
+        self::assertTrue($payload['agendaItems'][0]['isBoosted']);
+        self::assertSame(3, $payload['agendaItems'][0]['boostRank']);
         self::assertSame('Member', $payload['agendaItems'][0]['ownerName']);
         self::assertSame('10/04/2026', $payload['agendaItems'][0]['dueOnDisplay']);
         self::assertSame('11/04/2026', $payload['agendaItems'][0]['statusChangedAtDisplay']);

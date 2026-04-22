@@ -40,6 +40,13 @@ final class MeetingAgendaBuilder
             return $left->isBoosted() ? -1 : 1;
         }
 
+        if ($left->isBoosted() && $right->isBoosted()) {
+            $boostRankComparison = ($right->getBoostRank() ?? 0) <=> ($left->getBoostRank() ?? 0);
+            if (0 !== $boostRankComparison) {
+                return $boostRankComparison;
+            }
+        }
+
         $dueDateComparison = $this->compareDueDate($left, $right);
         if (0 !== $dueDateComparison) {
             return $dueDateComparison;
