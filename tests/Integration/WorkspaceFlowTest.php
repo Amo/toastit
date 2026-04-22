@@ -468,6 +468,110 @@ final class WorkspaceFlowTest extends WebTestCase
         self::assertSame('2026-04-22', $payload['draft']['dueOn']);
     }
 
+    public function testWorkspaceMemberCanRefineToastDraftWhileKeepingExistingDueDateContext(): void
+    {
+        $client = static::createClient();
+        $ownerEmail = sprintf('draft-due-owner-%s@example.com', time());
+        $this->loginWithMagicLink($client, $ownerEmail);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => 'Draft due board']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($client)['workspaceId'];
+
+        static::ensureKernelShutdown();
+        $client = static::createClient();
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+        $client->disableReboot();
+
+        $capturedSystemPrompt = '';
+        $capturedUserPrompt = '';
+        static::getContainer()->set(XaiTextService::class, new XaiTextService(
+            new MockHttpClient(function (string $method, string $url, array $options) use (&$capturedSystemPrompt, &$capturedUserPrompt, $ownerEmail): MockResponse {
+                self::assertSame('POST', $method);
+                self::assertStringEndsWith('/responses', $url);
+
+                $payload = $options['json'] ?? [];
+                $inputs = $payload['input'] ?? [];
+                $capturedSystemPrompt = (string) ($inputs[0]['content'] ?? '');
+                $capturedUserPrompt = (string) ($inputs[1]['content'] ?? '');
+
+                return new MockResponse(json_encode([
+                    'output' => [[
+                        'content' => [[
+                            'type' => 'output_text',
+                            'text' => "TITLE: Clarify launch window\nASSIGNEE: {$ownerEmail}\nDUE_ON: NONE\nDESCRIPTION:\nKeep the current date while tightening the wording.",
+                        ]],
+                    ]],
+                ], JSON_THROW_ON_ERROR));
+            }),
+            'test-key',
+            'https://api.x.ai/v1',
+            'grok-4.20-reasoning',
+            30,
+        ));
+
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/items/draft/refine', $workspaceId), [
+            'title' => 'launch',
+            'description' => 'Clarify the launch target',
+            'dueOn' => '2026-05-03',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $payload = $this->decodeJsonResponse($client);
+
+        self::assertTrue($payload['ok']);
+        self::assertSame('2026-05-03', $payload['draft']['dueOn']);
+        self::assertStringContainsString('Reference datetime:', $capturedSystemPrompt);
+        self::assertStringContainsString('Reference timezone:', $capturedSystemPrompt);
+        self::assertStringContainsString('Current due date: 2026-05-03', $capturedSystemPrompt);
+        self::assertStringContainsString("Current due date:\n2026-05-03", $capturedUserPrompt);
+    }
+
+    public function testWorkspaceMemberCanRefineToastDraftWithWorkspaceDefaultDueDateFallback(): void
+    {
+        $client = static::createClient();
+        $ownerEmail = sprintf('draft-default-owner-%s@example.com', time());
+        $this->loginWithMagicLink($client, $ownerEmail);
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+
+        $client->jsonRequest('POST', '/api/workspaces', ['name' => 'Draft default board']);
+        self::assertResponseIsSuccessful();
+        $workspaceId = $this->decodeJsonResponse($client)['workspaceId'];
+
+        static::ensureKernelShutdown();
+        $client = static::createClient();
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->createAccessTokenForEmail($ownerEmail));
+        $client->disableReboot();
+        static::getContainer()->set(XaiTextService::class, new XaiTextService(
+            new MockHttpClient([
+                new MockResponse(json_encode([
+                    'output' => [[
+                        'content' => [[
+                            'type' => 'output_text',
+                            'text' => "TITLE: Clarify planning note\nASSIGNEE: {$ownerEmail}\nDUE_ON: NONE\nDESCRIPTION:\nUse the workspace default due-date rule when no stronger signal exists.",
+                        ]],
+                    ]],
+                ], JSON_THROW_ON_ERROR)),
+            ]),
+            'test-key',
+            'https://api.x.ai/v1',
+            'grok-4.20-reasoning',
+            30,
+        ));
+
+        $client->jsonRequest('POST', sprintf('/api/workspaces/%d/items/draft/refine', $workspaceId), [
+            'title' => 'planning',
+            'description' => 'No date in this toast.',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $payload = $this->decodeJsonResponse($client);
+
+        self::assertTrue($payload['ok']);
+        self::assertSame((new \DateTimeImmutable('today'))->modify('+7 days')->format('Y-m-d'), $payload['draft']['dueOn']);
+    }
+
     public function testOwnerCanGenerateAndApplyToastCurationDraft(): void
     {
         $client = static::createClient();
