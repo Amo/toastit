@@ -401,6 +401,7 @@ watch(() => authState.accessToken, syncAccessRefresh);
       :dashboard-url="spa.urls.dashboardUrl"
       :access-token="authState.accessToken"
       :standalone-toast-id="dashboardToastOverlayId"
+      :prefer-inline-toast-sheet="true"
     />
     <WorkspacePage
       v-if="isDashboardToastRoute"
@@ -408,6 +409,7 @@ watch(() => authState.accessToken, syncAccessRefresh);
       :dashboard-url="spa.urls.dashboardUrl"
       :access-token="authState.accessToken"
       :standalone-toast-id="route.params.id"
+      :prefer-inline-toast-sheet="true"
     />
   </AppShell>
 

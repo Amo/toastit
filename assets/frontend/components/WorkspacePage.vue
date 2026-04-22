@@ -31,6 +31,7 @@ const props = defineProps({
   accessToken: { type: String, required: true },
   standaloneToastId: { type: [String, Number], default: null },
   createOnlyMode: { type: Boolean, default: false },
+  preferInlineToastSheet: { type: Boolean, default: false },
 });
 
 const route = useRoute();
@@ -138,7 +139,7 @@ const workspace = computed(() => payload.value?.workspace ?? null);
 const currentUser = computed(() => payload.value?.currentUser ?? null);
 const standaloneMode = computed(() => null !== props.standaloneToastId && '' !== String(props.standaloneToastId));
 const isStandaloneDashboardToastOverlay = computed(() => standaloneMode.value && route.name === 'dashboard');
-const useDedicatedMobileToastView = computed(() => standaloneMode.value && isMobileViewport.value);
+const useDedicatedMobileToastView = computed(() => standaloneMode.value && isMobileViewport.value && !props.preferInlineToastSheet);
 const showDesktopInlineToastPanel = computed(() => !isMobileViewport.value);
 const showDesktopAccordionToast = computed(() => false);
 const TOAST_RETURN_TO_STORAGE_KEY = 'toastit:toast-return-to';
@@ -403,7 +404,7 @@ const visibleVetoedItems = computed(() => displayedVetoedItems.value.slice(0, ve
 const visibleResolvedItems = computed(() => displayedResolvedItems.value.slice(0, resolvedVisibleCount.value));
 const isWorkspaceSettingsSheetOpen = computed(() => currentWorkspaceSection.value === 'settings');
 const showMobileToastSheet = computed(() => isMobileViewport.value && !!selectedToastModal.value);
-const showInlineMobileToastSheet = computed(() => showMobileToastSheet.value && !standaloneMode.value);
+const showInlineMobileToastSheet = computed(() => showMobileToastSheet.value && (!standaloneMode.value || props.preferInlineToastSheet));
 const hasMoreVetoedItems = computed(() => visibleVetoedItems.value.length < displayedVetoedItems.value.length);
 const hasMoreResolvedItems = computed(() => visibleResolvedItems.value.length < displayedResolvedItems.value.length);
 const toastLookup = computed(() => Object.fromEntries(
