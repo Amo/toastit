@@ -1,3 +1,8 @@
+## 1.8.1 (April 22, 2026)
+- FIX: smoother mobile toast opening from the home dashboard
+  - Opening a toast from the mobile home dashboard now stays in-app and fills the screen instead of triggering a visible page reload.
+  - Closing the toast from mobile returns to the dashboard without remounting the page, making back navigation feel immediate.
+
 ## 1.8.0 (April 22, 2026)
 - NEW: clearer solo prioritization and desktop workspace flow
   - Solo workspaces now support boosted toasts, with visible boost markers in the list so the ordering is easier to understand.
