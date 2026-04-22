@@ -30,6 +30,7 @@ final class RefineToastDraftController extends AbstractController
                 (string) ($payload['title'] ?? ''),
                 (string) ($payload['description'] ?? ''),
                 $this->workspaceAccess->getUserOrFail(),
+                (string) ($payload['dueOn'] ?? ''),
             );
         } catch (SessionSummaryUnavailableException $exception) {
             $statusCode = match ($exception->getReason()) {

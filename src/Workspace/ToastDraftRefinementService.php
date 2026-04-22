@@ -20,10 +20,17 @@ final class ToastDraftRefinementService
     /**
      * @return array{title: string, description: string, ownerId: ?int, dueOn: ?string}
      */
-    public function refine(Workspace $workspace, string $title, ?string $description, ?User $requestedBy = null): array
+    public function refine(
+        Workspace $workspace,
+        string $title,
+        ?string $description,
+        ?User $requestedBy = null,
+        ?string $currentDueOn = null,
+    ): array
     {
         $title = trim($title);
         $description = trim((string) $description);
+        $currentDueOn = $this->normalizeCurrentDueOn($currentDueOn);
 
         if ('' === $title && '' === $description) {
             throw new SessionSummaryUnavailableException('missing_input', 'A title or description is required.');
@@ -35,6 +42,7 @@ final class ToastDraftRefinementService
             [
                 'timezone' => date_default_timezone_get(),
                 'today_iso' => (new \DateTimeImmutable('now'))->format(\DateTimeInterface::ATOM),
+                'current_due_on' => $currentDueOn ?? 'NONE',
             ],
         );
 
@@ -52,6 +60,7 @@ final class ToastDraftRefinementService
                 'participants_text' => $this->formatParticipants($workspace),
                 'current_title' => '' !== $title ? $title : '(empty)',
                 'current_description' => '' !== $description ? $description : '(empty)',
+                'current_due_on' => $currentDueOn ?? 'NONE',
                 'reword_language_instruction' => $this->buildRewordLanguageInstruction($requestedBy),
             ],
         );
@@ -65,13 +74,13 @@ final class ToastDraftRefinementService
             ],
         );
 
-        return $this->parseResponse($workspace, $response);
+        return $this->parseResponse($workspace, $response, $currentDueOn);
     }
 
     /**
      * @return array{title: string, description: string, ownerId: ?int, dueOn: ?string}
      */
-    private function parseResponse(Workspace $workspace, string $response): array
+    private function parseResponse(Workspace $workspace, string $response, ?string $currentDueOn = null): array
     {
         $normalized = trim(str_replace("\r\n", "\n", $response));
 
@@ -105,7 +114,7 @@ final class ToastDraftRefinementService
           $owner = $this->workspaceWorkflow->findWorkspaceInviteeByDisplayName($workspace, $assignee);
         }
 
-        $resolvedDueOn = $this->resolveWorkspaceDefaultDueOn($workspace);
+        $resolvedDueOn = $currentDueOn ?? $this->resolveWorkspaceDefaultDueOn($workspace);
         if ('' !== $dueOn && 'NONE' !== strtoupper($dueOn)) {
             try {
                 $resolvedDueOn = (new \DateTimeImmutable($dueOn))->format('Y-m-d');
@@ -178,5 +187,19 @@ final class ToastDraftRefinementService
         };
 
         return $dueAt->format('Y-m-d');
+    }
+
+    private function normalizeCurrentDueOn(?string $currentDueOn): ?string
+    {
+        $normalized = trim((string) $currentDueOn);
+        if ('' === $normalized) {
+            return null;
+        }
+
+        try {
+            return (new \DateTimeImmutable($normalized))->format('Y-m-d');
+        } catch (\Exception) {
+            return null;
+        }
     }
 }

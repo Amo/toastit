@@ -24,6 +24,7 @@ final class ToastRephraseMailService
             $toast->getTitle(),
             $toast->getDescription(),
             $toast->getAuthor(),
+            $toast->getDueAt()?->format('Y-m-d'),
         );
 
         $this->transactionalMailer->sendToastRephraseProposal(

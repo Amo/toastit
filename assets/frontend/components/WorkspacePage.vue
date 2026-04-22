@@ -979,6 +979,7 @@ const refineCreatedToastInBackground = async (workspaceId, toastId, draftSnapsho
   const { ok, data } = await workspacesApi.refineToastDraft(workspaceId, {
     title: snapshotTitle,
     description: snapshotDescription,
+    dueOn: draftSnapshot?.dueOn ?? '',
   });
 
   if (!ok || !data?.ok || !data?.draft) {
@@ -1152,6 +1153,7 @@ const refineToastDraft = async (draftSnapshot = null, options = {}) => {
     workspacesApi.refineToastDraft(workspace.value.id, {
       title: previousDraft.title,
       description: previousDraft.description,
+      dueOn: previousDraft.dueOn,
     }),
     timeoutResultPromise,
   ]);

@@ -839,6 +839,7 @@ final class InboundEmailService
                     $toast->getTitle(),
                     $toast->getDescription(),
                     $actor,
+                    $toast->getDueAt()?->format('Y-m-d'),
                 );
                 $this->applyRewordProposal($toast, $proposal);
 
@@ -1091,6 +1092,7 @@ final class InboundEmailService
                 $toast->getTitle(),
                 $toast->getDescription(),
                 $actor,
+                $toast->getDueAt()?->format('Y-m-d'),
             );
         } catch (SessionSummaryUnavailableException) {
             return false;
