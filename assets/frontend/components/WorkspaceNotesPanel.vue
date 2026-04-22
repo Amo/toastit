@@ -428,7 +428,7 @@ onBeforeUnmount(() => {
     >
       <section
         v-if="selectedNote"
-        class="fixed inset-y-0 right-0 z-50 flex w-full max-w-[min(100vw,56rem)] flex-col border-l border-stone-200 bg-stone-50 shadow-[-24px_0_60px_rgba(28,25,23,0.18)]"
+        class="fixed inset-y-0 right-0 z-50 flex w-full max-w-[min(100vw,84rem)] flex-col border-l border-stone-200 bg-stone-50 shadow-[-24px_0_60px_rgba(28,25,23,0.18)]"
       >
         <div class="border-b border-stone-200 bg-white px-5 py-5">
           <div class="flex items-start justify-between gap-4">

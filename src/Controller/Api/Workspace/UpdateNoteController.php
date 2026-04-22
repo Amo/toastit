@@ -21,12 +21,19 @@ final class UpdateNoteController extends AbstractController
     ) {
     }
 
-    #[Route('/api/workspaces/{id}/notes/{noteId}', name: 'api_workspace_note_update', methods: ['PUT'])]
+    #[Route('/api/workspaces/{id}/notes/{noteId}', name: 'api_workspace_note_update', methods: ['GET', 'PUT'])]
     public function __invoke(int $id, int $noteId, Request $request): JsonResponse
     {
         $workspace = $this->workspaceAccess->getWorkspaceOrFail($id);
         $currentUser = $this->workspaceAccess->getUserOrFail();
         $note = $this->workspaceAccess->getWorkspaceNoteOrFail($workspace, $noteId);
+
+        if ($request->isMethod('GET')) {
+            return $this->json([
+                'ok' => true,
+                'note' => $this->workspacePayloadBuilder->buildNotePayload($note, $currentUser),
+            ]);
+        }
 
         $payload = $request->toArray();
         $title = trim((string) ($payload['title'] ?? ''));

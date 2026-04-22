@@ -33,6 +33,7 @@ const profileSections = [
   { key: 'retention', label: 'Digest & Stats' },
   { key: 'api', label: 'API tokens' },
   { key: 'trash', label: 'Trash' },
+  { key: 'about', label: 'About' },
   { key: 'account', label: 'Account' },
 ];
 

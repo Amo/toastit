@@ -6,6 +6,8 @@ use App\Entity\User;
 use App\Entity\Workspace;
 use App\Profile\AvatarUrlService;
 use App\Profile\UserDateTimeFormatter;
+use App\Release\AppVersionProvider;
+use App\Release\ChangelogHtmlProvider;
 use App\Repository\WorkspaceRepository;
 use App\Workspace\InboundEmailAddressService;
 
@@ -16,6 +18,8 @@ final class ProfilePayloadBuilder
         private readonly UserDateTimeFormatter $userDateTimeFormatter,
         private readonly WorkspaceRepository $workspaceRepository,
         private readonly InboundEmailAddressService $inboundEmailAddress,
+        private readonly AppVersionProvider $appVersionProvider,
+        private readonly ChangelogHtmlProvider $changelogHtmlProvider,
     ) {
     }
 
@@ -55,7 +59,11 @@ final class ProfilePayloadBuilder
     /**
      * @param list<Workspace> $deletedWorkspaces
      *
-     * @return array{user: array<string, mixed>, deletedWorkspaces: list<array<string, mixed>>}
+     * @return array{
+     *     user: array<string, mixed>,
+     *     about: array{appVersion: string, changelogHtml: string},
+     *     deletedWorkspaces: list<array<string, mixed>>
+     * }
      */
     public function buildProfile(User $user, array $deletedWorkspaces): array
     {
@@ -63,6 +71,10 @@ final class ProfilePayloadBuilder
 
         return [
             'user' => $this->buildUser($user),
+            'about' => [
+                'appVersion' => $this->appVersionProvider->getCurrentVersion(),
+                'changelogHtml' => $this->changelogHtmlProvider->getCurrentHtml(),
+            ],
             'deletedWorkspaces' => array_map(static fn (Workspace $workspace): array => [
                 'id' => $workspace->getId(),
                 'name' => $workspace->getName(),

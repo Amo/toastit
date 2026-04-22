@@ -103,7 +103,7 @@ const openWorkspaceFromSummary = (workspace) => {
 };
 
 const openToast = (toastId) => {
-  if (isMobileViewport.value && route.name === 'dashboard') {
+  if (route.name === 'dashboard') {
     router.push({
       path: route.path,
       query: {

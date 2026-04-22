@@ -9,10 +9,8 @@ import AvatarBadge from './AvatarBadge.vue';
 import CommentComposer from './CommentComposer.vue';
 import CommentThread from './CommentThread.vue';
 import CompactDropdown from './CompactDropdown.vue';
-import DecisionNotesEditor from './DecisionNotesEditor.vue';
 import EmptyState from './EmptyState.vue';
 import EyebrowLabel from './EyebrowLabel.vue';
-import FollowUpEditor from './FollowUpEditor.vue';
 import CreateToastModal from './CreateToastModal.vue';
 import KeyboardHint from './KeyboardHint.vue';
 import MemberListItem from './MemberListItem.vue';
@@ -22,7 +20,6 @@ import PageHeader from './PageHeader.vue';
 import SessionArchiveModal from './SessionArchiveModal.vue';
 import ToastCurationModal from './ToastCurationModal.vue';
 import ToastStatusBadge from './ToastStatusBadge.vue';
-import ToastNavigationFooter from './ToastNavigationFooter.vue';
 import WorkspaceNotesPanel from './WorkspaceNotesPanel.vue';
 
 const props = defineProps({
@@ -140,7 +137,6 @@ const currentUser = computed(() => payload.value?.currentUser ?? null);
 const standaloneMode = computed(() => null !== props.standaloneToastId && '' !== String(props.standaloneToastId));
 const isStandaloneDashboardToastOverlay = computed(() => standaloneMode.value && route.name === 'dashboard');
 const useDedicatedMobileToastView = computed(() => standaloneMode.value && isMobileViewport.value && !props.preferInlineToastSheet);
-const showDesktopInlineToastPanel = computed(() => !isMobileViewport.value);
 const showDesktopAccordionToast = computed(() => false);
 const TOAST_RETURN_TO_STORAGE_KEY = 'toastit:toast-return-to';
 const otherWorkspaces = computed(() => payload.value?.otherWorkspaces ?? []);
@@ -403,8 +399,7 @@ const displayedResolvedItems = computed(() => resolvedItems.value.filter(matches
 const visibleVetoedItems = computed(() => displayedVetoedItems.value.slice(0, vetoedVisibleCount.value));
 const visibleResolvedItems = computed(() => displayedResolvedItems.value.slice(0, resolvedVisibleCount.value));
 const isWorkspaceSettingsSheetOpen = computed(() => currentWorkspaceSection.value === 'settings');
-const showMobileToastSheet = computed(() => isMobileViewport.value && !!selectedToastModal.value);
-const showInlineMobileToastSheet = computed(() => showMobileToastSheet.value && (!standaloneMode.value || props.preferInlineToastSheet));
+const showInlineToastSheet = computed(() => !!selectedToastModal.value && !useDedicatedMobileToastView.value);
 const hasMoreVetoedItems = computed(() => visibleVetoedItems.value.length < displayedVetoedItems.value.length);
 const hasMoreResolvedItems = computed(() => visibleResolvedItems.value.length < displayedResolvedItems.value.length);
 const toastLookup = computed(() => Object.fromEntries(
@@ -649,19 +644,6 @@ const displayToastStatus = (item) => {
   if (item.status === 'toasted') return 'Toasted';
   if (item.status === 'ready') return 'Ready';
   return 'In progress';
-};
-
-const displayBoostLabel = (item) => {
-  if (!item?.isBoosted) {
-    return '';
-  }
-
-  const rank = Number(item?.boostRank ?? 0);
-  if (Number.isFinite(rank) && rank > 0) {
-    return `Boost ${rank}`;
-  }
-
-  return 'Boosted';
 };
 
 const isActiveToast = (item) => item?.status === 'pending' || item?.status === 'ready';
@@ -2792,6 +2774,12 @@ const handleMobileActionBarScroll = () => {
 };
 
 onMounted(() => {
+  if (standaloneMode.value) {
+    const initialToastId = Number(props.standaloneToastId ?? 0);
+    if (Number.isFinite(initialToastId) && initialToastId > 0) {
+      selectedToastModalId.value = initialToastId;
+    }
+  }
   syncViewport();
   syncToastReturnToFromRoute();
   applyFiltersFromRoute();
@@ -2852,7 +2840,7 @@ watch(() => workspace.value?.id, syncCreateOnlyMode);
 watch(() => [route.query.filter, route.query.assignee], applyFiltersFromRoute);
 watch(() => route.query.section, applySectionFromRoute);
 watch(() => selectedToastModal.value?.title, () => nextTick(syncMobileStickyHeaderHeight));
-watch(showMobileToastSheet, () => nextTick(() => {
+watch(showInlineToastSheet, () => nextTick(() => {
   syncMobileStickyHeaderHeight();
   syncMobileKeyboardInset();
   syncMobileCommentComposerHeight();
@@ -2915,7 +2903,7 @@ watch(displayedResolvedItems, () => {
 });
 watch(hasMoreVetoedItems, syncArchivedToastObserver);
 watch(hasMoreResolvedItems, syncArchivedToastObserver);
-watch([showMobileToastSheet, selectedToastModal], async () => {
+watch([showInlineToastSheet, selectedToastModal], async () => {
   await nextTick();
   syncMobileActionBarDockState();
   syncMobileImmersiveState();
@@ -3205,17 +3193,9 @@ watch(isMobileViewport, (isMobile) => {
                     @click="openToastModal(item)"
                   >
                     <td class="px-4 py-3">
-                      <div class="flex items-center gap-2">
-                        <span class="text-left font-medium" :class="agendaItemTitleClass(item)">
-                          {{ item.title }}
-                        </span>
-                        <ToastStatusBadge
-                          v-if="item.isBoosted"
-                          :label="displayBoostLabel(item)"
-                          tone-class="text-slate-700"
-                          badge-class="border-slate-200 bg-slate-100"
-                        />
-                      </div>
+                      <span class="text-left font-medium" :class="agendaItemTitleClass(item)">
+                        {{ item.title }}
+                      </span>
                     </td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.owner?.displayName ?? 'Unassigned' }}</td>
                     <td class="px-4 py-3" :class="agendaItemMetaClass(item)">{{ item.dueOnDisplay ?? 'No due date' }}</td>
@@ -3788,7 +3768,7 @@ watch(isMobileViewport, (isMobile) => {
           leave-to-class="opacity-0"
         >
           <div
-            v-if="showInlineMobileToastSheet"
+            v-if="showInlineToastSheet"
             class="fixed inset-0 z-[75] bg-stone-950/35 backdrop-blur-[1px]"
             @click.self="closeToastModal"
           ></div>
@@ -3803,8 +3783,8 @@ watch(isMobileViewport, (isMobile) => {
           leave-to-class="translate-x-full opacity-0"
         >
           <section
-            v-if="showInlineMobileToastSheet"
-            class="fixed inset-y-0 right-0 z-[80] flex w-full flex-col overflow-hidden bg-white shadow-[-24px_0_60px_rgba(28,25,23,0.18)]"
+            v-if="showInlineToastSheet"
+            class="fixed inset-y-0 right-0 z-[80] flex w-full max-w-[min(100vw,42rem)] flex-col overflow-hidden border-l border-stone-200 bg-white shadow-[-24px_0_60px_rgba(28,25,23,0.18)]"
           >
             <div class="min-h-0 flex flex-1 flex-col overflow-hidden">
               <div class="min-h-0 flex-1 overflow-y-auto space-y-0 pt-0">
@@ -4078,285 +4058,6 @@ watch(isMobileViewport, (isMobile) => {
         @update:description="itemForm.description = $event"
         @update:ai-improve-enabled="itemForm.aiImproveEnabled = $event"
       />
-
-      <Teleport to="body">
-        <transition
-          enter-active-class="transition duration-200 ease-out"
-          enter-from-class="opacity-0"
-          enter-to-class="opacity-100"
-          leave-active-class="transition duration-150 ease-in"
-          leave-from-class="opacity-100"
-          leave-to-class="opacity-0"
-        >
-          <div
-            v-if="selectedToastModal && !useDedicatedMobileToastView && showDesktopInlineToastPanel"
-            class="fixed inset-0 z-[65] bg-stone-950/35 backdrop-blur-[1px]"
-            @click.self="closeToastModal"
-          ></div>
-        </transition>
-
-        <transition
-          enter-active-class="transition duration-300 ease-out"
-          enter-from-class="translate-x-full opacity-0"
-          enter-to-class="translate-x-0 opacity-100"
-          leave-active-class="transition duration-200 ease-in"
-          leave-from-class="translate-x-0 opacity-100"
-          leave-to-class="translate-x-full opacity-0"
-        >
-          <section
-            v-if="selectedToastModal && !useDedicatedMobileToastView && showDesktopInlineToastPanel"
-            class="fixed inset-y-0 right-0 z-[70] flex w-full max-w-[min(100vw,56rem)] flex-col border-l border-stone-200 bg-white shadow-[-24px_0_60px_rgba(28,25,23,0.18)]"
-          >
-        <div class="relative border-b border-stone-100">
-          <ModalHeader :title="selectedToastModal.title" :show-close-button="false" @close="closeToastModal">
-            <template #eyebrow>
-              <button
-                type="button"
-                class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 transition hover:text-amber-700"
-                @click="openCurrentWorkspace"
-              >
-                <i class="fa-solid fa-layer-group text-[11px]" aria-hidden="true"></i>
-                <span>{{ workspace.name }}</span>
-              </button>
-            </template>
-            <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-stone-500">
-              <ToastStatusBadge
-                :label="displayToastStatus(selectedToastModal)"
-                :tone-class="toastStatusTone(selectedToastModal)"
-                :badge-class="toastStatusBadgeClass(selectedToastModal)"
-              />
-              <ToastStatusBadge
-                v-if="selectedToastModal.aiRefinementPending"
-                label="IA pending"
-                :tone-class="toastAiPendingToneClass"
-                :badge-class="toastAiPendingBadgeClass"
-              />
-              <span class="inline-flex items-center gap-2">
-                <i class="fa-regular fa-user" aria-hidden="true"></i>
-                <span>{{ selectedToastModal.author.displayName }}</span>
-              </span>
-              <span v-if="selectedToastModal.owner" class="inline-flex items-center gap-2">
-                <i class="fa-solid fa-user-check" aria-hidden="true"></i>
-                <span>{{ selectedToastModal.owner.displayName }}</span>
-              </span>
-              <span v-if="selectedToastModal.dueOnDisplay" class="inline-flex items-center gap-2">
-                <i class="fa-regular fa-calendar" aria-hidden="true"></i>
-                <span>{{ selectedToastModal.dueOnDisplay }}</span>
-              </span>
-            </div>
-          </ModalHeader>
-          <div class="mt-4 border-t border-stone-100 px-6 pb-4 pt-4">
-            <div class="flex flex-wrap items-center gap-2">
-              <div class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200">
-                <button
-                  v-if="!isSoloWorkspace && isActiveToast(selectedToastModal)"
-                  type="button"
-                  class="inline-flex min-h-11 items-center justify-center gap-2 border-r border-stone-200 px-4 text-sm font-semibold transition last:border-r-0"
-                  :class="selectedToastModal.currentUserHasVoted ? 'bg-amber-200 text-amber-900' : 'bg-white text-stone-700 hover:bg-stone-50'"
-                  :disabled="isToastingMode"
-                  @click="toggleVote(selectedToastModal.id)"
-                >
-                  <span>{{ selectedToastModal.voteCount }}</span>
-                  <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
-                </button>
-                <button
-                  v-if="workspace.currentUserIsOwner && !isToastingMode && isActiveToast(selectedToastModal)"
-                  type="button"
-                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 px-4 transition"
-                  :class="selectedToastModal.isBoosted ? 'bg-slate-400 text-white' : 'bg-white text-slate-600 hover:bg-stone-50'"
-                  @click="toggleBoost(selectedToastModal.id)"
-                >
-                  <i class="fa-solid fa-star text-sm" aria-hidden="true"></i>
-                  <span class="sr-only">{{ selectedToastModal.isBoosted ? 'Remove boost' : 'Boost' }}</span>
-                </button>
-                <button
-                  v-if="selectedToastModal.currentUserCanMarkReady"
-                  type="button"
-                  class="inline-flex min-h-11 items-center justify-center gap-2 border-r border-stone-200 px-4 text-sm font-semibold transition"
-                  :class="selectedToastModal.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
-                  @click="setReady(selectedToastModal.id, selectedToastModal.status !== 'ready')"
-                >
-                  <i :class="selectedToastModal.status === 'ready' ? 'fa-solid fa-rotate-left text-sm' : 'fa-solid fa-check text-sm'" aria-hidden="true"></i>
-                  <span>{{ selectedToastModal.status === 'ready' ? 'Mark in progress' : 'Mark ready' }}</span>
-                </button>
-                <button
-                  v-if="selectedToastModal.currentUserCanEdit && isActiveToast(selectedToastModal) && !isToastingMode"
-                  type="button"
-                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
-                  @click="openEditToastModal(selectedToastModal)"
-                >
-                  <i class="fa-solid fa-pen text-sm" aria-hidden="true"></i>
-                  <span class="sr-only">Edit toast</span>
-                </button>
-                <button
-                  v-if="workspace.currentUserIsOwner && isActiveToast(selectedToastModal) && !isToastingMode"
-                  type="button"
-                  class="inline-grid min-h-11 min-w-12 place-items-center bg-white px-4 transition hover:bg-stone-50"
-                  :class="selectedToastModal.status === 'discarded' ? 'text-red-700' : 'text-stone-600 hover:text-red-700'"
-                  @click="toggleVeto(selectedToastModal.id)"
-                >
-                  <i class="fa-solid fa-trash text-sm" aria-hidden="true"></i>
-                  <span class="sr-only">{{ selectedToastModal.status === 'discarded' ? 'Restore toast' : 'Decline toast' }}</span>
-                </button>
-              </div>
-
-              <div
-                v-if="(selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted') || (isActiveToast(selectedToastModal) && otherWorkspaces.length && !isToastingMode) || (workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(selectedToastModal))"
-                class="flex min-h-11 flex-wrap items-stretch overflow-hidden rounded-2xl border border-stone-200"
-              >
-                <button
-                  v-if="isActiveToast(selectedToastModal) && otherWorkspaces.length && !isToastingMode"
-                  type="button"
-                  class="inline-grid min-h-11 min-w-12 place-items-center border-r border-stone-200 bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
-                  @click="openMoveCopyToastModal"
-                >
-                  <i class="fa-solid fa-right-left text-sm" aria-hidden="true"></i>
-                  <span class="sr-only">Move or copy toast</span>
-                </button>
-                <button
-                  v-if="selectedToastModal.status === 'discarded' || selectedToastModal.status === 'toasted'"
-                  type="button"
-                  class="inline-grid min-h-11 min-w-12 place-items-center bg-white px-4 text-stone-600 transition hover:bg-stone-50 hover:text-stone-950"
-                  title="Copy as new"
-                  @click="copyToast()"
-                >
-                  <i class="fa-regular fa-copy text-sm" aria-hidden="true"></i>
-                  <span class="sr-only">Copy as new</span>
-                </button>
-                <button
-                  v-if="workspace.currentUserIsOwner && isSoloWorkspace && isActiveToast(selectedToastModal)"
-                  type="button"
-                  class="inline-grid min-h-11 min-w-12 place-items-center bg-white px-4 text-amber-700 transition hover:bg-amber-50"
-                  @click="toastItem(selectedToastModal.id)"
-                >
-                  <i class="fa-solid fa-check text-sm" aria-hidden="true"></i>
-                  <span class="sr-only">Mark as toasted</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-          <div class="overflow-y-auto px-6 py-6">
-            <div class="space-y-6">
-              <div>
-                <div v-if="selectedToastModal.description" class="tw-markdown text-stone-700" v-html="renderToastDescription(selectedToastModal.description)"></div>
-                <p v-else class="text-lg text-stone-500">No description</p>
-              </div>
-
-              <div v-if="selectedToastModal.previousItem" class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Created from</p>
-                <button type="button" class="mt-2 text-left text-sm text-stone-800 transition hover:text-amber-700" @click="openCreatedFromToast(selectedToastModal.previousItem.id)">
-                  <strong>{{ selectedToastModal.previousItem.title }}</strong>
-                  <span class="font-semibold" :class="toastStatusTone(selectedToastModal.previousItem)"> · {{ relatedToastStatusLabel(selectedToastModal.previousItem) }}</span>
-                </button>
-              </div>
-
-              <div v-if="workspace.currentUserIsOwner && isToastingMode && isActiveToast(selectedToastModal)" class="space-y-4">
-                <DecisionNotesEditor
-                  :model-value="selectedToastModal.discussionNotes ?? ''"
-                  :blocked="toastModalNavigationBlocked && isDecisionNotesDirty"
-                  :save-state="decisionNotesAutosaveState"
-                  :save-error="decisionNotesAutosaveError"
-                  @update:model-value="updateDecisionNotes(selectedToastModal.id, $event)"
-                />
-
-                <FollowUpEditor
-                  :follow-ups="ensureDraftFollowUps(selectedToastModal)"
-                  :participants="participants"
-                  :blocked="toastModalNavigationBlocked && isFollowUpsDirty"
-                  :can-generate="!!selectedToastModal.discussionNotes?.trim()"
-                  :is-generating="isExecutionPlanGenerating"
-                  :error-message="executionPlanError"
-                  :notice-message="executionPlanNotice"
-                  @generate="generateExecutionPlan"
-                  @add="addFollowUpDraft(selectedToastModal.id)"
-                  @remove="removeFollowUpDraft(selectedToastModal.id, $event)"
-                  @update="updateFollowUpDraft(selectedToastModal.id, $event.index, $event.key, $event.value)"
-                />
-
-                <div class="flex flex-wrap justify-end gap-3">
-                  <button type="button" class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="isSaving" @click="saveDiscussion">
-                    {{ isSaving ? 'Saving...' : 'Toast it' }}
-                  </button>
-                </div>
-              </div>
-
-              <section v-if="selectedToastModal.followUpItems?.length" class="space-y-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Follow-up toasts</p>
-                <div class="rounded-[1.5rem] border border-stone-200 bg-white p-4">
-                  <div class="space-y-2">
-                    <button
-                      v-for="followUp in selectedToastModal.followUpItems"
-                      :key="followUp.id"
-                      type="button"
-                      class="block w-full rounded-2xl px-3 py-3 text-left text-sm text-stone-800 transition hover:bg-stone-50 hover:text-amber-700"
-                      @click="openToastById(followUp.id)"
-                    >
-                      <strong>{{ followUp.title }}</strong>
-                      <span class="font-semibold" :class="toastStatusTone(followUp)"> · {{ relatedToastStatusLabel(followUp) }}</span>
-                      <span v-if="followUp.ownerName"> · {{ followUp.ownerName }}</span>
-                      <span v-if="followUp.dueOnDisplay"> · {{ followUp.dueOnDisplay }}</span>
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              <section v-if="selectedToastModal.discussionNotes && (!isToastingMode || selectedToastModal.status === 'toasted' || !workspace.currentUserIsOwner)" class="space-y-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Decision</p>
-                <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4">
-                  <div class="tw-markdown text-stone-800" v-html="renderToastDescription(selectedToastModal.discussionNotes)"></div>
-                </div>
-              </section>
-
-              <section class="space-y-3">
-                <div class="flex items-center justify-between gap-4">
-                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Comments</p>
-                  <div class="flex items-center gap-2">
-                    <button
-                      v-if="(selectedToastModal.comments?.length ?? 0) > 0"
-                      type="button"
-                      class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950 disabled:opacity-60"
-                      :disabled="commentSummaryLoadingById[selectedToastModal.id] === true"
-                      @click="summarizeComments(selectedToastModal.id)"
-                    >
-                      <i class="fa-solid fa-wand-magic-sparkles text-[11px]" aria-hidden="true"></i>
-                      <span>{{ commentSummaryLoadingById[selectedToastModal.id] === true ? 'Summarizing...' : 'Summarize' }}</span>
-                    </button>
-                    <span class="text-xs font-medium text-stone-500">{{ selectedToastModal.comments?.length ?? 0 }}</span>
-                  </div>
-                </div>
-
-                <div class="rounded-[1.5rem] border border-stone-200 bg-white p-4">
-                  <div v-if="commentSummaryFor(selectedToastModal.id)" class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Comment summary</p>
-                    <div class="mt-2 tw-markdown text-sm text-stone-800" v-html="renderToastDescription(commentSummaryFor(selectedToastModal.id))"></div>
-                  </div>
-                  <CommentThread :comments="selectedToastModal.comments ?? []" :render-comment="renderToastDescription" />
-
-                  <CommentComposer
-                    v-if="isActiveToast(selectedToastModal)"
-                    :current-user="currentUser"
-                    :value="commentDraftFor(selectedToastModal.id)"
-                    :blocked="toastModalNavigationBlocked && isCommentDraftDirty"
-                    @input="handleCommentDraftInput(selectedToastModal.id, $event)"
-                    @keydown="handleCommentDraftKeydown(selectedToastModal.id, $event)"
-                    @submit="createComment(selectedToastModal.id)"
-                  />
-                </div>
-              </section>
-
-              <ToastNavigationFooter
-                :can-navigate-previous="canNavigateSelectedToast(-1)"
-                :can-navigate-next="canNavigateSelectedToast(1)"
-                @previous="navigateSelectedToast(-1)"
-                @next="navigateSelectedToast(1)"
-              />
-            </div>
-          </div>
-          </section>
-        </transition>
-      </Teleport>
 
       <ModalDialog v-if="isMobileViewport && isMobileStatusFilterModalOpen" max-width-class="max-w-4xl" @close="isMobileStatusFilterModalOpen = false">
         <ModalHeader

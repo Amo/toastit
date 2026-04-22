@@ -63,6 +63,8 @@ const profile = ref({
   displayName: '',
   firstName: '',
   lastName: '',
+  appVersion: '',
+  changelogHtml: '',
   inboundRewordLanguage: 'auto',
   inboundRewordLanguageChoices: [],
   timezone: 'auto',
@@ -92,6 +94,7 @@ const profileSections = [
   { key: 'retention', label: 'Digest & Stats' },
   { key: 'api', label: 'API tokens' },
   { key: 'trash', label: 'Trash' },
+  { key: 'about', label: 'About' },
   { key: 'account', label: 'Account' },
 ];
 
@@ -99,14 +102,19 @@ const normalizeProfileSection = (value) => (
   profileSections.some((section) => section.key === value) ? value : 'infos'
 );
 
-const profileMenuItems = [
+const profileMenuItems = computed(() => [
   { label: 'Infos', to: '/app/profile?section=infos' },
   { label: 'Preferences', to: '/app/profile?section=preferences' },
   { label: 'Digest & Stats', to: '/app/profile?section=retention' },
   { label: 'API tokens', to: '/app/profile?section=api' },
   { label: 'Trash', to: '/app/profile?section=trash' },
+  {
+    label: 'About',
+    to: '/app/profile?section=about',
+    detail: profile.value.appVersion ? `Version ${profile.value.appVersion}` : '',
+  },
   { label: 'Account', to: '/app/profile?section=account' },
-];
+]);
 
 const adminMenuItems = [
   { label: 'Statistics', to: '/admin' },
@@ -196,6 +204,10 @@ const currentProfileSectionDescription = computed(() => {
 
   if (currentProfileSection.value === 'account') {
     return 'Manage irreversible account-level actions.';
+  }
+
+  if (currentProfileSection.value === 'about') {
+    return 'Review the deployed version and the latest product changes.';
   }
 
   return 'Set your first and last name, avatar, and inbound email address.';
@@ -491,6 +503,8 @@ const fetchProfile = async () => {
 
     profile.value = {
       ...data.user,
+      appVersion: data.about?.appVersion ?? '',
+      changelogHtml: data.about?.changelogHtml ?? '',
       inboundRewordLanguage: data.user?.inboundRewordLanguage ?? 'auto',
       inboundRewordLanguageChoices: data.user?.inboundRewordLanguageChoices ?? [],
       timezone: data.user?.timezone ?? 'auto',
@@ -778,10 +792,13 @@ onUnmounted(() => {
                     v-for="item in profileMenuItems"
                     :key="item.to"
                     type="button"
-                    class="flex w-full items-center justify-between border-b border-stone-200 px-6 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
+                    class="flex w-full items-center justify-between gap-4 border-b border-stone-200 px-6 py-3 text-left text-sm font-medium text-stone-800 transition last:border-b-0 hover:bg-stone-50"
                     @click="openProfileMenuItem(item.to)"
                   >
-                    <span>{{ item.label }}</span>
+                    <span class="min-w-0">
+                      <span class="block">{{ item.label }}</span>
+                      <span v-if="item.detail" class="mt-0.5 block text-xs font-normal text-stone-500">{{ item.detail }}</span>
+                    </span>
                     <i class="fa-solid fa-chevron-right text-xs text-stone-400" aria-hidden="true"></i>
                   </button>
                 </div>
@@ -1168,6 +1185,30 @@ onUnmounted(() => {
               </div>
 
               <EmptyState v-else message="No deleted workspaces." />
+            </div>
+          </template>
+
+          <template v-if="currentProfileSection === 'about'">
+            <div :class="isMobileViewport ? 'space-y-4 border-b border-stone-200 bg-white px-4 py-4' : 'space-y-5 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5'">
+              <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50/70 px-5 py-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Current version</p>
+                <p class="mt-2 text-2xl font-semibold tracking-tight text-amber-950">{{ profile.appVersion || 'unknown' }}</p>
+              </div>
+
+              <div class="rounded-[1.5rem] border border-stone-200 bg-white px-5 py-5">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 class="text-base font-semibold text-stone-950">Changelog</h3>
+                    <p class="mt-1 text-sm text-stone-600">Rendered from the current markdown release notes.</p>
+                  </div>
+                </div>
+                <div
+                  v-if="profile.changelogHtml"
+                  class="tw-markdown mt-5 text-stone-700"
+                  v-html="profile.changelogHtml"
+                ></div>
+                <EmptyState v-else message="No changelog available." />
+              </div>
             </div>
           </template>
 
