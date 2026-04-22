@@ -1,3 +1,9 @@
+## 1.9.3 (April 22, 2026)
+- FIX: more consistent workspace detail sheets and profile release info
+  - Toast side sheets now use a single compact layout everywhere, with smoother opening from the home dashboard and clearer width rules between toasts and notes.
+  - Workspace toast lists no longer repeat the boost state with an extra badge when the star indicator is already visible.
+  - Profile now includes an About section with the deployed version and rendered changelog, and note opening reloads the latest version from the backend through a stable read route.
+
 ## 1.9.2 (April 22, 2026)
 - FIX: consistent toast detail presentation from the home dashboard
   - Toasts opened from the home dashboard now reuse the same workspace sidesheet surface and transition as toasts opened inside a workspace.
