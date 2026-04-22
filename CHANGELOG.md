@@ -1,3 +1,9 @@
+## 1.8.0 (April 22, 2026)
+- NEW: clearer solo prioritization and desktop workspace flow
+  - Solo workspaces now support boosted toasts, with visible boost markers in the list so the ordering is easier to understand.
+  - Desktop toast details opened from the home dashboard now stay in a sidesheet instead of replacing the dashboard view.
+  - Opening a workspace note now refreshes it from the server first, so the sidesheet always shows the latest saved content.
+
 ## 1.7.0 (April 22, 2026)
 - NEW: workspace notes are now available through the public API and MCP
   - Added public API endpoints to list notes in a workspace, create a note, and update an existing note with the same Markdown content model used in the app.
