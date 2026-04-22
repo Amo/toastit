@@ -3181,12 +3181,6 @@ watch(isMobileViewport, (isMobile) => {
                         <i v-if="item.isBoosted" class="fa-solid fa-star mr-1 text-slate-400" aria-hidden="true"></i>
                         {{ item.dueOnDisplay ?? 'No due date' }} • {{ item.comments?.length ?? 0 }} comment<span v-if="(item.comments?.length ?? 0) > 1">s</span>
                       </p>
-                      <ToastStatusBadge
-                        v-if="item.isBoosted"
-                        :label="displayBoostLabel(item)"
-                        tone-class="text-slate-700"
-                        badge-class="border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] tracking-[0.08em]"
-                      />
                     </div>
                   </div>
                 </div>
