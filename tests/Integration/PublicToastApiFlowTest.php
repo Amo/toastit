@@ -3,6 +3,7 @@
 namespace App\Tests\Integration;
 
 use App\Entity\Toast;
+use App\Entity\WorkspaceNote;
 use App\Entity\User;
 use App\Security\JwtTokenService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -51,6 +52,10 @@ final class PublicToastApiFlowTest extends WebTestCase
         self::assertCount(1, $publicMembers);
         self::assertTrue((bool) ($publicMembers[0]['isOwner'] ?? false));
 
+        $client->request('GET', sprintf('/workspaces/%d/notes', $publicWorkspaceId));
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->decodeJsonResponse($client)['notes'] ?? []);
+
         $client->jsonRequest('POST', sprintf('/workspaces/%d/members', $publicWorkspaceId), [
             'email' => $memberEmail,
         ]);
@@ -61,6 +66,37 @@ final class PublicToastApiFlowTest extends WebTestCase
             'name' => 'Public API board (renamed)',
         ]);
         self::assertResponseIsSuccessful();
+
+        $client->jsonRequest('POST', sprintf('/workspaces/%d/notes', $publicWorkspaceId), [
+            'title' => 'Shared note',
+            'body' => "## Context\n\n- created through PAT",
+            'isImportant' => true,
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $notePayload = $this->decodeJsonResponse($client)['note'] ?? [];
+        $noteId = (int) ($notePayload['id'] ?? 0);
+        self::assertSame('Shared note', $notePayload['title'] ?? null);
+        self::assertCount(1, $notePayload['versions'] ?? []);
+
+        $client->request('GET', sprintf('/workspaces/%d/notes', $publicWorkspaceId));
+        self::assertResponseIsSuccessful();
+        $notesPayload = $this->decodeJsonResponse($client)['notes'] ?? [];
+        self::assertCount(1, $notesPayload);
+        self::assertSame($noteId, (int) ($notesPayload[0]['id'] ?? 0));
+        self::assertSame('Shared note', $notesPayload[0]['title'] ?? null);
+
+        $updatedNoteBody = "## Context\n\n- updated through PAT";
+        $client->request('PUT', sprintf('/workspaces/%d/notes/%d', $publicWorkspaceId, $noteId), server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+            'title' => 'Shared note v2',
+            'body' => $updatedNoteBody,
+            'isImportant' => false,
+        ], JSON_THROW_ON_ERROR));
+        self::assertResponseIsSuccessful();
+        $updatedNotePayload = $this->decodeJsonResponse($client)['note'] ?? [];
+        self::assertSame('Shared note v2', $updatedNotePayload['title'] ?? null);
+        self::assertSame($updatedNoteBody, $updatedNotePayload['body'] ?? null);
+        self::assertFalse((bool) ($updatedNotePayload['isImportant'] ?? true));
+        self::assertCount(2, $updatedNotePayload['versions'] ?? []);
 
         $client->jsonRequest('DELETE', sprintf('/workspaces/%d/members/%d', $publicWorkspaceId, $invitedMemberId));
         self::assertResponseIsSuccessful();
@@ -170,9 +206,16 @@ final class PublicToastApiFlowTest extends WebTestCase
         $toast = static::getContainer()->get(EntityManagerInterface::class)
             ->getRepository(Toast::class)
             ->find($toastId);
+        $note = static::getContainer()->get(EntityManagerInterface::class)
+            ->getRepository(WorkspaceNote::class)
+            ->find($noteId);
 
         self::assertInstanceOf(Toast::class, $toast);
+        self::assertInstanceOf(WorkspaceNote::class, $note);
         self::assertSame('Public API board', $toast->getWorkspace()->getName());
+        self::assertSame('Public API board (renamed)', $note->getWorkspace()->getName());
+        self::assertSame('Shared note v2', $note->getTitle());
+        self::assertSame($updatedNoteBody, $note->getBody());
         self::assertSame('2026-04-30', $toast->getDueAt()?->format('Y-m-d'));
         self::assertSame($markdownDescription, $toast->getDescription());
         self::assertNull($toast->getOwner());
