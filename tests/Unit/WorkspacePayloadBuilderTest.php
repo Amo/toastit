@@ -145,6 +145,7 @@ final class WorkspacePayloadBuilderTest extends TestCase
         self::assertTrue($payload['agendaItems'][0]['currentUserHasVoted']);
         self::assertTrue($payload['agendaItems'][0]['isBoosted']);
         self::assertSame(3, $payload['agendaItems'][0]['boostRank']);
+        self::assertTrue($payload['agendaItems'][0]['currentUserCanBoost']);
         self::assertSame('Member', $payload['agendaItems'][0]['ownerName']);
         self::assertSame('10/04/2026', $payload['agendaItems'][0]['dueOnDisplay']);
         self::assertSame('11/04/2026', $payload['agendaItems'][0]['statusChangedAtDisplay']);

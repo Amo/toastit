@@ -2206,7 +2206,7 @@ const mobileAgendaSwipeActionCount = (item) => {
   if (!isSoloWorkspace.value) {
     count += 1; // Vote
   }
-  if (workspace.value?.currentUserIsOwner && !isToastingMode.value) {
+  if (item.currentUserCanBoost && !isToastingMode.value) {
     count += 1; // Boost
   }
   if (item.currentUserCanMarkReady) {
@@ -3095,7 +3095,7 @@ watch(isMobileViewport, (isMobile) => {
                       <i class="fa-solid fa-thumbs-up text-sm" aria-hidden="true"></i>
                     </button>
                     <button
-                      v-if="workspace.currentUserIsOwner && !isToastingMode"
+                      v-if="item.currentUserCanBoost && !isToastingMode"
                       type="button"
                       class="inline-grid w-14 place-items-center border-l border-stone-200 transition"
                       :class="item.isBoosted ? 'bg-slate-400 text-black hover:bg-slate-300' : 'bg-white text-slate-700 hover:bg-slate-50'"
@@ -3275,7 +3275,7 @@ watch(isMobileViewport, (isMobile) => {
                           <span class="sr-only">Mark as toasted</span>
                         </button>
                         <button
-                          v-if="workspace.currentUserIsOwner && !isToastingMode"
+                          v-if="item.currentUserCanBoost && !isToastingMode"
                           type="button"
                           class="inline-grid h-10 w-10 place-items-center rounded-full border transition"
                           :class="item.isBoosted ? 'border-slate-400 bg-slate-400 text-white' : 'border-stone-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-700'"

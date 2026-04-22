@@ -195,6 +195,7 @@ final class WorkspacePayloadBuilder
             'voteCount' => $item->getVoteCount(),
             'currentUserHasVoted' => $hasVoted,
             'currentUserCanEdit' => $item->isNew() && ($workspace->isOwnedBy($currentUser) || $item->getAuthor()->getId() === $currentUser->getId()),
+            'currentUserCanBoost' => $workspace->isOwnedBy($currentUser) && $item->isNew(),
             'currentUserCanMarkReady' => !$workspace->isSoloWorkspace()
                 && $item->isNew()
                 && ($workspace->isOwnedBy($currentUser) || ($item->getOwner()?->getId() === $currentUser->getId())),
