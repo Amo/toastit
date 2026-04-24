@@ -1,3 +1,10 @@
+## 1.9.4 (April 24, 2026)
+- FIX: smoother live toasting and follow-up creation
+  - Toasting side sheets are wider on desktop, with clearer separated actions and a cleaner decision-notes editor.
+  - AI follow-up suggestions now ask for a complete free-text instruction, then use Toastit’s AI refinement when the follow-up is actually created.
+  - Follow-up inputs now expand for longer text, remove stale AI status messages when switching toasts, and keep mobile comment forms visible above the bottom navigation.
+  - Live toasting now prioritizes ready toasts first, then new toasts, before applying the existing boost, date, and vote ordering.
+
 ## 1.9.3 (April 22, 2026)
 - FIX: more consistent workspace detail sheets and profile release info
   - Toast side sheets now use a single compact layout everywhere, with smoother opening from the home dashboard and clearer width rules between toasts and notes.
