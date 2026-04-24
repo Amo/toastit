@@ -31,7 +31,7 @@ final class ToastDraftRefinementServiceTest extends TestCase
         $membership->setWorkspace($workspace)->setUser($assignee);
         $workspace->addMembership($membership);
 
-        $promptTemplate = $this->createMock(AiPromptTemplateService::class);
+        $promptTemplate = $this->createStub(AiPromptTemplateService::class);
         $promptTemplate
             ->method('resolveSystemPrompt')
             ->willReturn('system prompt');
@@ -69,7 +69,7 @@ final class ToastDraftRefinementServiceTest extends TestCase
             ->setOrganizer((new User())->setEmail('owner@example.com')->setFirstName('Owner'));
         ReflectionHelper::setId($workspace->getOrganizer(), 1);
 
-        $promptTemplate = $this->createMock(AiPromptTemplateService::class);
+        $promptTemplate = $this->createStub(AiPromptTemplateService::class);
         $promptTemplate
             ->method('resolveSystemPrompt')
             ->willReturn('system prompt');

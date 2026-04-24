@@ -27,15 +27,22 @@ final class MeetingAgendaBuilder
             $activeItems[] = $item;
         }
 
-        usort($activeItems, $this->compareItems(...));
+        usort($activeItems, fn (Toast $left, Toast $right): int => $this->compareItems($left, $right, $workspace->isMeetingLive()));
         usort($vetoedItems, $this->compareVetoedItems(...));
         usort($resolvedItems, $this->compareResolvedItems(...));
 
         return new MeetingAgenda($activeItems, $vetoedItems, $resolvedItems);
     }
 
-    private function compareItems(Toast $left, Toast $right): int
+    private function compareItems(Toast $left, Toast $right, bool $prioritizeReadyStatus): int
     {
+        if ($prioritizeReadyStatus) {
+            $statusComparison = $this->compareToastingStatus($left, $right);
+            if (0 !== $statusComparison) {
+                return $statusComparison;
+            }
+        }
+
         if ($left->isBoosted() !== $right->isBoosted()) {
             return $left->isBoosted() ? -1 : 1;
         }
@@ -81,6 +88,20 @@ final class MeetingAgendaBuilder
     private function compareId(Toast $left, Toast $right): int
     {
         return ($left->getId() ?? PHP_INT_MAX) <=> ($right->getId() ?? PHP_INT_MAX);
+    }
+
+    private function compareToastingStatus(Toast $left, Toast $right): int
+    {
+        return $this->toastingStatusRank($left) <=> $this->toastingStatusRank($right);
+    }
+
+    private function toastingStatusRank(Toast $item): int
+    {
+        return match ($item->getStatus()) {
+            Toast::STATUS_READY => 0,
+            Toast::STATUS_PENDING => 1,
+            default => 2,
+        };
     }
 
     private function compareDueDate(Toast $left, Toast $right): int

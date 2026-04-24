@@ -105,6 +105,60 @@ final class MeetingAgendaBuilderTest extends TestCase
         ));
     }
 
+    public function testBuildPrioritizesReadyItemsBeforePendingItemsInLiveToastingMode(): void
+    {
+        $workspace = (new Workspace())
+            ->setOrganizer((new User())->setEmail('owner@example.com'))
+            ->setName('Live sync')
+            ->setMeetingMode(Workspace::MEETING_MODE_LIVE);
+
+        $boostedPending = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor((new User())->setEmail('boosted-pending@example.com'))
+            ->setTitle('Boosted pending')
+            ->setIsBoosted(true)
+            ->setBoostRank(10)
+            ->setDueAt(new \DateTimeImmutable('2026-04-01'));
+        $this->setCreatedAt($boostedPending, '2026-04-01 08:00:00');
+
+        $readyLaterDue = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor((new User())->setEmail('ready-later@example.com'))
+            ->setTitle('Ready later due')
+            ->setStatus(Toast::STATUS_READY)
+            ->setDueAt(new \DateTimeImmutable('2026-04-20'));
+        $this->setCreatedAt($readyLaterDue, '2026-04-01 09:00:00');
+
+        $readyBoosted = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor((new User())->setEmail('ready-boosted@example.com'))
+            ->setTitle('Ready boosted')
+            ->setStatus(Toast::STATUS_READY)
+            ->setIsBoosted(true)
+            ->setBoostRank(1)
+            ->setDueAt(new \DateTimeImmutable('2026-04-15'));
+        $this->setCreatedAt($readyBoosted, '2026-04-01 10:00:00');
+
+        $pendingEarlierDue = (new Toast())
+            ->setWorkspace($workspace)
+            ->setAuthor((new User())->setEmail('pending-earlier@example.com'))
+            ->setTitle('Pending earlier due')
+            ->setDueAt(new \DateTimeImmutable('2026-04-02'));
+        $this->setCreatedAt($pendingEarlierDue, '2026-04-01 11:00:00');
+
+        $workspace->getItems()->add($boostedPending);
+        $workspace->getItems()->add($readyLaterDue);
+        $workspace->getItems()->add($readyBoosted);
+        $workspace->getItems()->add($pendingEarlierDue);
+
+        $agenda = (new MeetingAgendaBuilder())->build($workspace);
+
+        self::assertSame(['Ready boosted', 'Ready later due', 'Boosted pending', 'Pending earlier due'], array_map(
+            static fn (Toast $item): string => $item->getTitle(),
+            $agenda->activeItems
+        ));
+    }
+
     private function setCreatedAt(Toast $item, string $dateTime): void
     {
         $reflection = new \ReflectionProperty($item, 'createdAt');

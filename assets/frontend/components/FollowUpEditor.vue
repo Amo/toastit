@@ -1,7 +1,8 @@
 <script setup>
+import { nextTick, onBeforeUpdate, onMounted, ref, watch } from 'vue';
 import DatePickerField from './DatePickerField.vue';
 
-defineProps({
+const props = defineProps({
   followUps: { type: Array, default: () => [] },
   participants: { type: Array, default: () => [] },
   blocked: { type: Boolean, default: false },
@@ -11,7 +12,43 @@ defineProps({
   noticeMessage: { type: String, default: '' },
 });
 
-defineEmits(['add', 'remove', 'update', 'generate']);
+const emit = defineEmits(['add', 'remove', 'update', 'generate']);
+const followUpTextareas = ref([]);
+
+const autosizeTextarea = (element) => {
+  if (!element) return;
+
+  element.style.height = '0px';
+  element.style.height = `${element.scrollHeight}px`;
+};
+
+const autosizeAllTextareas = () => {
+  nextTick(() => {
+    followUpTextareas.value.forEach(autosizeTextarea);
+  });
+};
+
+const setFollowUpTextareaRef = (element, index) => {
+  if (element) {
+    followUpTextareas.value[index] = element;
+  }
+};
+
+const handleFollowUpTextInput = (index, event) => {
+  emit('update', { index, key: 'title', value: event.target.value });
+  autosizeTextarea(event.target);
+};
+
+onBeforeUpdate(() => {
+  followUpTextareas.value = [];
+});
+
+onMounted(autosizeAllTextareas);
+
+watch(
+  () => props.followUps.map((followUp) => followUp.title ?? '').join('\u0000'),
+  autosizeAllTextareas,
+);
 </script>
 
 <template>
@@ -52,7 +89,7 @@ defineEmits(['add', 'remove', 'update', 'generate']);
     <div
       v-for="(followUp, followUpIndex) in followUps"
       :key="followUpIndex"
-      class="grid gap-3 rounded-[1.25rem] border bg-stone-50 p-4 transition xl:grid-cols-[auto_minmax(0,1.8fr)_minmax(0,1fr)_11rem_auto]"
+      class="relative grid gap-3 rounded-[1.25rem] border bg-stone-50 p-4 pr-16 transition xl:grid-cols-[auto_minmax(0,1.8fr)_minmax(0,1fr)_11rem]"
       :class="blocked ? 'border-red-300' : 'border-stone-200'"
     >
       <div
@@ -61,20 +98,14 @@ defineEmits(['add', 'remove', 'update', 'generate']);
       >
         {{ followUpIndex + 1 }}
       </div>
-      <div class="space-y-2">
-        <input
-          class="h-10 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
-          type="text"
-          :value="followUp.title ?? ''"
-          placeholder="Follow-up outcome or task"
-          @input="$emit('update', { index: followUpIndex, key: 'title', value: $event.target.value })"
-        >
-        <div v-if="followUp.aiGeneratedReason" class="flex flex-wrap items-center gap-2">
-          <p v-if="followUp.aiGeneratedReason" class="text-xs leading-5 text-stone-500">
-            {{ followUp.aiGeneratedReason }}
-          </p>
-        </div>
-      </div>
+      <textarea
+        :ref="(element) => setFollowUpTextareaRef(element, followUpIndex)"
+        class="min-h-10 w-full resize-none overflow-hidden rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm leading-6"
+        :value="followUp.title ?? ''"
+        rows="1"
+        placeholder="Describe the follow-up to create"
+        @input="handleFollowUpTextInput(followUpIndex, $event)"
+      ></textarea>
       <select
         class="h-10 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
         :value="followUp.ownerId ?? ''"
@@ -90,19 +121,14 @@ defineEmits(['add', 'remove', 'update', 'generate']);
         input-class="h-10"
         @update:model-value="$emit('update', { index: followUpIndex, key: 'dueOn', value: $event })"
       />
-      <div class="flex items-end justify-end">
-        <button
-          type="button"
-          class="inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-800"
-          aria-label="Remove follow-up"
-          @click="$emit('remove', followUpIndex)"
-        >
-          <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-            <path d="M4 4L12 12" />
-            <path d="M12 4L4 12" />
-          </svg>
-        </button>
-      </div>
+      <button
+        type="button"
+        class="absolute right-4 top-4 inline-grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-stone-300 hover:text-stone-800"
+        aria-label="Remove follow-up"
+        @click="$emit('remove', followUpIndex)"
+      >
+        <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
+      </button>
     </div>
   </div>
 </template>

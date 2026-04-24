@@ -25,9 +25,9 @@ return static function (ContainerConfigurator $container): void {
             'user' => 'ai/prompts/toast_draft_refinement_system/user.v6.twig',
         ],
         'toast_execution_plan_system' => [
-            'version' => 4,
-            'system' => 'ai/prompts/toast_execution_plan_system/system.v4.twig',
-            'user' => 'ai/prompts/toast_execution_plan_system/user.v4.twig',
+            'version' => 5,
+            'system' => 'ai/prompts/toast_execution_plan_system/system.v5.twig',
+            'user' => 'ai/prompts/toast_execution_plan_system/user.v5.twig',
         ],
         'todo_digest_system' => [
             'version' => 2,

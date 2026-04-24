@@ -90,9 +90,9 @@ final class ToastExecutionPlanDraftServiceTest extends TestCase
             ->setTitle('Clarify rollout');
 
         $service = new ToastExecutionPlanDraftService(
-            $this->createMock(XaiTextService::class),
+            $this->createStub(XaiTextService::class),
             new WorkspaceWorkflowService(),
-            $this->createMock(AiPromptTemplateService::class),
+            $this->createStub(AiPromptTemplateService::class),
         );
 
         $this->expectException(SessionSummaryUnavailableException::class);

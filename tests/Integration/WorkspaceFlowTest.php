@@ -100,6 +100,24 @@ final class WorkspaceFlowTest extends WebTestCase
         $client->jsonRequest('POST', sprintf('/api/workspaces/%d/meeting/start', $workspaceId));
         self::assertResponseIsSuccessful();
 
+        $client->disableReboot();
+        static::getContainer()->set(XaiTextService::class, new XaiTextService(
+            new MockHttpClient([
+                new MockResponse(json_encode([
+                    'output' => [[
+                        'content' => [[
+                            'type' => 'output_text',
+                            'text' => "TITLE: Envoyer le recap client\nASSIGNEE: {$memberEmail}\nDUE_ON: 2026-04-15\nDESCRIPTION:\nPreparer un recap clair de la decision et l'envoyer au client avec les prochaines etapes.",
+                        ]],
+                    ]],
+                ], JSON_THROW_ON_ERROR)),
+            ]),
+            'test-key',
+            'https://api.x.ai/v1',
+            'grok-4.20-reasoning',
+            30,
+        ));
+
         $memberUserId = $this->findUserIdByEmail($memberEmail);
         $sourceToastId = $this->findToastIdByTitle($sourceTitle);
 
@@ -122,13 +140,15 @@ final class WorkspaceFlowTest extends WebTestCase
         $client->setServerParameter('HTTP_AUTHORIZATION', '');
 
         self::assertSame('toasted', $payload['resolvedItems'][0]['status']);
-        self::assertSame($followUpTitle, $payload['resolvedItems'][0]['followUpItems'][0]['title']);
+        self::assertSame('Envoyer le recap client', $payload['resolvedItems'][0]['followUpItems'][0]['title']);
 
-        $followUp = static::getContainer()->get(EntityManagerInterface::class)
-            ->getRepository(Toast::class)
-            ->findOneBy(['title' => $followUpTitle]);
+        $toastRepository = static::getContainer()->get(EntityManagerInterface::class)->getRepository(Toast::class);
+        $sourceToast = $toastRepository->find($sourceToastId);
+        $followUp = $toastRepository->findOneBy(['previousItem' => $sourceToast]);
 
         self::assertInstanceOf(Toast::class, $followUp);
+        self::assertSame('Envoyer le recap client', $followUp->getTitle());
+        self::assertSame("Preparer un recap clair de la decision et l'envoyer au client avec les prochaines etapes.", $followUp->getDescription());
         self::assertSame($sourceTitle, $followUp->getPreviousItem()?->getTitle());
         self::assertSame($workspaceId, $followUp->getWorkspace()->getId());
     }
@@ -766,6 +786,14 @@ final class WorkspaceFlowTest extends WebTestCase
                         ]],
                     ]],
                 ], JSON_THROW_ON_ERROR)),
+                new MockResponse(json_encode([
+                    'output' => [[
+                        'content' => [[
+                            'type' => 'output_text',
+                            'text' => "TITLE: Prepare rollout checklist\nASSIGNEE: {$memberEmail}\nDUE_ON: 2026-04-18\nDESCRIPTION:\nCreate the internal rollout checklist and share it for review.",
+                        ]],
+                    ]],
+                ], JSON_THROW_ON_ERROR)),
             ]),
             'test-key',
             'https://api.x.ai/v1',
@@ -800,7 +828,7 @@ final class WorkspaceFlowTest extends WebTestCase
 
         self::assertNotNull($sourceToastPayload);
         self::assertSame('Decision made: prepare the internal rollout and customer communication.', $sourceToastPayload['discussionNotes']);
-        self::assertSame('Draft rollout checklist', $sourceToastPayload['followUpItems'][0]['title']);
+        self::assertSame('Prepare rollout checklist', $sourceToastPayload['followUpItems'][0]['title']);
     }
 
     private function loginWithMagicLink(KernelBrowser $client, string $email): void
@@ -810,7 +838,7 @@ final class WorkspaceFlowTest extends WebTestCase
         $client->jsonRequest('POST', '/api/auth/request-otp', ['email' => $email]);
         self::assertResponseIsSuccessful();
         $payload = $this->fetchSingleMailpitMessage();
-        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\RCe code expire/', $payload['Text'], $match);
+        preg_match('/\R([0-9]{3}) ([0-9]{3})\R\R(?:Ce code expire|This code expires)/', $payload['Text'], $match);
         $client->jsonRequest('POST', '/api/auth/verify-otp', [
             'email' => $email,
             'purpose' => 'login',

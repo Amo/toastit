@@ -1,0 +1,22 @@
+Workspace: {{ workspace_name }}
+Source toast id: {{ source_toast.id }}
+Source title: {{ source_toast.title }}
+Current owner id: {{ source_toast.current_owner_id is not null ? source_toast.current_owner_id : 'null' }}
+Current dueOn: {{ source_toast.current_due_on ?? 'null' }}
+Description: {{ source_toast.description }}
+Decision notes:
+{{ source_toast.decision_notes }}
+
+Follow-up draft instruction:
+- The follow-up `description` is what users edit before the future toast is created.
+- Write `description` as complete free text describing exactly what must be done.
+- If the decision notes mention named accounts, documents, markets, owners, processes, proof points, dates, or dependencies, include the relevant ones directly in `description`.
+- Keep `title` short; it is only a temporary label before the Toast draft refinement flow creates the final title and description.
+- `reason` may explain why the follow-up exists, but it must not be the only place where the concrete execution context appears.
+
+Workspace participants:
+{% for participant in participants %}
+- {{ participant.id }}: {{ participant.display_name }}
+{% else %}
+- none
+{% endfor %}

@@ -6,6 +6,7 @@ use App\Entity\Toast;
 use App\Entity\ToastComment;
 use App\Entity\User;
 use App\Entity\Workspace;
+use App\Meeting\SessionSummaryUnavailableException;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class ToastCurationExecutionService
@@ -13,6 +14,8 @@ final class ToastCurationExecutionService
     public function __construct(
         private readonly WorkspaceAccessService $workspaceAccess,
         private readonly WorkspaceWorkflowService $workspaceWorkflow,
+        private readonly ToastDraftRefinementService $toastDraftRefinement,
+        private readonly ToastCreationService $toastCreation,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -205,7 +208,8 @@ final class ToastCurationExecutionService
     private function applyCreateFollowUp(Workspace $workspace, User $actor, Toast $sourceToast, array $action): ?array
     {
         $title = trim((string) ($action['title'] ?? ''));
-        if ('' === $title) {
+        $instruction = trim((string) ($action['description'] ?? '')) ?: $title;
+        if ('' === $title && '' === $instruction) {
             return null;
         }
 
@@ -222,25 +226,78 @@ final class ToastCurationExecutionService
             }
         }
 
-        if ($this->workspaceWorkflow->hasFollowUp($sourceToast, $title, $owner, $dueAt)) {
+        $refinedFollowUp = $this->refineFollowUpInstruction($workspace, $actor, $title, $instruction, $dueOn);
+        $refinedOwner = is_numeric($refinedFollowUp['ownerId'] ?? null)
+            ? $this->workspaceWorkflow->findWorkspaceInviteeById($workspace, (int) $refinedFollowUp['ownerId'])
+            : null;
+        $owner ??= $refinedOwner;
+
+        if (null === $dueAt && !empty($refinedFollowUp['dueOn'])) {
+            try {
+                $dueAt = new \DateTimeImmutable((string) $refinedFollowUp['dueOn']);
+            } catch (\Exception) {
+                return null;
+            }
+        }
+
+        $followUpTitle = trim((string) ($refinedFollowUp['title'] ?? '')) ?: $this->buildFallbackFollowUpTitle($title, $instruction);
+        $followUpDescription = trim((string) ($refinedFollowUp['description'] ?? ''));
+        if ('' === $followUpDescription) {
+            $followUpDescription = sprintf("Follow-up created from \"%s\".\n\n%s", $sourceToast->getTitle(), $instruction);
+        }
+
+        if ($this->workspaceWorkflow->hasFollowUp($sourceToast, $followUpTitle, $owner, $dueAt)) {
             return null;
         }
 
-        $nextItem = (new Toast())
-            ->setWorkspace($workspace)
-            ->setAuthor($actor)
-            ->setTitle($title)
-            ->setDescription(trim((string) ($action['description'] ?? '')) ?: sprintf('Follow-up created from "%s".', $sourceToast->getTitle()))
-            ->setOwner($owner)
-            ->setDueAt($dueAt)
-            ->setPreviousItem($sourceToast);
-
-        $this->entityManager->persist($nextItem);
+        $nextItem = $this->toastCreation->createToast(
+            $workspace,
+            $actor,
+            $followUpTitle,
+            $followUpDescription,
+            $owner,
+            $dueAt,
+            $sourceToast,
+        );
 
         return [
             'type' => 'create_follow_up',
             'toastId' => $sourceToast->getId(),
             'createdToastTitle' => $nextItem->getTitle(),
         ];
+    }
+
+    /**
+     * @return array{title: string, description: string, ownerId: ?int, dueOn: ?string}
+     */
+    private function refineFollowUpInstruction(Workspace $workspace, User $actor, string $title, string $instruction, ?string $dueOn): array
+    {
+        try {
+            return $this->toastDraftRefinement->refine(
+                $workspace,
+                $title,
+                $instruction,
+                $actor,
+                $dueOn,
+            );
+        } catch (SessionSummaryUnavailableException) {
+            return [
+                'title' => $this->buildFallbackFollowUpTitle($title, $instruction),
+                'description' => '',
+                'ownerId' => null,
+                'dueOn' => $dueOn,
+            ];
+        }
+    }
+
+    private function buildFallbackFollowUpTitle(string $title, string $instruction): string
+    {
+        $fallback = '' !== trim($title) ? $title : $instruction;
+        $normalized = preg_replace('/\s+/', ' ', trim($fallback)) ?? trim($fallback);
+        if (mb_strlen($normalized) <= 72) {
+            return $normalized;
+        }
+
+        return mb_substr($normalized, 0, 69).'...';
     }
 }
