@@ -1,3 +1,8 @@
+## 1.9.5 (May 11, 2026)
+- FIX: desktop toast actions work again after the mobile refresh
+  - Desktop toast side sheets once again expose the expected actions for declining, moving, copying, and navigating between toasts.
+  - Commenting from the desktop toast sheet now uses the proper desktop composer again, so web interactions feel consistent across the workspace flow.
+
 ## 1.9.4 (April 24, 2026)
 - FIX: smoother live toasting and follow-up creation
   - Toasting side sheets are wider on desktop, with clearer separated actions and a cleaner decision-notes editor.
