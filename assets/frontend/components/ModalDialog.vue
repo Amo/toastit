@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps({
   maxWidthClass: { type: String, default: 'max-w-2xl' },
-  zIndexClass: { type: String, default: 'z-[70]' },
+  zIndexClass: { type: String, default: 'z-[100]' },
   desktopInline: { type: Boolean, default: false },
   backdropClosable: { type: Boolean, default: true },
 });

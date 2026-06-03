@@ -7,7 +7,12 @@ help:
 	@echo "  make <target> [VAR=value ...]"
 	@echo
 	@echo "Local development:"
+	@echo "  make hosts-setup"
+	@echo "    - adds toastit.test + api.toastit.test to /etc/hosts (required to reach the app)"
 	@echo "  make up"
+	@echo "    - ensures .env.dev (from .env.dist if missing), then docker compose up for core services"
+	@echo "  make up-mcp"
+	@echo "    - like 'up' but also starts toastit-mcp (needs ../toastit-mcp sibling checkout + --profile mcp)"
 	@echo "  make down"
 	@echo "  make logs"
 	@echo "  make bash"

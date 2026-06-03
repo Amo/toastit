@@ -20,7 +20,13 @@ final class Version20260408114500 extends AbstractMigration
         $userTable = $schema->getTable('user');
 
         if (!$userTable->hasColumn('inbound_email_alias')) {
-            $this->addSql('ALTER TABLE user ADD inbound_email_alias VARCHAR(36) DEFAULT NULL');
+            // Use IF NOT EXISTS so that the immediate execution (to allow the backfill query below)
+            // does not cause the later replay of queued SQL to fail with "duplicate column".
+            $addCol = 'ALTER TABLE user ADD COLUMN IF NOT EXISTS inbound_email_alias VARCHAR(36) DEFAULT NULL';
+            $this->addSql($addCol);
+            // Execute immediately: the data backfill query needs the column to exist at query time,
+            // but addSql statements are only executed by the migration runner after up() returns.
+            $this->connection->executeStatement($addCol);
         }
 
         $userIds = $this->connection->fetchFirstColumn('SELECT id FROM user WHERE inbound_email_alias IS NULL OR inbound_email_alias = \'\'');

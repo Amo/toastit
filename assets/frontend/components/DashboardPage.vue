@@ -6,8 +6,6 @@ import { ToastitApiClient } from '../api/ToastitApiClient';
 import { WorkspacesApi } from '../api/workspaces';
 import { nextSnoozeDueOn } from '../utils/workspaceFormatting';
 import EmptyState from './EmptyState.vue';
-import ModalDialog from './ModalDialog.vue';
-import ModalHeader from './ModalHeader.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
@@ -16,9 +14,6 @@ const props = defineProps({
 
 const payload = ref({ workspaces: [] });
 const isLoading = ref(true);
-const creatingWorkspace = ref(false);
-const workspaceName = ref('');
-const isCreateWorkspaceModalOpen = ref(false);
 const isMobileViewport = ref(false);
 const isSnoozingActionId = ref(null);
 const MY_DAY_SWIPE_ACTION_SLOT_WIDTH = 56;
@@ -53,38 +48,6 @@ const fetchDashboard = async () => {
     workspaces: [],
   };
   isLoading.value = false;
-};
-
-const createWorkspace = async () => {
-  if (!workspaceName.value.trim()) return;
-  creatingWorkspace.value = true;
-  const { ok, data } = await workspacesApi.createWorkspace(workspaceName.value);
-
-  if (ok && data) {
-    if (data.workspaceId) {
-      window.location.href = `/app/workspaces/${data.workspaceId}`;
-      return;
-    }
-  }
-
-  workspaceName.value = '';
-  creatingWorkspace.value = false;
-  isCreateWorkspaceModalOpen.value = false;
-  await fetchDashboard();
-};
-
-const openCreateWorkspaceModal = () => {
-  isCreateWorkspaceModalOpen.value = true;
-  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: true } }));
-};
-
-const closeCreateWorkspaceModal = () => {
-  isCreateWorkspaceModalOpen.value = false;
-  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: false } }));
-};
-
-const handleExternalCreateWorkspaceRequest = () => {
-  openCreateWorkspaceModal();
 };
 
 const openWorkspace = (workspaceId) => {
@@ -681,15 +644,12 @@ onMounted(() => {
   syncViewport();
   fetchDashboard();
   window.addEventListener('keydown', handleDashboardKeydown);
-  window.addEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
   window.addEventListener('resize', syncViewport);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleDashboardKeydown);
-  window.removeEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
   window.removeEventListener('resize', syncViewport);
-  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: false } }));
 });
 </script>
 
@@ -876,27 +836,5 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-
-    <ModalDialog v-if="isCreateWorkspaceModalOpen" max-width-class="max-w-4xl" @close="closeCreateWorkspaceModal">
-      <ModalHeader
-        eyebrow="New workspace"
-        title="Create a workspace"
-        description="Create a solo, duo, or group workspace and start turning ideas into accountable action."
-        @close="closeCreateWorkspaceModal"
-      />
-
-        <div class="space-y-4 overflow-y-auto px-6 py-6">
-          <label class="grid gap-2 text-sm font-medium text-stone-700">
-            <span>Name</span>
-            <input v-model="workspaceName" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text">
-          </label>
-          <div class="flex justify-end gap-3">
-            <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="closeCreateWorkspaceModal">Cancel</button>
-            <button class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="creatingWorkspace" @click="createWorkspace">
-              {{ creatingWorkspace ? 'Creating...' : 'Create workspace' }}
-            </button>
-          </div>
-        </div>
-    </ModalDialog>
   </section>
 </template>

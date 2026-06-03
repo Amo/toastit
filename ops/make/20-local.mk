@@ -1,12 +1,27 @@
 .PHONY: bash up down logs migrate build dev test test-db-prepare mail
 .PHONY: https-setup-toastit-test https-proxy-toastit-test dev-https-toastit-test
 .PHONY: logs-prod bash-prod
+.PHONY: ensure-local-env hosts-setup up-mcp
 
 bash:
 	$(DOCKER_COMPOSE) exec $(APP_SERVICE) sh -lc 'if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi'
 
-up:
+ensure-local-env:
+	@if [ ! -f "$(LOCAL_ENV_FILE)" ]; then \
+		cp .env.dist "$(LOCAL_ENV_FILE)"; \
+		echo "$(LOCAL_ENV_FILE) created from .env.dist. Edit it to provide secrets (XAI_API_KEY etc.) for full functionality."; \
+	fi
+
+hosts-setup:
+	@echo "Configuring /etc/hosts for toastit.test and api.toastit.test (requires sudo)..."
+	@sudo sh -c "grep -qE '(^|[[:space:]])toastit.test([[:space:]]|\$$)' /etc/hosts && grep -qE '(^|[[:space:]])api.toastit.test([[:space:]]|\$$)' /etc/hosts || echo '127.0.0.1 toastit.test api.toastit.test' >> /etc/hosts"
+	@echo "Done. You can now reach the app at http://toastit.test (adjust port if APP_PORT != 80 in your env)."
+
+up: ensure-local-env
 	$(DOCKER_COMPOSE) up -d --build
+
+up-mcp: ensure-local-env
+	$(DOCKER_COMPOSE) --profile mcp up -d --build
 
 down:
 	$(DOCKER_COMPOSE) down

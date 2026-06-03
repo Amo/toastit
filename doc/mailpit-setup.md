@@ -10,6 +10,11 @@ Mailpit is already included in the local Docker setup for this project.
 
 This means Symfony sends emails to Mailpit automatically in `dev` and `test`.
 
+## Prerequisites (first time)
+
+1. `make hosts-setup` (adds the required hostnames to /etc/hosts)
+2. `make up` (will auto-create `.env.dev` from `.env.dist` on first run if missing)
+
 ## Start it
 
 From the project root:
@@ -18,18 +23,23 @@ From the project root:
 make up
 ```
 
-That starts:
+That starts the core stack:
 
-- the app container
-- the database
-- Mailpit
+- the app container (FrankenPHP)
+- the database (MariaDB)
+- Mailpit (mailer)
+- inbound-smtp bridge
+- worker (for Messenger queues)
 
 ## Open the Mailpit UI
 
 Because the compose file publishes dynamic host ports, get the mapped web port with:
 
 ```bash
+# use the same compose command your system supports:
 docker compose port mailer 8025
+# or
+docker-compose port mailer 8025
 ```
 
 Then open the returned address in your browser.
@@ -54,18 +64,20 @@ Inside Docker, Symfony should use:
 smtp://mailer:1025
 ```
 
-If you need the mapped SMTP port on your host machine, run:
+If you need the mapped SMTP port on your host machine, run one of:
 
 ```bash
 docker compose port mailer 1025
+docker-compose port mailer 1025
 ```
 
 ## Quick check
 
-1. Run `make up`
-2. Trigger any feature that sends an email
-3. Open the Mailpit UI
-4. Confirm the message appears in the inbox
+1. Run `make hosts-setup`
+2. Run `make up`
+3. Trigger any feature that sends an email (e.g. login challenge)
+4. Open the Mailpit UI (via the port command above)
+5. Confirm the message appears in the inbox
 
 ## Useful project note
 

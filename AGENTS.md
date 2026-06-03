@@ -201,7 +201,7 @@ These notes are operational shortcuts for future sessions on this repository.
   - `worker`: async worker container
   - `inbound-smtp`: local inbound email bridge
 - If a console command needs database, mailer, or container hostnames such as `database` or `mailer`, prefer running it in the `php` container:
-  - `docker compose exec -T php php bin/console ...`
+  - `docker compose exec -T php php bin/console ...` (or `docker-compose exec ...` on systems without the compose plugin)
 
 ### Console and cache behavior
 
@@ -218,12 +218,16 @@ These notes are operational shortcuts for future sessions on this repository.
 
 ### Useful local commands
 
-- Run a Symfony command inside the app container:
+- Prefer Makefile targets (they auto-select the right compose invocation for your system):
+  - `make up`, `make down`, `make migrate`, `make bash`, `make logs`, `make hosts-setup`
+- Run a Symfony command inside the app container (via make bash, or directly):
   - `docker compose exec -T php php bin/console <command>`
+  - or `docker-compose exec -T php php bin/console <command>` (if using the hyphenated binary)
 - Run targeted PHPUnit from the host when no container-only hostname is needed:
   - `php bin/phpunit --filter <TestName>`
 - Check running local services:
   - `docker compose ps`
+  - or `docker-compose ps`
 
 ## Contributor checklist
 

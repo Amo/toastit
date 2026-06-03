@@ -69,12 +69,14 @@ Hard constraints:
 Primary local commands are defined in `ops/make/20-local.mk`:
 
 - `make up`
+- `make up-mcp` (optional, for toastit-mcp)
 - `make down`
 - `make logs`
 - `make bash`
 - `make migrate`
 - `make build`
 - `make dev`
+- `make hosts-setup` (required for local hostname access)
 - `make test`
 
 Keep these as the default workflow entrypoints.

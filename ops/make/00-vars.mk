@@ -1,5 +1,8 @@
 LOCAL_ENV_FILE ?= .env.dev
-DOCKER_COMPOSE ?= docker compose --env-file $(LOCAL_ENV_FILE)
+# Prefer `docker compose` (the Compose plugin subcommand) when available.
+# Fall back to `docker-compose` (standalone binary, e.g. Homebrew on macOS without full Docker Desktop plugin registration).
+DOCKER_COMPOSE_CMD ?= $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+DOCKER_COMPOSE ?= $(DOCKER_COMPOSE_CMD) --env-file $(LOCAL_ENV_FILE)
 DOCKER_COMPOSE_PROD ?= docker compose -f ops/docker-compose.prod.yml
 APP_SERVICE := php
 GHCR_USER ?= amo

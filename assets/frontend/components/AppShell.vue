@@ -5,6 +5,8 @@ import { authState, authStore } from '../authStore';
 import MobileAppShell from './MobileAppShell.vue';
 import ModalDialog from './ModalDialog.vue';
 import ModalHeader from './ModalHeader.vue';
+import { ToastitApiClient } from '../api/ToastitApiClient';
+import { WorkspacesApi } from '../api/workspaces';
 
 const props = defineProps({
   currentSection: { type: String, required: true },
@@ -26,6 +28,10 @@ const contentRef = ref(null);
 const isMobilePlatform = ref(false);
 const slots = useSlots();
 const navigationWorkspaces = ref([]);
+
+const isCreateWorkspaceModalOpen = ref(false);
+const workspaceName = ref('');
+const creatingWorkspace = ref(false);
 const MOBILE_SHELL_OVERRIDE_KEY = 'toastit.mobileShellOverride';
 const profileSections = [
   { key: 'infos', label: 'Infos' },
@@ -214,6 +220,72 @@ const loadNavigationWorkspaces = async () => {
   }
 };
 
+const apiClient = computed(() => {
+  if (!authState.accessToken) {
+    return null;
+  }
+  return new ToastitApiClient(authState.accessToken, {
+    onUnauthorized: () => {
+      window.location.href = '/';
+    },
+  });
+});
+
+const workspacesApi = computed(() => {
+  if (!apiClient.value) {
+    return null;
+  }
+  return new WorkspacesApi(apiClient.value);
+});
+
+const createWorkspace = async () => {
+  const name = (workspaceName.value || '').trim();
+  if (!name || !workspacesApi.value) {
+    return;
+  }
+
+  creatingWorkspace.value = true;
+  try {
+    const { ok, data } = await workspacesApi.value.createWorkspace(name);
+    if (ok && data?.workspaceId) {
+      isCreateWorkspaceModalOpen.value = false;
+      workspaceName.value = '';
+      window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: false } }));
+      window.location.href = `/app/workspaces/${data.workspaceId}`;
+      return;
+    }
+    // On failure keep modal open (and name) so user can retry/edit
+    // creatingWorkspace reset in finally
+  } catch {
+    // Surface via console; modal stays open for retry
+    // eslint-disable-next-line no-console
+    console.error('Failed to create workspace');
+  } finally {
+    creatingWorkspace.value = false;
+  }
+};
+
+const openCreateWorkspaceModal = () => {
+  workspaceName.value = '';
+  isCreateWorkspaceModalOpen.value = true;
+  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: true } }));
+};
+
+const closeCreateWorkspaceModal = () => {
+  isCreateWorkspaceModalOpen.value = false;
+  workspaceName.value = '';
+  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: false } }));
+};
+
+const createNewWorkspace = () => {
+  mobileNavOpen.value = false;
+  openCreateWorkspaceModal();
+};
+
+const handleExternalCreateWorkspaceRequest = () => {
+  openCreateWorkspaceModal();
+};
+
 onMounted(async () => {
   await nextTick();
 
@@ -225,6 +297,7 @@ onMounted(async () => {
   syncMobilePlatform();
   window.addEventListener('resize', syncMobilePlatform);
   window.addEventListener('orientationchange', syncMobilePlatform);
+  window.addEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
   await loadNavigationWorkspaces();
 });
 
@@ -232,6 +305,8 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalAppKeydown);
   window.removeEventListener('resize', syncMobilePlatform);
   window.removeEventListener('orientationchange', syncMobilePlatform);
+  window.removeEventListener('toastit:create-workspace', handleExternalCreateWorkspaceRequest);
+  window.dispatchEvent(new CustomEvent('toastit:create-workspace-flow-state', { detail: { active: false } }));
 });
 
 watch(() => authState.accessToken, loadNavigationWorkspaces);
@@ -454,6 +529,28 @@ watch(() => route.fullPath, () => {
       </div>
     </ModalDialog>
 
+    <ModalDialog v-if="showAppNavigation && isCreateWorkspaceModalOpen" max-width-class="max-w-4xl" @close="closeCreateWorkspaceModal">
+      <ModalHeader
+        eyebrow="New workspace"
+        title="Create a workspace"
+        description="Create a solo, duo, or group workspace and start turning ideas into accountable action."
+        @close="closeCreateWorkspaceModal"
+      />
+
+      <div class="space-y-4 overflow-y-auto px-6 py-6">
+        <label class="grid gap-2 text-sm font-medium text-stone-700">
+          <span>Name</span>
+          <input v-model="workspaceName" class="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base" type="text" placeholder="My new workspace" @keyup.enter="createWorkspace">
+        </label>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:text-stone-950" @click="closeCreateWorkspaceModal">Cancel</button>
+          <button class="rounded-full bg-amber-200 px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-300 disabled:opacity-60" :disabled="creatingWorkspace || !workspaceName.trim()" @click="createWorkspace">
+            {{ creatingWorkspace ? 'Creating...' : 'Create workspace' }}
+          </button>
+        </div>
+      </div>
+    </ModalDialog>
+
     <main :class="showAppNavigation && !mobileAppModeActive ? 'py-0 lg:py-6' : 'py-0'">
       <template v-if="showAppNavigation && !mobileAppModeActive">
         <div class="px-0 lg:px-6">
@@ -478,24 +575,23 @@ watch(() => route.fullPath, () => {
                 </a>
                 <div class="my-1 h-px bg-stone-100"></div>
                 <p class="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Navigation</p>
-                <a
-                  :href="dashboardUrl"
-                  class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                <div class="flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
                   :class="currentSection === 'workspace' ? 'bg-amber-100 text-amber-900 shadow-[inset_0_0_0_1px_rgba(217,119,6,0.16)]' : 'text-stone-700 hover:bg-stone-50 hover:text-stone-950 hover:shadow-[inset_0_0_0_1px_rgba(214,211,209,0.9)]'"
                 >
-                  <span class="inline-flex items-center gap-3">
+                  <a :href="dashboardUrl" class="inline-flex flex-1 items-center gap-3">
                     <i class="fa-solid fa-table-columns w-4 text-center" aria-hidden="true"></i>
                     <span>Workspaces</span>
-                  </span>
-                  <span class="inline-flex items-center gap-1">
-                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
-                      {{ navigationOpenCount }}
-                    </span>
-                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                      {{ navigationAssignedCount }}
-                    </span>
-                  </span>
-                </a>
+                  </a>
+                  <button
+                    type="button"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded-full text-amber-900/70 transition hover:bg-amber-200 hover:text-amber-950"
+                    @click="createNewWorkspace"
+                    title="Create workspace"
+                  >
+                    <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
+                    <span class="sr-only">Create workspace</span>
+                  </button>
+                </div>
                 <div class="space-y-1 pl-5">
                   <a
                     v-for="workspace in listedNavigationWorkspaces"
@@ -634,24 +730,24 @@ watch(() => route.fullPath, () => {
               <div class="space-y-4">
                 <div class="my-1 h-px bg-stone-100"></div>
                 <p class="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Navigation</p>
-                <a
-                  :href="dashboardUrl"
-                  class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
+                <div
+                  class="flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition"
                   :class="currentSection === 'workspace' ? 'bg-amber-100 text-amber-900' : 'text-stone-700 hover:bg-stone-100'"
                 >
-                  <span class="inline-flex items-center gap-3">
+                  <a :href="dashboardUrl" class="inline-flex flex-1 items-center gap-3">
                     <i class="fa-solid fa-table-columns w-4 text-center" aria-hidden="true"></i>
                     <span>Workspaces</span>
-                  </span>
-                  <span class="inline-flex items-center gap-1">
-                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
-                      {{ navigationOpenCount }}
-                    </span>
-                    <span class="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                      {{ navigationAssignedCount }}
-                    </span>
-                  </span>
-                </a>
+                  </a>
+                  <button
+                    type="button"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded-full text-amber-900/70 transition hover:bg-amber-200 hover:text-amber-950"
+                    @click="createNewWorkspace"
+                    title="Create workspace"
+                  >
+                    <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
+                    <span class="sr-only">Create workspace</span>
+                  </button>
+                </div>
                 <div class="space-y-1 pl-5">
                   <a
                     v-for="workspace in listedNavigationWorkspaces"

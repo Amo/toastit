@@ -65,6 +65,8 @@ services:
         condition: service_healthy
 
   toastit-mcp:
+    profiles:
+      - mcp
     build:
       context: ../toastit-mcp
       dockerfile: Dockerfile
