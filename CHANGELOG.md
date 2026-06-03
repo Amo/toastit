@@ -1,3 +1,10 @@
+## 1.9.6 (June 03, 2026)
+- FIX: local development and desktop UX improvements
+  - `make up` now works reliably on more developer machines (including common macOS Docker setups using the standalone `docker-compose` binary). It auto-creates `.env.dev` from `.env.dist`, gates the optional MCP service behind a profile, and `make hosts-setup` helps with `/etc/hosts` for `toastit.test`.
+  - Fixed a data migration that blocked new database setups on first run.
+  - Workspace creation is now available from the desktop sidebar navigation (previously only via the mobile floating action button on the dashboard workspaces tab).
+  - Toast side panels (and the dedicated mobile toast view) no longer hide modals opened from within them. The "Move or copy to another workspace", copy confirmation, and decline confirmation dialogs now correctly appear above the panel and its backdrop.
+
 ## 1.9.5 (May 11, 2026)
 - FIX: desktop toast actions work again after the mobile refresh
   - Desktop toast side sheets once again expose the expected actions for declining, moving, copying, and navigating between toasts.
